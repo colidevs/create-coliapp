@@ -27,11 +27,11 @@ var importMetaUrl = /* @__PURE__ */ getImportMetaUrl();
 
 // index.ts
 var import_commander = require("commander");
-var import_prompts = __toESM(require("prompts"), 1);
-var import_fs_extra = __toESM(require("fs-extra"), 1);
-var import_path = __toESM(require("path"), 1);
+var import_prompts = __toESM(require("prompts"));
+var import_fs_extra = __toESM(require("fs-extra"));
+var import_path = __toESM(require("path"));
 var import_url = require("url");
-var handlebars = __toESM(require("handlebars"), 1);
+var handlebars = __toESM(require("handlebars"));
 var $ = console.log;
 var TEMPLATES = [
   {
@@ -97,4 +97,4 @@ import_commander.program.version("1.0.0").description("Colidevs CLI \u{1F680}").
   $("\u{1F449}", "pnpm dev\n");
 });
 import_commander.program.parse(process.argv);
-//# sourceMappingURL=index.cjs.map
+//# sourceMappingURL=index.js.map
