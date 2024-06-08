@@ -1,6 +1,6 @@
 {
-  "name": "coliapp",
-  "version": "1.0.0",
+  "name": "create-coliapp",
+  "version": "1.0.1",
   "description": "Create projects like colidev 🚀",
   "type": "module",
   "bin": {
