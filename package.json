@@ -1,10 +1,10 @@
 {
   "name": "create-coliapp",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Create projects like colidev 🚀",
   "main": "index.mjs",
   "bin": {
-    "coliapp": "dist/index.js"
+    "create-coliapp": "dist/index.js"
   },
   "files": [
     "dist/**/*"
