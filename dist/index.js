@@ -26,12 +26,12 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 var getImportMetaUrl = () => typeof document === "undefined" ? new URL("file:" + __filename).href : document.currentScript && document.currentScript.src || new URL("main.js", document.baseURI).href;
 var importMetaUrl = /* @__PURE__ */ getImportMetaUrl();
 
-// index.ts
+// src/index.ts
+var import_node_path = __toESM(require("path"));
+var import_node_url = require("url");
 var import_commander = require("commander");
 var import_prompts = __toESM(require("prompts"));
 var import_fs_extra = __toESM(require("fs-extra"));
-var import_path = __toESM(require("path"));
-var import_url = require("url");
 var handlebars = __toESM(require("handlebars"));
 var $ = console.log;
 var TEMPLATES = [
@@ -64,25 +64,25 @@ import_commander.program.version("1.0.4").description("Colidevs CLI \u{1F680}").
       }
     }
   );
-  const templateDir = import_path.default.join(
-    import_path.default.dirname((0, import_url.fileURLToPath)(importMetaUrl)),
+  const templateDir = import_node_path.default.join(
+    import_node_path.default.dirname((0, import_node_url.fileURLToPath)(importMetaUrl)),
     "templates",
     answer.template
   );
-  const destination = import_path.default.join(process.cwd(), answer.name);
+  const destination = import_node_path.default.join(process.cwd(), answer.name);
   import_fs_extra.default.ensureDirSync(destination);
   import_fs_extra.default.copySync(templateDir, destination);
-  const packageJsonPath = import_path.default.join(destination, "package.json");
+  const packageJsonPath = import_node_path.default.join(destination, "package.json");
   const packageJsonContent = import_fs_extra.default.readFileSync(packageJsonPath, "utf-8");
   const packageJson = JSON.parse(packageJsonContent);
   packageJson.name = answer.name;
   import_fs_extra.default.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
-  const readmePath = import_path.default.join(destination, "README.md");
+  const readmePath = import_node_path.default.join(destination, "README.md");
   const readmeContent = import_fs_extra.default.readFileSync(readmePath, "utf-8");
   const readmeTemplate = handlebars.compile(readmeContent);
   const readme = readmeTemplate({ name: answer.name });
   import_fs_extra.default.writeFileSync(readmePath, readme);
-  const layoutPath = import_path.default.join(destination, "src/app/layout.tsx");
+  const layoutPath = import_node_path.default.join(destination, "src/app/layout.tsx");
   const layoutContent = import_fs_extra.default.readFileSync(layoutPath, "utf-8");
   const layoutTemplate = handlebars.compile(layoutContent);
   const layout = layoutTemplate({ name: answer.name });

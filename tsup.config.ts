@@ -4,7 +4,7 @@ import path from "node:path";
 import {fileURLToPath} from "node:url";
 
 export default defineConfig({
-  entry: ["index.ts"],
+  entry: ["src/index.ts"],
   splitting: false,
   sourcemap: true,
   clean: true,

@@ -1,7 +1,7 @@
 {
   "name": "create-coliapp",
-  "version": "1.0.4",
-  "description": "Create projects like colidev 🚀",
+  "version": "1.0.5",
+  "description": "Create projects like colidev 🚀.\nInspired on create-appncy by @goncy",
   "main": "index.mjs",
   "bin": {
     "create-coliapp": "dist/index.js"
@@ -16,10 +16,12 @@
     "coliapp",
     "next.js",
     "shadcn",
+    "goncy",
+    "create-appncy",
     "tailwindcss"
   ],
   "author": "colidevs",
-  "license": "UNLICENSED",
+  "license": "ISC",
   "dependencies": {
     "commander": "^12.1.0",
     "fs-extra": "^11.2.0",
