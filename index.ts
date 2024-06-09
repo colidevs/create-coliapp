@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import {program} from "commander";
 import prompts from "prompts";
 import fs from "fs-extra";
