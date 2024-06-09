@@ -17,7 +17,7 @@ const TEMPLATES: prompts.Choice[] = [
 ];
 
 program
-  .version("1.0.0")
+  .version("1.0.4")
   .description("Colidevs CLI 🚀")
   .option("-n, --name <name>", "Your name")
   .action(async (cmd) => {

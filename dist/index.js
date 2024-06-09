@@ -41,7 +41,7 @@ var TEMPLATES = [
     value: "nextjs-eslint-ts-shadcn"
   }
 ];
-import_commander.program.version("1.0.0").description("Colidevs CLI \u{1F680}").option("-n, --name <name>", "Your name").action(async (cmd) => {
+import_commander.program.version("1.0.4").description("Colidevs CLI \u{1F680}").option("-n, --name <name>", "Your name").action(async (cmd) => {
   const answer = await (0, import_prompts.default)(
     [
       {
