@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
+import path from "node:path";
+import {fileURLToPath} from "node:url";
 import {program} from "commander";
 import prompts from "prompts";
 import fs from "fs-extra";
-import path from "path";
-import {fileURLToPath} from "url";
 import * as handlebars from "handlebars";
 const $ = console.log;
 
@@ -17,7 +17,7 @@ const TEMPLATES: prompts.Choice[] = [
 ];
 
 program
-  .version("1.0.4")
+  .version("1.0.5")
   .description("Colidevs CLI 🚀")
   .option("-n, --name <name>", "Your name")
   .action(async (cmd) => {
