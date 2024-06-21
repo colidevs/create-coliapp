@@ -1,10 +1,10 @@
 {
   "name": "create-coliapp",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Create projects like colidev 🚀.\nInspired on create-appncy by @goncy",
-  "main": "index.mjs",
+  "main": "dist/index.js",
   "bin": {
-    "create-coliapp": "dist/index.js"
+    "create-coliapp": "./dist/index.js"
   },
   "files": [
     "dist/**/*"
@@ -23,9 +23,7 @@
   "author": "colidevs",
   "license": "ISC",
   "dependencies": {
-    "commander": "^12.1.0",
     "fs-extra": "^11.2.0",
-    "glob": "^10.3.5",
     "handlebars": "^4.7.8",
     "picocolors": "^1.0.0",
     "prompts": "^2.4.2",
