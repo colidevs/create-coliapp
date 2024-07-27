@@ -7,7 +7,6 @@ import prompts from "prompts";
 import fs from "fs-extra";
 import yargs from "yargs";
 import {hideBin} from "yargs/helpers";
-import * as handlebars from "handlebars";
 import {glob} from "glob";
 const $ = console.log;
 

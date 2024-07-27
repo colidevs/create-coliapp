@@ -1,6 +1,6 @@
 {
   "name": "create-coliapp",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Create projects like colidev 🚀.\nInspired on create-appncy by @goncy",
   "main": "dist/index.js",
   "bin": {
@@ -24,7 +24,6 @@
   "license": "ISC",
   "dependencies": {
     "fs-extra": "^11.2.0",
-    "handlebars": "^4.7.8",
     "picocolors": "^1.0.0",
     "prompts": "^2.4.2",
     "yargs": "^17.7.2",
