@@ -1,7 +1,7 @@
 {
   "name": "create-coliapp",
   "version": "1.1.3",
-  "description": "Create projects like colidev 🚀.\nInspired on create-appncy by @goncy",
+  "description": "Create projects like colidev 🚀.\nInspired by 'create-appncy' by @goncy",
   "main": "dist/index.js",
   "bin": {
     "create-coliapp": "./dist/index.js"
