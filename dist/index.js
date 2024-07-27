@@ -40,6 +40,11 @@ var TEMPLATES = [
     title: "nextjs > eslint > typescript > shadcn/ui",
     description: "Most popular template in colidevs",
     value: "nextjs-eslint-ts-shadcn"
+  },
+  {
+    title: "react > vite > js > tailwind",
+    description: "Best for general purposes",
+    value: "react-vite-js-tailwind"
   }
 ];
 var args = (0, import_yargs.default)((0, import_helpers.hideBin)(process.argv)).options({

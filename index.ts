@@ -15,6 +15,11 @@ const TEMPLATES: prompts.Choice[] = [
     description: "Most popular template in colidevs",
     value: "nextjs-eslint-ts-shadcn",
   },
+  {
+    title: "react > vite > js > tailwind",
+    description: "Best for general purposes",
+    value: "react-vite-js-tailwind",
+  },
 ];
 
 const args = yargs(hideBin(process.argv)).options({
