@@ -2,11 +2,13 @@
 
 import path from "node:path";
 import {fileURLToPath} from "node:url";
+import {readFile, writeFile} from "node:fs/promises";
 import prompts from "prompts";
 import fs from "fs-extra";
 import yargs from "yargs";
 import {hideBin} from "yargs/helpers";
 import * as handlebars from "handlebars";
+import {glob} from "glob";
 const $ = console.log;
 
 const TEMPLATES: prompts.Choice[] = [
@@ -98,31 +100,22 @@ async function main() {
   cpyTemplate(templateDir, destination);
 
   // replace {{name}} on package.json, README.md, src/app/layout.tsx
-  replaceName(destination, answer.name);
+  await replaceName(destination, answer.name);
 
   projectCreatedSuccessfully(answer.name);
 }
 
 main().catch(console.error);
 
-function replaceName(destination: string, projectName: string) {
-  const packageJsonPath = path.join(destination, "package.json");
-  const packageJsonContent = fs.readFileSync(packageJsonPath, "utf-8");
-  const packageJson = JSON.parse(packageJsonContent);
-  packageJson.name = projectName;
-  fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
+async function replaceName(destination: string, projectName: string) {
+  const files = await glob(`**/*`, {nodir: true, cwd: destination, absolute: true});
 
-  const readmePath = path.join(destination, "README.md");
-  const readmeContent = fs.readFileSync(readmePath, "utf-8");
-  const readmeTemplate = handlebars.compile(readmeContent);
-  const readme = readmeTemplate({name: projectName});
-  fs.writeFileSync(readmePath, readme);
+  for await (const file of files) {
+    const data = await readFile(file, "utf8");
+    const draft = data.replace(/{{name}}/g, projectName);
 
-  const layoutPath = path.join(destination, "src/app/layout.tsx");
-  const layoutContent = fs.readFileSync(layoutPath, "utf-8");
-  const layoutTemplate = handlebars.compile(layoutContent);
-  const layout = layoutTemplate({name: projectName});
-  fs.writeFileSync(layoutPath, layout);
+    await writeFile(file, draft, "utf8");
+  }
 }
 
 function cpyTemplate(templateDir: string, destination: string) {

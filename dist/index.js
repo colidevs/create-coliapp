@@ -29,11 +29,12 @@ var importMetaUrl = /* @__PURE__ */ getImportMetaUrl();
 // index.ts
 var import_node_path = __toESM(require("path"));
 var import_node_url = require("url");
+var import_promises = require("fs/promises");
 var import_prompts = __toESM(require("prompts"));
 var import_fs_extra = __toESM(require("fs-extra"));
 var import_yargs = __toESM(require("yargs"));
 var import_helpers = require("yargs/helpers");
-var handlebars = __toESM(require("handlebars"));
+var import_glob = require("glob");
 var $ = console.log;
 var TEMPLATES = [
   {
@@ -104,26 +105,17 @@ async function main() {
     $(`\u{1F6A8}\u{1F6A8}`, `Folder created: ${destination}`);
   }
   cpyTemplate(templateDir, destination);
-  replaceName(destination, answer.name);
+  await replaceName(destination, answer.name);
   projectCreatedSuccessfully(answer.name);
 }
 main().catch(console.error);
-function replaceName(destination, projectName) {
-  const packageJsonPath = import_node_path.default.join(destination, "package.json");
-  const packageJsonContent = import_fs_extra.default.readFileSync(packageJsonPath, "utf-8");
-  const packageJson = JSON.parse(packageJsonContent);
-  packageJson.name = projectName;
-  import_fs_extra.default.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
-  const readmePath = import_node_path.default.join(destination, "README.md");
-  const readmeContent = import_fs_extra.default.readFileSync(readmePath, "utf-8");
-  const readmeTemplate = handlebars.compile(readmeContent);
-  const readme = readmeTemplate({ name: projectName });
-  import_fs_extra.default.writeFileSync(readmePath, readme);
-  const layoutPath = import_node_path.default.join(destination, "src/app/layout.tsx");
-  const layoutContent = import_fs_extra.default.readFileSync(layoutPath, "utf-8");
-  const layoutTemplate = handlebars.compile(layoutContent);
-  const layout = layoutTemplate({ name: projectName });
-  import_fs_extra.default.writeFileSync(layoutPath, layout);
+async function replaceName(destination, projectName) {
+  const files = await (0, import_glob.glob)(`**/*`, { nodir: true, cwd: destination, absolute: true });
+  for await (const file of files) {
+    const data = await (0, import_promises.readFile)(file, "utf8");
+    const draft = data.replace(/{{name}}/g, projectName);
+    await (0, import_promises.writeFile)(file, draft, "utf8");
+  }
 }
 function cpyTemplate(templateDir, destination) {
   import_fs_extra.default.ensureDirSync(destination);
