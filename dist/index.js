@@ -46,6 +46,11 @@ var TEMPLATES = [
     title: "react > vite > js > tailwind",
     description: "Best for general purposes",
     value: "react-vite-js-tailwind"
+  },
+  {
+    title: "react > vite > js > justd",
+    description: "Use Just D. components in Vite",
+    value: "react-vite-js-justd"
   }
 ];
 var args = (0, import_yargs.default)((0, import_helpers.hideBin)(process.argv)).options({
