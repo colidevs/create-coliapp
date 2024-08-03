@@ -21,6 +21,11 @@ const TEMPLATES: prompts.Choice[] = [
     description: "Best for general purposes",
     value: "react-vite-js-tailwind",
   },
+  {
+    title: "react > vite > js > justd",
+    description: "Use Just D. components in Vite",
+    value: "react-vite-js-justd",
+  },
 ];
 
 const args = yargs(hideBin(process.argv)).options({

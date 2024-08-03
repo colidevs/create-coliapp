@@ -1,0 +1,20 @@
+{
+  "recommendations": [
+    "pflannery.vscode-versionlens",
+    "adpyke.codesnap",
+    "WallabyJs.console-ninja",
+    "EditorConfig.EditorConfig",
+    "usernamehw.errorlens",
+    "dbaeumer.vscode-eslint",
+    "eamodio.gitlens",
+    "wix.vscode-import-cost",
+    "SirTori.indenticator",
+    "AykutSarac.jsoncrack-vscode",
+    "jhuix.markdown-preview-showdown",
+    "esbenp.prettier-vscode",
+    "rafamel.subtle-brackets",
+    "SimonSiefke.svg-preview",
+    "bradlc.vscode-tailwindcss",
+    "doggy8088.quicktype-refresh",
+  ]
+}
