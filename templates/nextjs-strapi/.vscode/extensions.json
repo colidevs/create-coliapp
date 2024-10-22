@@ -15,6 +15,8 @@
     "rafamel.subtle-brackets",
     "SimonSiefke.svg-preview",
     "bradlc.vscode-tailwindcss",
-    "doggy8088.quicktype-refresh",
+    "quicktype.quicktype",
+    "aaron-bond.better-comments",
+    "YoavBls.pretty-ts-errors"
   ]
 }

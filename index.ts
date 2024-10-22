@@ -13,18 +13,18 @@ const $ = console.log;
 const TEMPLATES: prompts.Choice[] = [
   {
     title: "nextjs > eslint > typescript > shadcn/ui",
-    description: "Most popular template in colidevs",
+    description: "Basico, usado principalmente para practicar.",
     value: "nextjs-eslint-ts-shadcn",
   },
   {
-    title: "react > vite > js > tailwind",
-    description: "Best for general purposes",
-    value: "react-vite-js-tailwind",
+    title: "nextjs > strapi > zod ",
+    description: "Con Strapi y Zod es la opcion ideal para proyectos reales.",
+    value: "react-vite-js-justd",
   },
   {
-    title: "react > vite > js > justd",
-    description: "Use Just D. components in Vite",
-    value: "react-vite-js-justd",
+    title: "react > vite > js > tailwind",
+    description: "Basico, usado principalmente para practicar o crear una app client side.",
+    value: "react-vite-js-tailwind",
   },
 ];
 
