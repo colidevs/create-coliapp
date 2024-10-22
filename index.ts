@@ -19,7 +19,7 @@ const TEMPLATES: prompts.Choice[] = [
   {
     title: "nextjs > strapi > zod ",
     description: "Con Strapi y Zod es la opcion ideal para proyectos reales.",
-    value: "react-vite-js-justd",
+    value: "nextjs-strapi-zod",
   },
   {
     title: "react > vite > js > tailwind",
