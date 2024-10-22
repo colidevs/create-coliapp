@@ -39,18 +39,18 @@ var $ = console.log;
 var TEMPLATES = [
   {
     title: "nextjs > eslint > typescript > shadcn/ui",
-    description: "Most popular template in colidevs",
+    description: "Basico, usado principalmente para practicar.",
     value: "nextjs-eslint-ts-shadcn"
   },
   {
-    title: "react > vite > js > tailwind",
-    description: "Best for general purposes",
-    value: "react-vite-js-tailwind"
+    title: "nextjs > strapi > zod ",
+    description: "Con Strapi y Zod es la opcion ideal para proyectos reales.",
+    value: "nextjs-strapi-zod"
   },
   {
-    title: "react > vite > js > justd",
-    description: "Use Just D. components in Vite",
-    value: "react-vite-js-justd"
+    title: "react > vite > js > tailwind",
+    description: "Basico, usado principalmente para practicar o crear una app client side.",
+    value: "react-vite-js-tailwind"
   }
 ];
 var args = (0, import_yargs.default)((0, import_helpers.hideBin)(process.argv)).options({
