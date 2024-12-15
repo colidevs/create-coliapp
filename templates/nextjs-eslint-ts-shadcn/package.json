@@ -8,6 +8,10 @@
     "start": "next start",
     "lint": "next lint"
   },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
   "dependencies": {
     "@radix-ui/react-slot": "^1.0.2",
     "autoprefixer": "^10.4.19",
