@@ -18,7 +18,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "lucide-react": "^0.379.0",
-    "next": "14.2.4",
+    "next": "14.2.26",
     "postcss": "^8.4.38",
     "react": "18.3.1",
     "react-dom": "18.3.1",
@@ -28,7 +28,7 @@
   },
   "devDependencies": {
     "@eslint/compat": "^1.0.1",
-    "@next/eslint-plugin-next": "^14.2.4",
+    "@next/eslint-plugin-next": "^14.2.6",
     "@types/node": "^20.12.12",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
