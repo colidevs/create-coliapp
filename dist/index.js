@@ -43,9 +43,9 @@ var TEMPLATES = [
     value: "nextjs-eslint-ts-shadcn"
   },
   {
-    title: "nextjs > strapi > zod ",
-    description: "Con Strapi y Zod es la opcion ideal para proyectos reales.",
-    value: "nextjs-strapi-zod"
+    title: "nextjs > eslint > typescript > shadcn/ui > google sheet",
+    description: "Viene preparado para que uses un google sheet como db.",
+    value: "nextjs-eslint-ts-shadcn-sheet"
   },
   {
     title: "react > vite > js > tailwind",
