@@ -20,6 +20,10 @@
     "create-appncy",
     "tailwindcss"
   ],
+  "engines": {
+    "node": "22.x",
+    "pnpm": "10.x"
+  },
   "author": "colidevs",
   "license": "ISC",
   "dependencies": {
