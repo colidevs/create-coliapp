@@ -1,5 +1,5 @@
 {
-	"name": "colipins",
+	"name": "{{name}}",
 	"version": "0.1.0",
 	"private": true,
 	"scripts": {
@@ -8,6 +8,10 @@
 		"start": "next start",
 		"lint": "biome check .",
 		"sort": "biome check --formatter-enabled=false --linter-enabled=false --organize-imports-enabled=true --write ."
+	},
+	"engines": {
+		"node": "22.x",
+		"pnpm": "10.x"
 	},
 	"dependencies": {
 		"@radix-ui/react-dialog": "^1.1.14",
