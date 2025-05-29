@@ -56,7 +56,7 @@ export default function RootLayout({ children }: Readonly<Props>) {
 			<body
 				className={cn(
 					"font-normal antialiased min-h-[100dvh]",
-					Poppins.className,
+					poppins.className,
 				)}
 			>
 				<ThemeProvider
