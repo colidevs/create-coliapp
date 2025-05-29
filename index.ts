@@ -12,6 +12,11 @@ const $ = console.log;
 
 const TEMPLATES: prompts.Choice[] = [
   {
+    title: "nextjs 15 > biome > shadcn/ui",
+    description: "Bienvenido a Next.JS 15 y React 19, app renovada de colidevs",
+    value: "nextjs15-biome-shadcn",
+  },
+  {
     title: "nextjs > eslint > typescript > shadcn/ui",
     description: "Basico, usado principalmente para practicar.",
     value: "nextjs-eslint-ts-shadcn",

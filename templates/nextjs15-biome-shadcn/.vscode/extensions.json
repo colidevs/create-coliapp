@@ -1,0 +1,13 @@
+{
+	"recommendations": [
+		"pflannery.vscode-versionlens",
+		"WallabyJs.console-ninja",
+		"usernamehw.errorlens",
+		"wix.vscode-import-cost",
+		"bradlc.vscode-tailwindcss",
+		"aaron-bond.better-comments",
+		"YoavBls.pretty-ts-errors",
+		"biomejs.biome",
+		"EditorConfig.EditorConfig"
+	]
+}
