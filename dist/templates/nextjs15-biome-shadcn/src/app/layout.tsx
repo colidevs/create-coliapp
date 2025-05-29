@@ -6,7 +6,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { siteConfig } from "@/config/site";
-import { Poppins } from "@/lib/fonts";
+import { poppins } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
 import type { PropsWithChildren } from "react";
 
