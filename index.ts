@@ -31,6 +31,11 @@ const TEMPLATES: prompts.Choice[] = [
     description: "Basico, usado principalmente para practicar o crear una app client side.",
     value: "react-vite-js-tailwind",
   },
+  {
+    title: "express + typescript",
+    description: "Proyecto backend básico con Express y TypeScript, ideal para crear APIs.",
+    value: "express-ts",
+  },
 ];
 
 const args = yargs(hideBin(process.argv)).options({
