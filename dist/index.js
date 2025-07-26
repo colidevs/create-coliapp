@@ -59,7 +59,7 @@ var TEMPLATES = [
   },
   {
     title: "express + typescript",
-    description: "Proyecto backend b\xE1sico con Express y TypeScript, ideal para crear APIs.",
+    description: "Proyecto backend basico con Express y TypeScript, ideal para crear APIs.",
     value: "express-ts"
   }
 ];
