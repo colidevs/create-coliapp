@@ -3,7 +3,7 @@
 		"target": "esnext",
 		"module": "esnext",
 		"lib": ["ESNext"],
-		"rootDir": "src",
+		"rootDir": "project/src",
 		"outDir": "dist",
 		"strict": true,
 		"esModuleInterop": true,
@@ -16,6 +16,6 @@
 		"noUnusedParameters": true,
 		"noFallthroughCasesInSwitch": true
 	},
-	"include": ["src"],
+	"include": ["project/src"],
 	"exclude": ["node_modules", "dist"]
 }

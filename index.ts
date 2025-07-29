@@ -38,6 +38,27 @@ const TEMPLATES: prompts.Choice[] = [
   },
 ];
 
+const EXTRAS = {
+  "nextjs 15 > biome > shadcn/ui": [
+    {
+      title: "Airtable",
+      value: "airtable",
+    },
+  ],
+  "nextjs > eslint > typescript > shadcn/ui": [
+    {
+      title: "Airtable",
+      value: "airtable",
+    },
+  ],
+  "react > vite > js > tailwind": [
+    {
+      title: "Airtable",
+      value: "airtable",
+    },
+  ],
+};
+
 const args = yargs(hideBin(process.argv)).options({
   name: {type: "string", alias: "n", description: "Project name"},
 });
@@ -86,6 +107,20 @@ async function main() {
   // get the destination folder
   const destination = path.join(process.cwd(), answer.name);
 
+  //get the extras for the selected template
+  let extras: string[] = [];
+
+  if (EXTRAS[answer.template]) {
+    const {extras: results} = await prompts({
+      type: "multiselect",
+      name: "extras",
+      message: "Which extras would you like to add?",
+      choices: EXTRAS[answer.template],
+    });
+
+    extras = results;
+  }
+
   if (fs.existsSync(destination)) {
     $(`🚨🚨`, `Folder already exists: ${destination}`);
 
@@ -111,7 +146,16 @@ async function main() {
   }
 
   // copy template to destination
-  cpyTemplate(templateDir, destination);
+  cpyTemplate(templateDir + "/project", destination);
+
+  for (const extra of extras) {
+    const extraDir = path.join(templateDir, "extras", extra);
+    if (fs.existsSync(extraDir)) {
+      cpyTemplate(extraDir, destination);
+    } else {
+      $(`Extra not found: ${extraDir}`);
+    }
+  }
 
   // replace {{name}} on package.json, README.md, src/app/layout.tsx
   await replaceName(destination, answer.name);
