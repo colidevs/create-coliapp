@@ -1,28 +1,43 @@
 {
-	"name": "express-ts",
+	"name": "{{name}}",
 	"version": "1.0.0",
 	"description": "",
-	"main": "index.js",
+	"type": "module",
+	"main": "dist/index.cjs",
 	"scripts": {
-		"dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-		"build": "tsc",
-		"start": "node dist/server.js",
-		"lint": "biome check .",
+		"dev": "tsup --watch --onSuccess \"node --env-file=.env dist/index.cjs\"",
+		"build": "tsup",
+		"start": "node dist/index.cjs",
+		"check": "biome check .",
+		"lint": "biome check --write",
+		"lint:unsafe": "biome check --write --unsafe",
+		"format": "biome format --write",
+		"fix": "biome lint --write",
 		"sort": "biome check --formatter-enabled=false --linter-enabled=false --organize-imports-enabled=true --write ."
 	},
 	"keywords": [],
-	"author": "",
+	"author": "colidevs",
 	"license": "ISC",
 	"packageManager": "pnpm@10.4.1",
 	"dependencies": {
-		"dotenv": "^17.2.0",
-		"express": "^5.1.0"
+		"@supabase/supabase-js": "2.96.0",
+		"body-parser": "2.2.2",
+		"express": "5.2.1",
+		"mercadopago": "2.12.0",
+		"multer": "2.0.2",
+		"pg": "8.18.0",
+		"redis": "5.11.0",
+		"slugify": "1.6.6",
+		"zlib": "1.0.5",
+		"zod": "4.3.6"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "1.9.4",
-		"@types/express": "^5.0.3",
-		"@types/node": "^24.0.15",
-		"ts-node-dev": "^2.0.0",
-		"typescript": "^5.8.3"
+		"@biomejs/biome": "2.4.2",
+		"@types/body-parser": "1.19.6",
+		"@types/express": "5.0.6",
+		"@types/node": "24.10.1",
+		"@types/pg": "8.16.0",
+		"tsup": "8.5.1",
+		"typescript": "5.9.3"
 	}
 }
