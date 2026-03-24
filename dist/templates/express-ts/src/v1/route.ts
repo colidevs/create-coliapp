@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { auth } from "@/v1/middlewares/auth";
-import { demoRouter } from "@/v1/modules/demo/route";
+import { healthcheckRouter } from "@/v1/modules/healthcheck/route";
 
 const root = Router();
 
-root.use("/demo", auth, demoRouter);
+root.use("/healthcheck", healthcheckRouter);
 
 export { root as v1Router };
