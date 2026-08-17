@@ -143,6 +143,14 @@ jobs:
           revision: templates/express-ts/openapi/openapi.yaml
           fail-on: ERR
 
+      # Same attestation gate as the copied
+      # `templates/express-ts/.github/workflows/api-standard.yml` — dogfoods
+      # it against this repo's own copy of the template. Static invocation,
+      # no PR-event data interpolated into the command (Threat Matrix: PR
+      # commands).
+      - name: Attestation gate (ADR 0009-0013 findings)
+        run: node scripts/api-standard-gate.mjs
+
 # NOTE (2026-08-17): only `templates/express-ts` has its own lint/typecheck/test
 # scripts today (added as part of the express-ts-backend-stack SDD change).
 # The other scaffolded templates (nextjs-eslint-ts-shadcn,

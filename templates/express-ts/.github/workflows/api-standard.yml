@@ -11,11 +11,15 @@ name: API Standard (schema-shape)
 # on private repos. The real gate is deploy-time CI (Layer 3, `infra`'s
 # `build-api.template.yml`, pending that team's acceptance).
 #
-# Schema-shape only (ADR 0009 + ADR 0011): Spectral (this template's own
-# `.spectral.yaml`), oasdiff (additive-only diff), license-checker. The
-# behavioral checklist (ADR 0010/0012/0013) and the attestation gate script
-# (`api-standard-gate.mjs`, `api-standard/findings.json`) are Phase 3 of the
-# same SDD change, wired into this same file in a later PR.
+# Schema-shape (ADR 0009 + ADR 0011): Spectral (this template's own
+# `.spectral.yaml`), oasdiff (additive-only diff), license-checker.
+#
+# Plus the attestation gate (Phase 3 of the same SDD change):
+# `scripts/api-standard-gate.mjs` recomputes `api-standard/findings.json`'s
+# `scope_digest` against the checked-out commit and fails closed on any
+# unresolved blocking finding or malformed/missing attestation. It does not
+# re-derive the ADR 0010/0012/0013 behavioral verdict itself — see
+# `sdd/api-enforcement-mechanism/design`, Decision 2.
 on:
   pull_request:
 
@@ -81,3 +85,9 @@ jobs:
           base: .oasdiff-base-openapi.yaml
           revision: openapi/openapi.yaml
           fail-on: ERR
+
+      # Attestation gate: static invocation, no interpolation of any PR-event
+      # data into the command line (Threat Matrix: PR commands). Pure Node —
+      # no dependency install needed for this step specifically.
+      - name: Attestation gate (ADR 0009-0013 findings)
+        run: node scripts/api-standard-gate.mjs
