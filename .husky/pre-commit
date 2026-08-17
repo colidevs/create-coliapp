@@ -1,0 +1,18 @@
+tsc_bin="$(pnpm bin)/tsc"
+
+# Type-check the CLI itself (fast, always runs).
+"$tsc_bin" --noEmit
+
+# If this commit touches templates/express-ts, lint + typecheck + test that
+# template specifically — this is exactly the check that was skipped before
+# shipping colidevs/create-coliapp#10 (a Biome formatting violation reached
+# `main` because nothing ran Biome pre-commit).
+if git diff --cached --name-only --diff-filter=ACMR | grep -q '^templates/express-ts/'; then
+	echo "→ templates/express-ts changed, running its checks..."
+	(
+		cd templates/express-ts || exit 1
+		pnpm exec biome check . || exit 1
+		pnpm exec tsc --noEmit || exit 1
+		pnpm test || exit 1
+	) || exit 1
+fi
