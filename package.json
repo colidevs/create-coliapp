@@ -24,6 +24,7 @@
     "node": "22.x",
     "pnpm": "10.x"
   },
+  "packageManager": "pnpm@10.4.1",
   "author": "colidevs",
   "license": "ISC",
   "dependencies": {
