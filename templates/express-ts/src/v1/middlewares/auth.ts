@@ -14,7 +14,7 @@ const auth = async (req: Request, res: Response, next: NextFunction) => {
 
 	const unauthorizedError = new UnauthorizedHttpError();
 
-	if (!authHeader || !authHeader.startsWith("Basic ")) {
+	if (!authHeader?.startsWith("Basic ")) {
 		res.set("WWW-Authenticate", "Basic realm='Unauthorized'");
 		warn(`ip ${req.ip}`, "require credentials");
 		throw unauthorizedError;

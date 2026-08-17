@@ -1,0 +1,83 @@
+# TEMPLATE PLACEHOLDER — replace with the real Apidog-exported spec (ADR
+# 0005 / `.claude/rules/api-design-apidog.md`: design the contract in Apidog
+# BEFORE implementation, this file is not where new endpoints should be
+# hand-authored going forward). Scaffolded here only so
+# `express-openapi-validator` (task 3.6) has a real, valid spec to validate
+# against out of the box, covering exactly this template's one existing
+# endpoint (`/api/v1/healthcheck/status`).
+openapi: 3.1.0
+info:
+  title: "{{name}}"
+  version: "1.0.0"
+  description: >-
+    Minimal starter spec for this template's existing endpoints. Replace
+    wholesale with the real Apidog-exported OpenAPI document once the
+    project's actual API contract is designed there.
+servers:
+  - url: /api/v1
+paths:
+  /healthcheck/status:
+    get:
+      operationId: getHealthcheckStatus
+      summary: Application-level healthcheck status
+      security: []
+      responses:
+        "200":
+          description: Healthcheck status message
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - msg
+                properties:
+                  msg:
+                    type: string
+                    example: "V1 Healthcheck Status OK ✅"
+        default:
+          description: Unexpected error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+components:
+  schemas:
+    # RFC 9457 Problem Details (ADR 0009 / api-communication-standard.md).
+    # Mirrors `src/v1/res/errors.ts`'s `ProblemDetails` interface.
+    Problem:
+      type: object
+      required:
+        - type
+        - status
+        - title
+      properties:
+        type:
+          type: string
+          format: uri-reference
+          example: "https://coli.dev/errors/not-found"
+        status:
+          type: integer
+          example: 404
+        title:
+          type: string
+          example: "Resource not found."
+        detail:
+          type: string
+          example: "Resource not found. order 1"
+        instance:
+          type: string
+          example: "/api/v1/orders/1"
+        errors:
+          type: array
+          items:
+            type: object
+            required:
+              - field
+              - message
+            properties:
+              field:
+                type: string
+                example: email
+              message:
+                type: string
+                example: must be a valid email

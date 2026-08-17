@@ -1,12 +1,20 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
 
-export interface RequestWithId extends Request {
-	params: Request["params"] & { id: string };
-}
-
 export interface ResponseWithContext extends Response {
 	locals: Response["locals"] & { context: string };
+}
+
+/**
+ * @description Request typed with an optional `:id` route param, used by
+ * the cache middleware and `tenantCacheKey` to build per-resource cache
+ * dimensions. Previously imported across `lib/redis.ts` and
+ * `v1/middlewares/{cache,context}.ts` without ever being defined here —
+ * `tsc --noEmit` failed independent of any Phase 3 change (flagged during
+ * Phase 1 apply, fixed here).
+ */
+export interface RequestWithId extends Request {
+	params: Request["params"] & { id?: string };
 }
 
 export interface AppResponse<TData> {

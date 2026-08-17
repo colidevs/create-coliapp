@@ -6,6 +6,7 @@
 	"main": "dist/index.cjs",
 	"scripts": {
 		"dev": "tsup --watch --onSuccess \"node --env-file=.env dist/index.cjs\"",
+		"dev:infisical": "infisical run --projectId $INFISICAL_PROJECT_ID --env prod --silent --domain https://infisical.coli.com.ar -- pnpm dev",
 		"build": "tsup",
 		"start": "node dist/index.cjs",
 		"check": "biome check .",
@@ -14,16 +15,24 @@
 		"format": "biome format --write",
 		"fix": "biome lint --write",
 		"sort": "biome check --formatter-enabled=false --linter-enabled=false --organize-imports-enabled=true --write .",
-		"test": "vitest run"
+		"test": "vitest run",
+		"db:generate": "drizzle-kit generate",
+		"db:migrate": "drizzle-kit migrate"
 	},
 	"keywords": [],
 	"author": "colidevs",
-	"license": "ISC",
+	"license": "Apache-2.0",
 	"packageManager": "pnpm@10.4.1",
 	"dependencies": {
+		"@supabase/postgrest-js": "2.112.3",
 		"@supabase/supabase-js": "2.96.0",
 		"body-parser": "2.2.2",
+		"cors": "2.8.6",
+		"drizzle-orm": "0.45.2",
 		"express": "5.2.1",
+		"express-openapi-validator": "5.6.2",
+		"express-rate-limit": "8.6.2",
+		"helmet": "8.3.0",
 		"mercadopago": "2.12.0",
 		"multer": "2.1.1",
 		"pg": "8.18.0",
@@ -33,14 +42,18 @@
 		"zod": "4.3.6"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "2.4.2",
+		"@biomejs/biome": "2.5.8",
 		"@types/body-parser": "1.19.6",
+		"@types/cors": "2.8.19",
 		"@types/express": "5.0.6",
 		"@types/node": "24.10.1",
 		"@types/pg": "8.16.0",
 		"@types/multer": "2.1.0",
+		"@types/supertest": "7.2.1",
+		"drizzle-kit": "0.31.10",
+		"supertest": "7.2.2",
 		"tsup": "8.5.1",
-		"typescript": "5.9.3",
+		"typescript": "7.0.2",
 		"vitest": "4.1.10"
 	}
 }

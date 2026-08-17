@@ -132,6 +132,13 @@ export async function revalidatePattern(cacheKey: string): Promise<number> {
  * same cache entry. This signature intentionally mirrors the
  * `@colidevs/api-kit` `tenantCacheKey` helper (see ADR 0014) so that adopting
  * the package later is a one-line import swap, not a call-site rewrite.
+ *
+ * TODO(ADR 0014 / Phase 3 task 3.1): swap this in-template implementation for
+ * `import { tenantCacheKey, createCacheClient } from "@colidevs/api-kit/cache"`
+ * once `@colidevs/api-kit@0.1.0` is published to verdaccio (blocked on
+ * https://github.com/colidevs/framework/pull/9 merging — still open at the
+ * time this template work landed). The signature already matches exactly, so
+ * the swap is a one-line import change, not a call-site rewrite.
  */
 export function tenantCacheKey({
 	tenantId,
