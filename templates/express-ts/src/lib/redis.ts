@@ -146,9 +146,9 @@ export function tenantCacheKey({
 		throw new RequiredError("tenantId");
 	}
 
-	const suffix = dims
-		.filter((dim): dim is string => Boolean(dim))
-		.join(":");
+	const suffix = dims.filter((dim): dim is string => Boolean(dim)).join(":");
 
-	return suffix ? `${tenantId}:${resource}:${suffix}` : `${tenantId}:${resource}`;
+	return suffix
+		? `${tenantId}:${resource}:${suffix}`
+		: `${tenantId}:${resource}`;
 }
