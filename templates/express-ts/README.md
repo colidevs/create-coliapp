@@ -65,6 +65,19 @@ vs. Supabase-hosted):
 (ADR 0005) as soon as one exists. `express-openapi-validator` validates every `/api/v1` request and
 response against it before the route handler runs.
 
+### API standard checks (schema-shape)
+
+`.spectral.yaml` lints `openapi/openapi.yaml` against ADR 0009's shape rules (RFC 9457 error
+responses, `/v1` versioning, plural-noun resource naming, cursor pagination, ≥1 example + a declared
+`security` field per operation). `pnpm run api-standard:lint` runs it locally;
+`pnpm run api-standard:license` runs `license-checker-rseidelsohn` per ADR 0011 (blocks
+GPL/LGPL/AGPL/SSPL-class dependencies). Both, plus an additive-only oasdiff check against the PR's
+base branch, run in `.github/workflows/api-standard.yml` on every pull request — loud (a visible ✗),
+not a merge block (GitHub Free has no branch protection on private repos; the real gate is
+deploy-time, see hefesto's `.claude/rules/api-enforcement.md`). Behavioral rules (ADR 0010/0012/0013 —
+tenant-ownership checks, cache-key tenant dimension, RBAC placement) are not lint-tool-checkable and
+stay in hefesto's `api-standard-check` skill instead.
+
 ## Health
 
 - `GET /health` — process-alive only, no dependency checks (Compose `HEALTHCHECK`).
