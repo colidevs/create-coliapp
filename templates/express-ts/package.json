@@ -13,7 +13,8 @@
 		"lint:unsafe": "biome check --write --unsafe",
 		"format": "biome format --write",
 		"fix": "biome lint --write",
-		"sort": "biome check --formatter-enabled=false --linter-enabled=false --organize-imports-enabled=true --write ."
+		"sort": "biome check --formatter-enabled=false --linter-enabled=false --organize-imports-enabled=true --write .",
+		"test": "vitest run"
 	},
 	"keywords": [],
 	"author": "colidevs",
@@ -39,6 +40,7 @@
 		"@types/pg": "8.16.0",
 		"@types/multer": "2.1.0",
 		"tsup": "8.5.1",
-		"typescript": "5.9.3"
+		"typescript": "5.9.3",
+		"vitest": "4.1.10"
 	}
 }
