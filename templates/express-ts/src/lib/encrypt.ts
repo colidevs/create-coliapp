@@ -34,4 +34,4 @@ function decrypt(str: string): string {
 	return decrypted;
 }
 
-export { encrypt, decrypt };
+export { decrypt, encrypt };
