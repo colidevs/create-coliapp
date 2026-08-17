@@ -98,10 +98,19 @@ function git(args, cwd) {
 	return execFileSync("git", args, { cwd, encoding: "utf8" });
 }
 
+/**
+ * Always resolves HEAD from `cwd` itself — deliberately NOT
+ * `process.env.GITHUB_SHA`. That env var is process-global, not scoped to
+ * `cwd`; a naive preference for it broke this gate's own test suite when run
+ * inside a GitHub Actions job (the outer checkout's `GITHUB_SHA` leaked into
+ * every temp-repo-based test, which has its own unrelated HEAD). It is also
+ * unnecessary: for `pull_request` events, `actions/checkout`'s default merge
+ * commit IS `HEAD` at `cwd`, identical to `github.sha` — there is no
+ * divergence to special-case. Consistent with the Threat Matrix's "use
+ * `$PWD`/`GITHUB_WORKSPACE` only" — resolving via `cwd`'s own HEAD, not an
+ * unscoped global, is what that actually requires.
+ */
 export function resolveCommit(cwd) {
-	if (process.env.GITHUB_SHA) {
-		return process.env.GITHUB_SHA;
-	}
 	return git(["rev-parse", "HEAD"], cwd).trim();
 }
 

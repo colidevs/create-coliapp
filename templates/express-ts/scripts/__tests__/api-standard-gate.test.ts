@@ -16,6 +16,7 @@ import {
 	FINDINGS_SCHEMA_VERSION,
 	GateError,
 	isApiShaped,
+	resolveCommit,
 	runGate,
 	validateFindingsShape,
 } from "../api-standard-gate.mjs";
@@ -318,6 +319,56 @@ describe("Threat Matrix: Commit state — uncommitted changes never satisfy the 
 		const result = runGate(repo, { today: TODAY });
 		expect(result.code).toBe(0);
 		expect(result.message).toContain("PASS");
+	});
+});
+
+describe("resolveCommit ignores process.env.GITHUB_SHA (real CI regression, found via a live PR run)", () => {
+	/**
+	 * @description A real bug, not a hypothetical: the first CI run of this PR
+	 * (`colidevs/create-coliapp#15`) failed the `templates/express-ts` job
+	 * because `resolveCommit` originally preferred `process.env.GITHUB_SHA`
+	 * whenever it was set. Inside a GitHub Actions job, `GITHUB_SHA` is a
+	 * process-global env var set to the OUTER checkout's commit — it leaked
+	 * into every temp-repo-based test here, which has its own unrelated HEAD,
+	 * causing `git show <outer-sha>:./api-standard/findings.json` to fail
+	 * with "missing at commit" against a repo that never had that commit.
+	 * Fixed by always resolving HEAD from `cwd` itself. This test pins that
+	 * fix so it cannot silently regress.
+	 */
+	it("runGate still resolves the correct repo-local HEAD even when GITHUB_SHA is set to an unrelated commit", () => {
+		const repo = seedCleanRepo();
+		const previousGithubSha = process.env.GITHUB_SHA;
+		process.env.GITHUB_SHA = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
+		try {
+			const result = runGate(repo, { today: TODAY });
+			expect(result.code).toBe(0);
+			expect(result.message).toContain("PASS");
+		} finally {
+			if (previousGithubSha === undefined) {
+				delete process.env.GITHUB_SHA;
+			} else {
+				process.env.GITHUB_SHA = previousGithubSha;
+			}
+		}
+	});
+
+	it("resolveCommit always returns cwd's own HEAD, never the unrelated env var", () => {
+		const repo = seedCleanRepo();
+		const expected = execFileSync("git", ["rev-parse", "HEAD"], {
+			cwd: repo,
+			encoding: "utf8",
+		}).trim();
+		const previousGithubSha = process.env.GITHUB_SHA;
+		process.env.GITHUB_SHA = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
+		try {
+			expect(resolveCommit(repo)).toBe(expected);
+		} finally {
+			if (previousGithubSha === undefined) {
+				delete process.env.GITHUB_SHA;
+			} else {
+				process.env.GITHUB_SHA = previousGithubSha;
+			}
+		}
 	});
 });
 
