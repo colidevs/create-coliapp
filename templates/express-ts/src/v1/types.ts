@@ -1,5 +1,9 @@
-import type { Response } from "express";
+import type { Request, Response } from "express";
 import { z } from "zod";
+
+export interface RequestWithId extends Request {
+	params: Request["params"] & { id: string };
+}
 
 export interface ResponseWithContext extends Response {
 	locals: Response["locals"] & { context: string };
