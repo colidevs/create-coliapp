@@ -33,6 +33,10 @@ WORKDIR /app
 COPY --from=deps --chown=node:node /app/node_modules ./node_modules
 COPY --from=builder --chown=node:node /app/dist ./dist
 COPY --from=builder --chown=node:node /app/package.json ./package.json
+# `openapi/openapi.yaml` is read at runtime by express-openapi-validator
+# (resolved relative to `dist/` via `__dirname`, see `src/api.ts`) — it is
+# NOT bundled into `dist/**/*.cjs` by tsup, so it must be copied explicitly.
+COPY --from=builder --chown=node:node /app/openapi ./openapi
 
 USER node
 
