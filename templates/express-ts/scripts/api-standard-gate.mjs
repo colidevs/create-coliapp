@@ -195,7 +195,10 @@ export function validateFindingsShape(doc) {
 			`findings.json has unsupported version ${JSON.stringify(doc.version)} (expected ${FINDINGS_SCHEMA_VERSION})`,
 		);
 	}
-	if (typeof doc.scope_digest !== "string" || !doc.scope_digest.startsWith("sha256:")) {
+	if (
+		typeof doc.scope_digest !== "string" ||
+		!doc.scope_digest.startsWith("sha256:")
+	) {
 		throw new GateError(
 			2,
 			"findings.json is missing a well-formed 'scope_digest' (expected 'sha256:...')",
@@ -206,7 +209,11 @@ export function validateFindingsShape(doc) {
 	}
 
 	doc.findings.forEach((finding, index) => {
-		if (typeof finding !== "object" || finding === null || Array.isArray(finding)) {
+		if (
+			typeof finding !== "object" ||
+			finding === null ||
+			Array.isArray(finding)
+		) {
 			throw new GateError(2, `findings[${index}] must be an object`);
 		}
 		if (typeof finding.rule !== "string" || finding.rule.length === 0) {
@@ -231,7 +238,10 @@ export function validateFindingsShape(doc) {
 					`findings[${index}] is an exception missing 'reason'`,
 				);
 			}
-			if (typeof finding.approver !== "string" || finding.approver.length === 0) {
+			if (
+				typeof finding.approver !== "string" ||
+				finding.approver.length === 0
+			) {
 				throw new GateError(
 					2,
 					`findings[${index}] is an exception missing 'approver'`,

@@ -10,11 +10,11 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
-	FINDINGS_SCHEMA_VERSION,
-	GateError,
 	assertSafeRelativePath,
 	computeScopeDigest,
 	evaluateFindings,
+	FINDINGS_SCHEMA_VERSION,
+	GateError,
 	isApiShaped,
 	runGate,
 	validateFindingsShape,
@@ -39,7 +39,10 @@ import {
  *   than only the imported module.
  */
 
-const scriptPath = path.resolve(import.meta.dirname, "../api-standard-gate.mjs");
+const scriptPath = path.resolve(
+	import.meta.dirname,
+	"../api-standard-gate.mjs",
+);
 const TODAY = "2026-08-17";
 
 function git(args: string[], cwd: string): string {
@@ -68,7 +71,11 @@ function commitAll(repo: string, message: string): void {
 	git(["commit", "-q", "-m", message], repo);
 }
 
-function runCli(repo: string): { code: number; stdout: string; stderr: string } {
+function runCli(repo: string): {
+	code: number;
+	stdout: string;
+	stderr: string;
+} {
 	try {
 		const stdout = execFileSync("node", [scriptPath], {
 			cwd: repo,
@@ -103,7 +110,12 @@ function seedCleanRepo(): string {
 		repo,
 		"api-standard/findings.json",
 		JSON.stringify(
-			{ version: 1, scope_digest: "sha256:placeholder", checked_at: TODAY, findings: [] },
+			{
+				version: 1,
+				scope_digest: "sha256:placeholder",
+				checked_at: TODAY,
+				findings: [],
+			},
 			null,
 			2,
 		),
@@ -139,7 +151,12 @@ function seedRepoWithFindings(
 		repo,
 		"api-standard/findings.json",
 		JSON.stringify(
-			{ version: 1, scope_digest: "sha256:placeholder", checked_at: TODAY, findings },
+			{
+				version: 1,
+				scope_digest: "sha256:placeholder",
+				checked_at: TODAY,
+				findings,
+			},
 			null,
 			2,
 		),
@@ -170,7 +187,11 @@ describe("Threat Matrix: Documentation-like paths — malformed/hostile findings
 	it("non-JSON content exits 2 with no further execution", () => {
 		const repo = initRepo();
 		writeRepoFile(repo, "src/lib/redis.ts", REDIS_FIXTURE);
-		writeRepoFile(repo, "api-standard/findings.json", "{ this is not valid json");
+		writeRepoFile(
+			repo,
+			"api-standard/findings.json",
+			"{ this is not valid json",
+		);
 		commitAll(repo, "malformed findings.json");
 
 		const result = runGate(repo, { today: TODAY });
@@ -202,9 +223,9 @@ describe("Threat Matrix: Documentation-like paths — malformed/hostile findings
 
 describe("Threat Matrix: Git repository selection — path traversal in finding.path", () => {
 	it("rejects an absolute path", () => {
-		expect(() => assertSafeRelativePath("/etc/passwd", "findings[0].path")).toThrow(
-			GateError,
-		);
+		expect(() =>
+			assertSafeRelativePath("/etc/passwd", "findings[0].path"),
+		).toThrow(GateError);
 	});
 
 	it("rejects a '..' traversal segment", () => {
@@ -214,7 +235,9 @@ describe("Threat Matrix: Git repository selection — path traversal in finding.
 	});
 
 	it("accepts an ordinary repo-relative path", () => {
-		expect(() => assertSafeRelativePath("src/lib/redis.ts", "findings[0].path")).not.toThrow();
+		expect(() =>
+			assertSafeRelativePath("src/lib/redis.ts", "findings[0].path"),
+		).not.toThrow();
 	});
 
 	it("a finding with a path-traversal path fails the full gate with exit 2", () => {
@@ -247,7 +270,11 @@ describe("Threat Matrix: Git repository selection — path traversal in finding.
 describe("Threat Matrix: Commit state — uncommitted changes never satisfy the gate", () => {
 	it("an uncommitted fix to the source file does not change the gate's verdict", () => {
 		const repo = seedRepoWithFindings([
-			{ rule: "ADR-0012/tenant-cache-key", path: "src/lib/redis.ts", status: "open" },
+			{
+				rule: "ADR-0012/tenant-cache-key",
+				path: "src/lib/redis.ts",
+				status: "open",
+			},
 		]);
 
 		// Baseline: committed state has an open finding, must fail.
@@ -260,7 +287,11 @@ describe("Threat Matrix: Commit state — uncommitted changes never satisfy the 
 		writeRepoFile(
 			repo,
 			"api-standard/findings.json",
-			JSON.stringify({ version: 1, scope_digest: "sha256:whatever", findings: [] }),
+			JSON.stringify({
+				version: 1,
+				scope_digest: "sha256:whatever",
+				findings: [],
+			}),
 		);
 
 		const after = runGate(repo, { today: TODAY });
@@ -341,7 +372,11 @@ describe("Decision 2, fail condition (a): API-shaped files changed with no match
 		const digestA = computeScopeDigest(repoA, "HEAD");
 
 		const repoB = initRepo();
-		writeRepoFile(repoB, "src/lib/redis.ts", `${REDIS_FIXTURE}\n// different\n`);
+		writeRepoFile(
+			repoB,
+			"src/lib/redis.ts",
+			`${REDIS_FIXTURE}\n// different\n`,
+		);
 		commitAll(repoB, "b");
 		const digestB = computeScopeDigest(repoB, "HEAD");
 
@@ -365,7 +400,11 @@ describe("Decision 2, fail condition (a): API-shaped files changed with no match
 describe("Decision 2, fail condition (b): any finding status: open", () => {
 	it("a single open finding fails with exit 1", () => {
 		const repo = seedRepoWithFindings([
-			{ rule: "ADR-0012/tenant-cache-key", path: "src/lib/redis.ts", status: "open" },
+			{
+				rule: "ADR-0012/tenant-cache-key",
+				path: "src/lib/redis.ts",
+				status: "open",
+			},
 		]);
 		const result = runGate(repo, { today: TODAY });
 		expect(result.code).toBe(1);
@@ -514,12 +553,14 @@ describe("isApiShaped glob matching (corrected globs)", () => {
 		expect(isApiShaped(relPath)).toBe(true);
 	});
 
-	it.each(["README.md", "src/v1/res/errors.ts", "src/lib/utils.ts", "package.json"])(
-		"%s is NOT API-shaped",
-		(relPath) => {
-			expect(isApiShaped(relPath)).toBe(false);
-		},
-	);
+	it.each([
+		"README.md",
+		"src/v1/res/errors.ts",
+		"src/lib/utils.ts",
+		"package.json",
+	])("%s is NOT API-shaped", (relPath) => {
+		expect(isApiShaped(relPath)).toBe(false);
+	});
 });
 
 describe("Integration: seeded violation fails the gate (scenario 3.12)", () => {
@@ -538,7 +579,8 @@ describe("Integration: seeded violation fails the gate (scenario 3.12)", () => {
 				},
 			],
 			{
-				"openapi/openapi.yaml": "openapi: 3.1.0\ninfo:\n  title: broken\n  version: \"1.0.0\"\n",
+				"openapi/openapi.yaml":
+					'openapi: 3.1.0\ninfo:\n  title: broken\n  version: "1.0.0"\n',
 			},
 		);
 
@@ -567,7 +609,11 @@ describe("Integration: fresh scaffold passes with zero findings (scenario, real 
 describe("CLI binary exit codes (real subprocess, not just the imported module)", () => {
 	it("exits 1 via the real binary for an open finding", () => {
 		const repo = seedRepoWithFindings([
-			{ rule: "ADR-0012/tenant-cache-key", path: "src/lib/redis.ts", status: "open" },
+			{
+				rule: "ADR-0012/tenant-cache-key",
+				path: "src/lib/redis.ts",
+				status: "open",
+			},
 		]);
 		const { code, stderr } = runCli(repo);
 		expect(code).toBe(1);
