@@ -78,6 +78,18 @@ deploy-time, see hefesto's `.claude/rules/api-enforcement.md`). Behavioral rules
 tenant-ownership checks, cache-key tenant dimension, RBAC placement) are not lint-tool-checkable and
 stay in hefesto's `api-standard-check` skill instead.
 
+### Attestation gate (behavioral findings)
+
+`hefesto`'s `api-standard-check` skill writes its behavioral verdicts to `api-standard/findings.json`
+(schema: `version`, `scope_digest`, `checked_at`, `findings[]` with `rule`/`path`/`status`, plus
+`reason`/`approver`/`review_after` when `status: "exception"`). `scripts/api-standard-gate.mjs`
+(zero dependencies — `node:crypto`/`node:fs`/`node:child_process` only) recomputes `scope_digest`
+from the checked-out commit (never the working tree) and fails closed on any unresolved `open`
+finding, expired exception, or malformed/missing attestation. Run it locally with
+`node scripts/api-standard-gate.mjs`; exit codes are `0` pass, `1` blocking finding, `2`
+malformed/missing attestation. It runs as a step in the same `.github/workflows/api-standard.yml`
+job above — same loud-not-blocking posture, same deploy-time real gate plan.
+
 ## Health
 
 - `GET /health` — process-alive only, no dependency checks (Compose `HEALTHCHECK`).
