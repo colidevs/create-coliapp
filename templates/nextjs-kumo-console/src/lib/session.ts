@@ -40,6 +40,18 @@ export const ACTIVE_TENANT_COOKIE = "active_tenant";
 export const SESSION_COOKIE = "session_id";
 
 /**
+ * The header `src/lib/api/server-client.ts`'s `apiRequest` mutator sets from
+ * `verifySession()`'s own resolved `activeTenantId` (Phase 3, orders
+ * module) — never the raw `ACTIVE_TENANT_COOKIE` value directly, since that
+ * cookie is absent until `selectTenant()` first runs. Kept here (not in
+ * `server-client.ts`, which imports `"server-only"`) so
+ * `src/mocks/handlers/orders.ts` can read the same constant without pulling
+ * in a server-only module — mirrors this file's own "importable from a unit
+ * test" rationale above.
+ */
+export const ACTIVE_TENANT_HEADER = "x-active-tenant";
+
+/**
  * Resolves which tenant is "active" for a session: the cookie's tenant when
  * the session genuinely holds that membership, otherwise the first
  * membership. Pure and side-effect-free by design — this is the reusable

@@ -5,10 +5,45 @@ Next.js console app on Kumo UI (`@cloudflare/kumo`), scaffolded from `create-col
 frontend standard (ADR 0001, 0004, 0013, 0014, 0019-0026 in the hefesto repo, mirrored under
 `.claude/rules/console-*.md` and `.claude/rules/frontend-*.md`).
 
-This is the Phase 2 (auth/tenant layer) state: Phase 1's skeleton (package setup, Kumo CSS wiring,
-root layout, CI/Husky, code-generated icons) plus the two-tier protected-route pattern, tenant
-selection, and a CASL UI-hint layer. The `orders` CRUD module and cross-cutting concerns (CSP,
-Storybook, Playwright, Lighthouse) land in later phases of the `kumo-console-template` change.
+This is the Phase 3 (`orders` CRUD module) state: Phase 1's skeleton (package setup, Kumo CSS
+wiring, root layout, CI/Husky, code-generated icons), Phase 2's auth/tenant layer (protected-route
+pattern, tenant selection, CASL UI-hint layer), plus a full contract-first `orders` example — API
+design, generated client/Zod/MSW mocks, server-state data fetching, and a Kumo table + dialogs UI.
+Cross-cutting concerns (CSP, Storybook, Playwright, Lighthouse) land in Phase 4.
+
+## `orders` module (Phase 3)
+
+Contract-first, per design decision D2: `openapi/openapi.yaml` is the source of truth; Orval
+(`orval.config.ts`, `pnpm generate:api`) generates a typed fetch client, Zod schemas, and MSW/Faker
+mocks into `src/generated/orders/` — never hand-edited, regenerated and committed after any spec
+change.
+
+- `src/lib/api/server-client.ts` — the Orval client's custom mutator (`server-only`). Forwards the
+  session cookie plus the caller's `verifySession()`-resolved `activeTenantId` (as the
+  `x-active-tenant` header) on every request, and points at `API_BASE_URL` — MSW by default,
+  switchable to a running `express-ts` instance with no code change.
+- `src/mocks/data/orders.ts` + `src/mocks/handlers/orders.ts` — an in-memory, tenant-scoped mock
+  store and its MSW handlers (kept separate from Phase 2's `src/mocks/handlers.ts`, composed
+  together in `src/mocks/node.ts`). Tenant scoping is enforced here, server-side, from the
+  `x-active-tenant` header — never by the client.
+- `src/app/(console)/orders/actions.ts` — `"use server"` create/update/delete actions, mapping any
+  RFC 9457 Problem response through `@colidevs/utils`'s `problemToActionState` before it reaches
+  `useActionState`. `queries.ts` holds the read-side Server Action `useSuspenseQuery` calls as its
+  `queryFn`; `query-keys.ts` holds the shared, framework-free query-key builder both the page and
+  the client list component import.
+- `src/app/(console)/orders/page.tsx` — a per-request `QueryClient` (`src/lib/query-client.ts`,
+  `environmentManager.isServer()`-gated), a non-awaited `prefetchQuery`, `<HydrationBoundary>`, and
+  a `<Suspense>` boundary scoped to only the list component (`frontend-rendering-architecture.md`'s
+  narrow-dynamism rule).
+- `src/lib/filter-param.ts` — the local `nuqs` × AIP-160 bridge (`@colidevs/utils`'s
+  `parseAip160Filter`/`serializeAip160Filter`, wrapped via `nuqs/server`'s `createParser`).
+  **Server-side import only** — see that file's own doc comment for why.
+- `src/components/orders/*.client.tsx` — Kumo's compound `Table.*`/`Dialog.*` components, each its
+  own `"use client"` leaf per the RSC client-boundary rule.
+
+**Known, flagged gap**: `src/proxy.ts`'s optimistic Proxy matcher (`/dashboard/:path*`) does not yet
+cover `/orders` — `proxy.ts` was out of this phase's scope to touch. `verifySession()`, the real
+authorization boundary, is unaffected. See `orders/page.tsx`'s own doc comment.
 
 ## Local development
 
@@ -40,8 +75,10 @@ the default dev/test backend for everything, including session/membership data; 
 - `src/mocks/` — MSW's Node server (`src/instrumentation.ts` starts it, gated by `API_MOCKING`),
   handlers, and canned session/membership data (a user with memberships in two tenants).
 
-Unit tests (`pnpm test`, Vitest) cover the pure logic in `ability.ts` and `session.ts` only —
-Playwright E2E for the full login/tenant-switch flow is a later phase's job.
+Unit tests (`pnpm test`, Vitest) cover the pure logic in `ability.ts`, `session.ts`, the mock
+tenant-scoping store (`src/mocks/data/orders.test.ts`), and the `nuqs` × AIP-160 bridge
+(`src/lib/filter-param.test.ts`) only — Playwright E2E for the full login/tenant-switch/orders flow
+is a later phase's job.
 
 ## Stack
 

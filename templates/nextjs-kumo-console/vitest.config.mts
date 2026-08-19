@@ -18,5 +18,19 @@ export default defineConfig({
 	test: {
 		environment: "node",
 		include: ["src/**/*.test.ts"],
+		server: {
+			deps: {
+				// @colidevs/utils@0.1.0's published dist/index.js omits file
+				// extensions on its own relative re-exports (`export * from
+				// "./aip160-filter"` instead of "./aip160-filter.js") — a
+				// pre-existing bug in that package's own build, confirmed against
+				// the published tarball, not something introduced here. Node's
+				// native ESM resolver (what Vitest uses for externalized
+				// node_modules deps by default) rejects extensionless specifiers;
+				// inlining routes it through Vite's own, more permissive resolver
+				// instead. Remove this once the upstream package fixes its build.
+				inline: ["@colidevs/utils"],
+			},
+		},
 	},
 });

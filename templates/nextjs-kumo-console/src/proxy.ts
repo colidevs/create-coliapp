@@ -32,12 +32,14 @@ export function proxy(request: NextRequest): NextResponse {
 }
 
 /**
- * Provisional matcher: Phase 2 ships no protected page of its own yet — the
- * existing `/` home page stays public (Phase 1 skeleton). `/dashboard` is a
- * placeholder prefix for whatever protected route Phase 3's `orders` module
- * mounts under; update this matcher when that module lands rather than
- * leaving it stale.
+ * Matches Phase 3's actual protected route: `orders` mounted at `/orders`
+ * under `src/app/(console)/orders/page.tsx` (a Next.js route group —
+ * `(console)` contributes no path segment). `/dashboard` was Phase 2's
+ * placeholder prefix, since no protected page existed yet at that point;
+ * updated now that one does, per that comment's own instruction. Extend this
+ * list rather than leaving it stale whenever a new protected route group
+ * mounts under `(console)`.
  */
 export const config = {
-	matcher: ["/dashboard/:path*"],
+	matcher: ["/orders/:path*"],
 };
