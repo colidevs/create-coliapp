@@ -5,16 +5,43 @@ Next.js console app on Kumo UI (`@cloudflare/kumo`), scaffolded from `create-col
 frontend standard (ADR 0001, 0004, 0013, 0014, 0019-0026 in the hefesto repo, mirrored under
 `.claude/rules/console-*.md` and `.claude/rules/frontend-*.md`).
 
-This is the Phase 1 (template skeleton) state: package setup, Kumo CSS wiring, root layout, CI/Husky,
-and code-generated icons. Auth/tenant wiring, the `orders` CRUD module, and cross-cutting concerns
-(CSP, Storybook, Playwright, Lighthouse) land in later phases of the `kumo-console-template` change.
+This is the Phase 2 (auth/tenant layer) state: Phase 1's skeleton (package setup, Kumo CSS wiring,
+root layout, CI/Husky, code-generated icons) plus the two-tier protected-route pattern, tenant
+selection, and a CASL UI-hint layer. The `orders` CRUD module and cross-cutting concerns (CSP,
+Storybook, Playwright, Lighthouse) land in later phases of the `kumo-console-template` change.
 
 ## Local development
 
 ```bash
 pnpm install
+cp .env.example .env.local
 pnpm dev
 ```
+
+## Auth/tenant layer (Phase 2)
+
+**No real backend exists yet.** `templates/express-ts` ships only HTTP Basic Auth — no session
+issuance, no `/session` endpoint. Per this change's design decision D2, [MSW](https://mswjs.io/) is
+the default dev/test backend for everything, including session/membership data; `API_BASE_URL` (see
+`.env.example`) is switchable to a real `express-ts` instance once one exists.
+
+- `src/lib/session.ts` — shared session/tenant types, Zod schemas, and the pure
+  `resolveActiveTenantId` tenant-scoping helper.
+- `src/lib/dal.ts` — `verifySession()`, the real Data Access Layer boundary (`server-only`, React
+  `cache()`). Redirects to `/login` when the session is absent or invalid — **there is no login
+  route in this template yet**; building one is out of this phase's scope (see the SDD change's
+  Phase 2 report for why).
+- `src/proxy.ts` — the optimistic, cookie-presence-only fast path (Next.js's renamed
+  `middleware.ts`). UX-shaping only; `verifySession()` is the real check.
+- `src/lib/actions/select-tenant.ts` — the only writer of the httpOnly `active_tenant` cookie,
+  validated against the session's own memberships before it writes anything.
+- `src/lib/ability.ts` + `src/components/can.tsx` — a tenant-scoped CASL `Ability` builder and its
+  `<Can>` client leaf. UI hint only, never a security boundary.
+- `src/mocks/` — MSW's Node server (`src/instrumentation.ts` starts it, gated by `API_MOCKING`),
+  handlers, and canned session/membership data (a user with memberships in two tenants).
+
+Unit tests (`pnpm test`, Vitest) cover the pure logic in `ability.ts` and `session.ts` only —
+Playwright E2E for the full login/tenant-switch flow is a later phase's job.
 
 ## Stack
 
@@ -34,5 +61,5 @@ file as UTF-8 unconditionally and corrupts binary files.
 ## CI / local checks
 
 `.github/workflows/frontend-standard.yml` (copied into every project scaffolded from this template)
-runs Biome + typecheck + build on every PR. `.husky/pre-commit` runs the same lint/typecheck pass
-locally before each commit.
+runs Biome + typecheck + Vitest unit tests + build on every PR. `.husky/pre-commit` runs the same
+lint/typecheck/test pass locally before each commit.

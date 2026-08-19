@@ -7,10 +7,11 @@ name: Frontend Standard
 # "every future frontend template ships a CI job covering lint/format,
 # typecheck, unit tests, plus any template-appropriate additional gates."
 #
-# Phase 1 (this file, template skeleton) covers lint/format + typecheck +
-# build only. Unit tests (Storybook's Vitest addon), E2E (Playwright), and a
-# Lighthouse CI budget land in a later phase of the `kumo-console-template`
-# SDD change — add jobs/steps below without restructuring this file.
+# Phase 1 (template skeleton) covered lint/format + typecheck + build only.
+# Phase 2 (auth/tenant layer) adds Vitest's pure-logic unit tests. Component
+# tests (Storybook's Vitest addon), E2E (Playwright), and a Lighthouse CI
+# budget land in a later phase of the `kumo-console-template` SDD change —
+# add jobs/steps below without restructuring this file.
 #
 # Ordinary `pull_request` trigger only — no `pull_request_target`, no
 # dynamic `gh pr` composition, same Threat Matrix posture as
@@ -29,7 +30,7 @@ concurrency:
 
 jobs:
   lint-typecheck-build:
-    name: Lint, format, typecheck, build
+    name: Lint, format, typecheck, test, build
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -56,6 +57,9 @@ jobs:
 
       - name: Type check
         run: pnpm exec tsc --noEmit
+
+      - name: Unit tests (Vitest)
+        run: pnpm test
 
       - name: Build
         run: pnpm run build

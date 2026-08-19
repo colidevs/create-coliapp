@@ -3,8 +3,10 @@
 # extends the same shape ADR 0014/0026 already establish for backend
 # templates (see `express-ts`'s repo-root pre-commit hook in
 # `colidevs/create-coliapp`). Kept fast and pre-commit-appropriate: lint +
-# format check, then a type check. Unit tests aren't wired until Phase 4
-# (Storybook/Playwright) — add a `pnpm test` step here once they land,
-# without restructuring this file.
+# format check, type check, then Vitest's pure-logic unit tests added in
+# Phase 2 (auth/tenant layer). Component tests (Storybook's Vitest addon) and
+# E2E (Playwright) are still Phase 4's job — add those without restructuring
+# this file.
 pnpm exec biome check . || exit 1
 pnpm exec tsc --noEmit || exit 1
+pnpm test || exit 1
