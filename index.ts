@@ -121,10 +121,24 @@ async function main() {
 
 main().catch(console.error);
 
+// Binary formats a scaffolded template could plausibly ship (icons, fonts,
+// images, archives, compiled assets). Reading/rewriting these as utf8 (the
+// previous unconditional behavior) corrupts them byte-for-byte, since the
+// decode-reencode round-trip is lossy for non-text content. Text-based
+// source files never need this exclusion, so this stays a denylist, not an
+// allowlist — new template file types keep working without edits here.
+const BINARY_EXTENSIONS = new Set([
+  ".ico", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".bmp",
+  ".woff", ".woff2", ".ttf", ".otf", ".eot",
+  ".zip", ".gz", ".tar", ".pdf",
+]);
+
 async function replaceName(destination: string, projectName: string) {
   const files = await glob(`**/*`, {nodir: true, cwd: destination, absolute: true});
 
   for await (const file of files) {
+    if (BINARY_EXTENSIONS.has(path.extname(file).toLowerCase())) continue;
+
     const data = await readFile(file, "utf8");
     const draft = data.replace(/{{name}}/g, projectName);
 
