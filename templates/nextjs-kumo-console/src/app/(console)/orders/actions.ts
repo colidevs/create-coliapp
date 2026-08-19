@@ -1,6 +1,6 @@
 "use server";
 
-import { type ActionFormState, problemToActionState } from "@colidevs/utils";
+import { problemToActionState } from "@colidevs/utils";
 import { revalidatePath } from "next/cache";
 
 import {
@@ -9,6 +9,7 @@ import {
 	updateOrder,
 } from "@/generated/orders/endpoints/orders/orders";
 import type { Problem } from "@/generated/orders/model";
+import type { OrderActionState } from "./action-state";
 
 /**
  * Server Actions for the orders module's mutations (task 3.3,
@@ -23,13 +24,13 @@ import type { Problem } from "@/generated/orders/model";
  * `@colidevs/utils` import stays here, server-side only (task 3.7) — never
  * imported from a `"use client"` file, which is what keeps its `xlsx`
  * transitive dependency out of the browser bundle (design decision D4).
+ *
+ * `OrderActionState`/`initialOrderActionState` live in `./action-state.ts`,
+ * not here (Phase 4 fix — see that file's own doc comment): a `"use
+ * server"` module may only export async functions at its top level, and the
+ * plain-object `initialOrderActionState` broke that rule.
  */
-export interface OrderActionState extends ActionFormState {
-	/** Set only on success — absent otherwise, so a client leaf can branch on `state.success` without inspecting `message`/`errors`. */
-	success?: boolean;
-}
-
-export const initialOrderActionState: OrderActionState = {};
+export type { OrderActionState } from "./action-state";
 
 export async function createOrderAction(
 	_prevState: OrderActionState,

@@ -5,6 +5,7 @@ import {
 	type SearchParams,
 } from "nuqs/server";
 import { Suspense } from "react";
+import { OrdersByTenantChart } from "@/components/orders/orders-by-tenant-chart.client";
 import { OrdersList } from "@/components/orders/orders-list.client";
 import { OrdersListFallback } from "@/components/orders/orders-list-fallback";
 import { aip160FilterParser } from "@/lib/filter-param";
@@ -65,6 +66,10 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
 	return (
 		<section className="p-6">
 			<h1 className="text-kumo-default mb-4 text-2xl font-semibold">Orders</h1>
+			{/* One example ECharts component (frontend-performance-tooling.md /
+			console-ui-kumo.md) — static demo data, not per-request, so it needs
+			no <Suspense> boundary of its own (narrow-dynamism rule). */}
+			<OrdersByTenantChart />
 			<HydrationBoundary state={dehydrate(queryClient)}>
 				<Suspense fallback={<OrdersListFallback />}>
 					<OrdersList queryInput={queryInput} />

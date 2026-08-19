@@ -5,9 +5,11 @@ import { X } from "@phosphor-icons/react";
 import { useActionState, useEffect, useRef } from "react";
 
 import {
-	createOrderAction,
 	initialOrderActionState,
 	type OrderActionState,
+} from "@/app/(console)/orders/action-state";
+import {
+	createOrderAction,
 	updateOrderAction,
 } from "@/app/(console)/orders/actions";
 import type { Order } from "@/generated/orders/model";

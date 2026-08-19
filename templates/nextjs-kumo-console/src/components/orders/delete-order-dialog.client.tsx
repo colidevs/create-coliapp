@@ -4,10 +4,10 @@ import { Button, Dialog } from "@cloudflare/kumo";
 import { useActionState, useEffect, useRef } from "react";
 
 import {
-	deleteOrderAction,
 	initialOrderActionState,
 	type OrderActionState,
-} from "@/app/(console)/orders/actions";
+} from "@/app/(console)/orders/action-state";
+import { deleteOrderAction } from "@/app/(console)/orders/actions";
 import type { Order } from "@/generated/orders/model";
 
 /**
