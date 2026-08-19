@@ -1,0 +1,10 @@
+# Layer 1 (local, fast feedback) of the CI/Husky mandate for frontend
+# templates — hefesto's ADR 0026 / .claude/rules/frontend-template-baseline.md
+# extends the same shape ADR 0014/0026 already establish for backend
+# templates (see `express-ts`'s repo-root pre-commit hook in
+# `colidevs/create-coliapp`). Kept fast and pre-commit-appropriate: lint +
+# format check, then a type check. Unit tests aren't wired until Phase 4
+# (Storybook/Playwright) — add a `pnpm test` step here once they land,
+# without restructuring this file.
+pnpm exec biome check . || exit 1
+pnpm exec tsc --noEmit || exit 1

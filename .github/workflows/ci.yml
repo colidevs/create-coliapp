@@ -80,6 +80,41 @@ jobs:
       - name: Build
         run: pnpm run build
 
+  template-nextjs-kumo-console:
+    name: templates/nextjs-kumo-console
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: templates/nextjs-kumo-console
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.4.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: templates/nextjs-kumo-console/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint and format check
+        run: pnpm exec biome check .
+
+      - name: Type check
+        run: pnpm exec tsc --noEmit
+
+      - name: Build
+        run: pnpm run build
+
   api-standard:
     name: templates/express-ts (API standard, schema-shape)
     runs-on: ubuntu-latest
@@ -151,9 +186,10 @@ jobs:
       - name: Attestation gate (ADR 0009-0013 findings)
         run: node scripts/api-standard-gate.mjs
 
-# NOTE (2026-08-17): only `templates/express-ts` has its own lint/typecheck/test
-# scripts today (added as part of the express-ts-backend-stack SDD change).
-# The other scaffolded templates (nextjs-eslint-ts-shadcn,
-# nextjs-eslint-ts-shadcn-sheet, nextjs15-biome-shadcn, react-vite-js-tailwind)
-# have no equivalent CI job yet — tracked as a separate, not-yet-scoped
-# follow-up rather than silently expanded here.
+# NOTE (2026-08-19): `templates/express-ts` (backend, ADR 0014) and
+# `templates/nextjs-kumo-console` (frontend, ADR 0026 Decision A, Phase 1 of
+# the `kumo-console-template` SDD change) are the only templates with their
+# own lint/typecheck/test CI job today. The other scaffolded templates
+# (nextjs-eslint-ts-shadcn, nextjs-eslint-ts-shadcn-sheet, nextjs15-biome-shadcn,
+# react-vite-js-tailwind) have no equivalent CI job yet — tracked as a
+# separate, not-yet-scoped follow-up rather than silently expanded here.
