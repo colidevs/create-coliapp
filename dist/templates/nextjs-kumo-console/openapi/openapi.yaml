@@ -1,0 +1,357 @@
+openapi: 3.1.0
+info:
+  title: "{{name}} — orders module"
+  version: "1.0.0"
+  description: >-
+    Contract-first source for the orders CRUD example (design decision D2,
+    `kumo-console-template` SDD change). Orval (`orval.config.ts`) generates a
+    typed client, Zod schemas, and MSW mocks from this file — do not hand-edit
+    the generated output under `src/generated/`. Mirrors the shape
+    `templates/express-ts/src/lib/db/schema.ts` already ships for its own
+    `orders` example table, so this spec is a real, adoptable contract for
+    that backend once `API_BASE_URL` points at it — not just a template
+    placeholder.
+
+    `tenantId` is always resolved server-side from the caller's session
+    (ADR 0012, `.claude/rules/api-caching-resilience.md`) — no write operation
+    below accepts it as client-supplied input. It is returned on reads only.
+servers:
+  - url: /api/v1
+paths:
+  /orders:
+    get:
+      operationId: listOrders
+      summary: List orders for the caller's active tenant
+      tags: [orders]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: cursor
+          in: query
+          description: Opaque pagination cursor from a previous response's `next_cursor`.
+          required: false
+          schema:
+            type: string
+          example: "eyJpZCI6IjAxOTAi..."
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          example: 20
+        - name: filter
+          in: query
+          description: >-
+            AIP-160 filter grammar (`api-communication-standard.md`). This
+            template's `nuqs` bridge (`src/lib/filter-param.ts`) is
+            deliberately v1-scoped to flat `AND`-only clauses; the backend
+            parser enforces full grammar correctness, not this schema.
+          required: false
+          schema:
+            type: string
+          example: "name : \"Acme\""
+        - name: sort
+          in: query
+          description: Comma-separated field list, `-` prefix for descending.
+          required: false
+          schema:
+            type: string
+          example: "-createdAt"
+      responses:
+        "200":
+          description: A page of orders scoped to the caller's active tenant.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderList"
+              example:
+                items:
+                  - id: "3f6a6c1e-3b8e-4f2f-9a2c-0d6f4a2b9b10"
+                    tenantId: "tenant_acme"
+                    name: "Order #1"
+                    createdAt: "2026-08-01T12:00:00.000Z"
+                next_cursor: null
+        default:
+          description: Unexpected error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              example:
+                type: "about:blank"
+                status: 401
+                title: "Unauthorized"
+    post:
+      operationId: createOrder
+      summary: Create an order in the caller's active tenant
+      tags: [orders]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderCreate"
+            example:
+              name: "Order #1"
+      responses:
+        "201":
+          description: Order created.
+          headers:
+            Location:
+              schema:
+                type: string
+              example: "/api/v1/orders/3f6a6c1e-3b8e-4f2f-9a2c-0d6f4a2b9b10"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+              example:
+                id: "3f6a6c1e-3b8e-4f2f-9a2c-0d6f4a2b9b10"
+                tenantId: "tenant_acme"
+                name: "Order #1"
+                createdAt: "2026-08-01T12:00:00.000Z"
+        "422":
+          description: Semantically invalid input.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              example:
+                type: "about:blank"
+                status: 422
+                title: "Unprocessable Entity"
+                detail: "Validation failed."
+                errors:
+                  - field: "name"
+                    detail: "Name must not be empty."
+        default:
+          description: Unexpected error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /orders/{orderId}:
+    parameters:
+      - name: orderId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        example: "3f6a6c1e-3b8e-4f2f-9a2c-0d6f4a2b9b10"
+    get:
+      operationId: getOrder
+      summary: Get a single order by ID, scoped to the caller's active tenant
+      tags: [orders]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: The requested order.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+              example:
+                id: "3f6a6c1e-3b8e-4f2f-9a2c-0d6f4a2b9b10"
+                tenantId: "tenant_acme"
+                name: "Order #1"
+                createdAt: "2026-08-01T12:00:00.000Z"
+        "404":
+          description: Not found (absent, or scoped to a different tenant).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              example:
+                type: "about:blank"
+                status: 404
+                title: "Not Found"
+                detail: "Order not found."
+        default:
+          description: Unexpected error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    patch:
+      operationId: updateOrder
+      summary: Update an order's mutable fields
+      tags: [orders]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderUpdate"
+            example:
+              name: "Order #1 (renamed)"
+      responses:
+        "200":
+          description: Updated order.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+              example:
+                id: "3f6a6c1e-3b8e-4f2f-9a2c-0d6f4a2b9b10"
+                tenantId: "tenant_acme"
+                name: "Order #1 (renamed)"
+                createdAt: "2026-08-01T12:00:00.000Z"
+        "404":
+          description: Not found (absent, or scoped to a different tenant).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "422":
+          description: Semantically invalid input.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              example:
+                type: "about:blank"
+                status: 422
+                title: "Unprocessable Entity"
+                detail: "Validation failed."
+                errors:
+                  - field: "name"
+                    detail: "Name must not be empty."
+        default:
+          description: Unexpected error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    delete:
+      operationId: deleteOrder
+      summary: Delete an order
+      tags: [orders]
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Order deleted.
+        "404":
+          description: Not found (absent, or scoped to a different tenant).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              example:
+                type: "about:blank"
+                status: 404
+                title: "Not Found"
+                detail: "Order not found."
+        default:
+          description: Unexpected error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+components:
+  securitySchemes:
+    # OAuth2 Bearer (ADR 0009). Represented as an HTTP bearer scheme, per the
+    # same convention templates/express-ts's own openapi.yaml already uses.
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Order:
+      type: object
+      required: [id, tenantId, name, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "3f6a6c1e-3b8e-4f2f-9a2c-0d6f4a2b9b10"
+        tenantId:
+          type: string
+          description: >-
+            Server-resolved from the caller's session. Never accepted as
+            writable client input — see `OrderCreate`/`OrderUpdate`.
+          example: "tenant_acme"
+        name:
+          type: string
+          minLength: 1
+          example: "Order #1"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-08-01T12:00:00.000Z"
+    OrderCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          example: "Order #1"
+    OrderUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          example: "Order #1 (renamed)"
+    OrderList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Order"
+        next_cursor:
+          type: string
+          nullable: true
+          description: Cursor-based pagination (`api-communication-standard.md`) — `null` on the last page.
+          example: null
+    # RFC 9457 Problem Details (ADR 0009) + colidevs' `errors[]` extension,
+    # shaped `{ field, detail }` to match `@colidevs/utils`'s
+    # `problemToActionState` (console-golden-path.md) exactly — deliberately
+    # NOT `{ field, message }` like templates/express-ts's own starter spec
+    # uses today; that mismatch is a pre-existing, separate gap (see this
+    # phase's report), not something this file should silently paper over by
+    # picking a third shape.
+    Problem:
+      type: object
+      required: [type, status, title]
+      properties:
+        type:
+          type: string
+          format: uri-reference
+          example: "about:blank"
+        status:
+          type: integer
+          example: 422
+        title:
+          type: string
+          example: "Unprocessable Entity"
+        detail:
+          type: string
+          example: "Validation failed."
+        instance:
+          type: string
+          example: "/api/v1/orders"
+        errors:
+          type: array
+          items:
+            type: object
+            required: [field, detail]
+            properties:
+              field:
+                type: string
+                example: "name"
+              detail:
+                type: string
+                example: "Name must not be empty."

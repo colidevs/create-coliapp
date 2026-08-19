@@ -1,0 +1,19 @@
+# Layer 1 (local, fast feedback) of the CI/Husky mandate for frontend
+# templates — hefesto's ADR 0026 / .claude/rules/frontend-template-baseline.md
+# extends the same shape ADR 0014/0026 already establish for backend
+# templates (see `express-ts`'s repo-root pre-commit hook in
+# `colidevs/create-coliapp`). Kept fast and pre-commit-appropriate: lint +
+# format check, type check, then Vitest — which now runs both the `node`
+# unit-test project (Phase 2) and the `storybook` component-test project
+# (Phase 4, @storybook/addon-vitest, vitest.config.mts) from one `pnpm test`
+# invocation. E2E (Playwright) and Lighthouse CI are deliberately NOT run
+# here — both start a real dev/prod server and are too slow for a
+# pre-commit hook; they run in CI (`.github/workflows/frontend-standard.yml`)
+# instead.
+#
+# One-time local setup this hook assumes: `pnpm exec playwright install
+# chromium` (the `storybook` Vitest project needs a real Chromium install,
+# same as CI's own explicit install step).
+pnpm exec biome check . || exit 1
+pnpm exec tsc --noEmit || exit 1
+pnpm test || exit 1

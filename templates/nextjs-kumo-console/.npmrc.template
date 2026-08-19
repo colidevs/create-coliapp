@@ -1,0 +1,4 @@
+# @colidevs/* packages (e.g. @colidevs/utils, D4) are published to colidevs'
+# own Verdaccio registry, not the public npm registry. Scoped so `pnpm
+# install` resolves them without affecting resolution of any other package.
+@colidevs:registry=https://verdaccio.coli.com.ar

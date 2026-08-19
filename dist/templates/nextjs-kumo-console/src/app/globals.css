@@ -1,0 +1,11 @@
+/*
+ * Kumo CSS wiring — exact import order per hefesto's console-ui-kumo.md.
+ * NOTE: the rule's own example path (`../node_modules/...`) assumes a
+ * globals.css one level below the project root; this file lives at
+ * `src/app/globals.css` (two levels down), so the relative path is adjusted
+ * to `../../node_modules/...` to actually resolve — the import ORDER below
+ * is unchanged from the rule.
+ */
+@source "../../node_modules/@cloudflare/kumo/dist/**/*.{js,jsx,ts,tsx}";
+@import "@cloudflare/kumo/styles/tailwind";
+@import "tailwindcss";

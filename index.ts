@@ -2,7 +2,7 @@
 
 import path from "node:path";
 import {fileURLToPath} from "node:url";
-import {readFile, writeFile} from "node:fs/promises";
+import {readFile, rename, writeFile} from "node:fs/promises";
 import prompts from "prompts";
 import fs from "fs-extra";
 import yargs from "yargs";
@@ -15,6 +15,12 @@ const TEMPLATES: prompts.Choice[] = [
     title: "nextjs 15 > biome > shadcn/ui",
     description: "Bienvenido a Next.JS 15 y React 19, app renovada de colidevs",
     value: "nextjs15-biome-shadcn",
+  },
+  {
+    title: "nextjs 16 > biome > kumo ui",
+    description:
+      "Consola admin multitenant sobre Kumo UI (Cloudflare), con auth/tenant, un módulo orders end-to-end, CSP, Storybook y Playwright ya wireados.",
+    value: "nextjs-kumo-console",
   },
   {
     title: "nextjs > eslint > typescript > shadcn/ui",
@@ -113,6 +119,10 @@ async function main() {
   // copy template to destination
   cpyTemplate(templateDir, destination);
 
+  // restore any *.npmrc.template shipped by the template back to its real
+  // dotfile name (see restoreNpmrcFiles's own comment for why this exists)
+  await restoreNpmrcFiles(destination);
+
   // replace {{name}} on package.json, README.md, src/app/layout.tsx
   await replaceName(destination, answer.name);
 
@@ -149,6 +159,36 @@ async function replaceName(destination: string, projectName: string) {
 function cpyTemplate(templateDir: string, destination: string) {
   fs.ensureDirSync(destination);
   fs.copySync(templateDir, destination);
+}
+
+/**
+ * `pnpm pack`/`pnpm publish` unconditionally strip any file literally named
+ * `.npmrc` from a published package — verified directly against this
+ * project's own real packing mechanism (`pnpm pack` on an isolated fixture
+ * package): no `files` glob, no `.npmignore`, no amount of `.gitignore`
+ * negation can override it (found during the `nextjs-kumo-console`
+ * template's own registration, the first template in this repo to ship a
+ * per-project `.npmrc` at all).
+ *
+ * A template needing its own `.npmrc` (e.g. a scoped registry mapping for
+ * `@colidevs/*` packages, D4) must therefore ship it under a different name
+ * and have it renamed back at scaffold time. `dot: true` is required here —
+ * `glob`'s `**` pattern does not match dot-prefixed paths by default (the
+ * same reason `replaceName`'s own glob call below can never reach `.husky/**`
+ * or `.github/workflows/**`, which is why those paths must never contain a
+ * `{{name}}` token in the first place).
+ */
+async function restoreNpmrcFiles(destination: string) {
+  const files = await glob(`**/*.npmrc.template`, {
+    nodir: true,
+    dot: true,
+    cwd: destination,
+    absolute: true,
+  });
+
+  for await (const file of files) {
+    await rename(file, file.replace(/\.template$/, ""));
+  }
 }
 
 function projectCreatedSuccessfully(projectName: string) {
