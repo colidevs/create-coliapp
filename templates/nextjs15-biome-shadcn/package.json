@@ -14,7 +14,7 @@
 		"pnpm": "10.x"
 	},
 	"dependencies": {
-		"@colidevs/ui": "^0.0.1",
+		"@colidevs/ui": "^0.1.0",
 		"@radix-ui/react-dialog": "^1.1.14",
 		"@radix-ui/react-dropdown-menu": "^2.1.15",
 		"@radix-ui/react-slot": "^1.2.3",
