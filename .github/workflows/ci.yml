@@ -103,6 +103,16 @@ jobs:
           cache: pnpm
           cache-dependency-path: templates/nextjs-kumo-console/pnpm-lock.yaml
 
+      # This template ships its own registry config as .npmrc.template, not
+      # .npmrc (pnpm pack/publish unconditionally strip any file literally
+      # named .npmrc — see index.ts's restoreNpmrcFiles). A real scaffold
+      # restores it automatically; this CI job tests the template's source
+      # tree directly, bypassing that scaffold step, so it must restore the
+      # same file itself before installing — otherwise pnpm has no scoped
+      # registry mapping for @colidevs/* and 404s against the public registry.
+      - name: Restore .npmrc
+        run: cp .npmrc.template .npmrc
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
