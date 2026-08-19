@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+"use strict";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -41,6 +42,11 @@ var TEMPLATES = [
     title: "nextjs 15 > biome > shadcn/ui",
     description: "Bienvenido a Next.JS 15 y React 19, app renovada de colidevs",
     value: "nextjs15-biome-shadcn"
+  },
+  {
+    title: "nextjs 16 > biome > kumo ui",
+    description: "Consola admin multitenant sobre Kumo UI (Cloudflare), con auth/tenant, un m\xF3dulo orders end-to-end, CSP, Storybook y Playwright ya wireados.",
+    value: "nextjs-kumo-console"
   },
   {
     title: "nextjs > eslint > typescript > shadcn/ui",
@@ -120,6 +126,7 @@ async function main() {
     $(`\u{1F6A8}\u{1F6A8}`, `Folder created: ${destination}`);
   }
   cpyTemplate(templateDir, destination);
+  await restoreNpmrcFiles(destination);
   await replaceName(destination, answer.name);
   projectCreatedSuccessfully(answer.name);
 }
@@ -135,6 +142,17 @@ async function replaceName(destination, projectName) {
 function cpyTemplate(templateDir, destination) {
   import_fs_extra.default.ensureDirSync(destination);
   import_fs_extra.default.copySync(templateDir, destination);
+}
+async function restoreNpmrcFiles(destination) {
+  const files = await (0, import_glob.glob)(`**/*.npmrc.template`, {
+    nodir: true,
+    dot: true,
+    cwd: destination,
+    absolute: true
+  });
+  for await (const file of files) {
+    await (0, import_promises.rename)(file, file.replace(/\.template$/, ""));
+  }
 }
 function projectCreatedSuccessfully(projectName) {
   $("\nProject created successfully \u{1F680}\u{1F680}");

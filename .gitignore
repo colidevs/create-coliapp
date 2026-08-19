@@ -2,7 +2,13 @@ node_modules
 temp
 .DS_Store
 .npmrc
-# Exception: a template's own .npmrc (e.g. scoped @colidevs registry mapping
-# for @colidevs/utils, kumo-console-template Phase 3) carries no secrets and
-# must ship with every project scaffolded from that template.
-!templates/*/.npmrc
+# No exception needed for a template's own registry config (e.g. scoped
+# @colidevs mapping for @colidevs/utils, D4): verified directly against this
+# project's own `pnpm pack` that `.npmrc` is unconditionally stripped from a
+# published package, regardless of `files` globs, .npmignore, or any
+# .gitignore negation — no override is possible (found during
+# kumo-console-template Phase 5's registration). A template needing one
+# ships it as `.npmrc.template` instead and `index.ts`'s `restoreNpmrcFiles`
+# renames it back at scaffold time — see that function's own comment.
+# `.npmrc.template` isn't matched by this bare `.npmrc` pattern, so it needs
+# no exception here.

@@ -1,0 +1,163 @@
+name: Frontend Standard
+
+# Copied into every app scaffolded from this template (create-coliapp's
+# `cpyTemplate` uses `fs.copySync` with no dotfile filter) — the first
+# frontend template in `create-coliapp` to ship its own CI, per hefesto's
+# ADR 0026 Decision A (`.claude/rules/frontend-template-baseline.md`):
+# "every future frontend template ships a CI job covering lint/format,
+# typecheck, unit tests, plus any template-appropriate additional gates."
+#
+# Phase 1 (template skeleton) covered lint/format + typecheck + build only.
+# Phase 2 (auth/tenant layer) adds Vitest's pure-logic unit tests. Phase 4
+# adds: component tests (Storybook's Vitest addon, folded into the existing
+# `pnpm test` step below — Vitest's own "projects" mechanism runs both the
+# `node` and `storybook` projects from one invocation, see
+# `vitest.config.mts`), a dedicated E2E job (Playwright + `@axe-core/
+# playwright`), and a dedicated Lighthouse CI job.
+#
+# Ordinary `pull_request` trigger only — no `pull_request_target`, no
+# dynamic `gh pr` composition, same Threat Matrix posture as
+# `express-ts`'s own `api-standard.yml`.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frontend-standard-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-typecheck-build:
+    name: Lint, format, typecheck, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.4.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint and format check (Biome)
+        run: pnpm exec biome check .
+
+      - name: Type check
+        run: pnpm exec tsc --noEmit
+
+      # Required by the `storybook` Vitest project (@vitest/browser-playwright,
+      # vitest.config.mts) — Storybook's stories run as real component tests on
+      # real Chromium, the current official mechanism for
+      # @storybook/addon-vitest (testing-methodology.md).
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Unit + component tests (Vitest — node + Storybook projects)
+        run: pnpm test
+
+      - name: Build
+        env:
+          # Placeholder values only — buildSignedThumborUrl (src/lib/thumbor.ts)
+          # throws loudly on a missing key by design (never silently builds an
+          # unsigned/broken URL), and Next's static-shell prerendering pass
+          # evaluates the console layout's <AppLogo> at build time. CI has no
+          # `.env.local` (that file is dev-only, copied from `.env.example`),
+          # so the build step needs its own placeholder here. A real
+          # deployment sources a real value from Infisical instead
+          # (`.claude/rules/secrets-management.md`) — never this placeholder.
+          THUMBOR_BASE_URL: https://images.colidevs.com
+          THUMBOR_SECURITY_KEY: ci-placeholder-security-key
+        run: pnpm run build
+
+  e2e:
+    name: E2E (Playwright + axe)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.4.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run Playwright E2E suite
+        env:
+          # playwright.config.ts's own `webServer.env` sets API_MOCKING/
+          # API_BASE_URL/THUMBOR_* for the dev server it starts — this
+          # matters precisely because the spec's own risk here is a run
+          # that silently hits a real, non-existent `express-ts` backend
+          # instead of MSW; the explicit env in that config (not whatever
+          # a workstation's own `.env.local` happens to hold) is what
+          # guarantees MSW is genuinely active in CI too.
+          CI: "true"
+        run: pnpm run test:e2e
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  lighthouse:
+    name: Lighthouse CI (performance budget)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.4.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Lighthouse CI
+        env:
+          # Same placeholder rationale as the build step above — lighthouserc.json's
+          # `collect.startServerCommand` runs a real `pnpm run build && pnpm run start`.
+          THUMBOR_BASE_URL: https://images.colidevs.com
+          THUMBOR_SECURITY_KEY: ci-placeholder-security-key
+          API_MOCKING: enabled
+        run: pnpm run lhci
