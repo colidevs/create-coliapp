@@ -131,9 +131,29 @@ async function main() {
   projectCreatedSuccessfully(answer.name);
 }
 main().catch(console.error);
+var BINARY_EXTENSIONS = /* @__PURE__ */ new Set([
+  ".ico",
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".gif",
+  ".webp",
+  ".avif",
+  ".bmp",
+  ".woff",
+  ".woff2",
+  ".ttf",
+  ".otf",
+  ".eot",
+  ".zip",
+  ".gz",
+  ".tar",
+  ".pdf"
+]);
 async function replaceName(destination, projectName) {
   const files = await (0, import_glob.glob)(`**/*`, { nodir: true, cwd: destination, absolute: true });
   for await (const file of files) {
+    if (BINARY_EXTENSIONS.has(import_node_path.default.extname(file).toLowerCase())) continue;
     const data = await (0, import_promises.readFile)(file, "utf8");
     const draft = data.replace(/{{name}}/g, projectName);
     await (0, import_promises.writeFile)(file, draft, "utf8");
