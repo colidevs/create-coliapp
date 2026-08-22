@@ -32,7 +32,12 @@ export default defineConfig({
 				extends: true,
 				test: {
 					environment: "node",
-					include: ["src/**/*.test.ts"],
+					// `scripts/**/*.test.ts` added for the `frontend-standard-check`
+					// SDD change (hefesto, Phase 4): `scripts/frontend-standard-gate.mjs`
+					// and its test file live outside `src/` on purpose, mirroring
+					// `templates/express-ts/scripts/api-standard-gate.mjs`'s own
+					// placement — a gate script is infrastructure, not application code.
+					include: ["src/**/*.test.ts", "scripts/**/*.test.ts"],
 					server: {
 						deps: {
 							// @colidevs/utils@0.1.0's published dist/index.js omits file
