@@ -18,6 +18,17 @@ name: Frontend Standard
 # Ordinary `pull_request` trigger only — no `pull_request_target`, no
 # dynamic `gh pr` composition, same Threat Matrix posture as
 # `express-ts`'s own `api-standard.yml`.
+#
+# Phase 3 of the `frontend-standard-check` SDD change (hefesto) adds the
+# attestation gate below: `scripts/frontend-standard-gate.mjs` recomputes
+# `frontend-standard/findings.json`'s `scope_digest` against the checked-out
+# commit and fails closed on any unresolved blocking finding or
+# malformed/missing attestation. This is Layer 2 of the 3-layer enforcement
+# model documented in hefesto's `.claude/skills/frontend-standard-check/
+# SKILL.md` (Layer 0 is the skill itself, Layer 1 is `.husky/pre-push`,
+# Layer 3 — a Vercel deploy-time gate — is a named, accepted absence). It
+# does not re-derive the ADR 0019-0024 behavioral verdict itself — see
+# `sdd/frontend-standard-check/design` (hefesto, Engram), decision D1.
 on:
   pull_request:
   push:
@@ -83,6 +94,15 @@ jobs:
           THUMBOR_BASE_URL: https://images.colidevs.com
           THUMBOR_SECURITY_KEY: ci-placeholder-security-key
         run: pnpm run build
+
+      # Attestation gate: static invocation, no interpolation of any PR-event
+      # data into the command line (Threat Matrix: PR commands). Pure Node —
+      # no dependency install needed for this step specifically. Runs after
+      # `Build` so a build failure surfaces first (the gate needs the build
+      # to have already validated the code compiles before it runs its own
+      # check).
+      - name: Attestation gate (ADR 0019-0024 + ADR 0004/0009 findings)
+        run: node scripts/frontend-standard-gate.mjs
 
   e2e:
     name: E2E (Playwright + axe)
