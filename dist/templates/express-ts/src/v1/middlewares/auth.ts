@@ -1,41 +1,51 @@
-import { warn } from "node:console";
-import type { NextFunction, Request, Response } from "express";
-import { config } from "@/config";
+import { fromNodeHeaders } from "better-auth/node";
+import type { NextFunction, Request } from "express";
+import { getAuth } from "@/lib/auth";
 import { UnauthorizedHttpError } from "@/v1/res/errors";
+import type { ResponseWithSession } from "@/v1/types";
 
-const credentials = `${config.basicAuth.user}:${config.basicAuth.pwd}`;
+/**
+ * @description Replaces this template's previous HTTP Basic Auth (Phase 4
+ * of `docs/backlog/api-standard-real-world-audit.md`'s Phase-numbered
+ * findings — see `src/__tests__/adr-audit-regression.test.ts`) with a real
+ * Better Auth session check, per hefesto's `docs/backlog/
+ * e2e-buildable-toolset-plan.md` Arc A1/A2. Verifies the request via Better
+ * Auth's own standard Node/Express server-side session-check pattern
+ * (`auth.api.getSession`, fed the request's headers via `better-auth/node`'s
+ * `fromNodeHeaders`), attaches the resolved session to `res.locals.session`
+ * for downstream handlers, and calls `next()` — or raises the existing RFC
+ * 9457 `UnauthorizedHttpError` (401) on a missing/invalid session.
+ *
+ * **Arc A3 addition (proposed — pending review, see `src/lib/auth.ts`)**:
+ * once the session is confirmed valid, also mints a short-lived,
+ * PostgREST-verifiable JWT for THIS SAME session via `auth.api.getToken()`
+ * (the `jwt` plugin's server-side API — same headers, so it resolves the
+ * identical session; it throws `UNAUTHORIZED` internally if it somehow
+ * doesn't, which is acceptable here since we already know the session was
+ * valid a moment ago) and attaches it to `res.locals.jwt`, alongside
+ * `res.locals.session`. Only Better Auth's own opaque bearer token ever
+ * reaches this middleware from the client — the JWT is a server-minted,
+ * internal credential for the PostgREST bridge, never exposed back to the
+ * caller.
+ */
+const auth = async (
+	req: Request,
+	res: ResponseWithSession,
+	next: NextFunction,
+) => {
+	const headers = fromNodeHeaders(req.headers);
+	const session = await getAuth().api.getSession({ headers });
 
-const basicAuthEncodedPwd = btoa(credentials);
-
-export const BASIC_AUTH = `Basic ${basicAuthEncodedPwd}`;
-
-const auth = async (req: Request, res: Response, next: NextFunction) => {
-	const authHeader = req.headers.authorization;
-
-	const unauthorizedError = new UnauthorizedHttpError();
-
-	if (!authHeader || !authHeader.startsWith("Basic ")) {
-		res.set("WWW-Authenticate", "Basic realm='Unauthorized'");
-		warn(`ip ${req.ip}`, "require credentials");
-		throw unauthorizedError;
+	if (!session) {
+		throw new UnauthorizedHttpError();
 	}
 
-	const encodedCredentials = authHeader.split(" ")[1];
+	const { token } = await getAuth().api.getToken({ headers });
 
-	try {
-		const decodedCredentials = atob(encodedCredentials);
+	res.locals.session = session;
+	res.locals.jwt = token;
 
-		if (decodedCredentials === credentials) {
-			next();
-		} else {
-			warn(`ip ${req.ip}`, "invalid credentials");
-			throw unauthorizedError;
-		}
-	} catch (_e) {
-		res.set("WWW-Authenticate", "Basic realm='Unauthorized'");
-		warn(`ip ${req.ip}`, "invalid method");
-		throw unauthorizedError;
-	}
+	next();
 };
 
 export { auth };

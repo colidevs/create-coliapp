@@ -1,8 +1,39 @@
-import type { Response } from "express";
+import type { Request, Response } from "express";
 import { z } from "zod";
+import type { AuthSession } from "@/lib/auth";
 
 export interface ResponseWithContext extends Response {
 	locals: Response["locals"] & { context: string };
+}
+
+/**
+ * @description Response typed with the Better Auth session
+ * (`src/v1/middlewares/auth.ts`) attached by the session-checking middleware.
+ * Follows the same `res.locals.<field>` typing convention as
+ * `ResponseWithContext` above, rather than augmenting Express's global
+ * `Request` type.
+ *
+ * `jwt` (Arc A3, proposed — see `src/lib/auth.ts`) is the short-lived,
+ * PostgREST-verifiable JWT minted from this same session via
+ * `getAuth().api.getToken()`, attached alongside `session` so downstream
+ * handlers/middlewares (`src/lib/postgrest/express.ts`'s
+ * `attachPostgrestClient`) can build a per-request PostgREST client without
+ * re-deriving it from the raw, non-JWT `Authorization` header.
+ */
+export interface ResponseWithSession extends Response {
+	locals: Response["locals"] & { session: AuthSession; jwt: string };
+}
+
+/**
+ * @description Request typed with an optional `:id` route param, used by
+ * the cache middleware and `tenantCacheKey` to build per-resource cache
+ * dimensions. Previously imported across `lib/redis.ts` and
+ * `v1/middlewares/{cache,context}.ts` without ever being defined here —
+ * `tsc --noEmit` failed independent of any Phase 3 change (flagged during
+ * Phase 1 apply, fixed here).
+ */
+export interface RequestWithId extends Request {
+	params: Request["params"] & { id?: string };
 }
 
 export interface AppResponse<TData> {
