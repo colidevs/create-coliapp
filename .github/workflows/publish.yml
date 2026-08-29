@@ -1,0 +1,63 @@
+name: Publish
+
+# Triggers on a version tag push (`v*`), matching this repo's own existing
+# tag convention (`v1.2.5`, etc.) — tags were pushed manually alongside a
+# manual `npm publish` from someone's own machine; this workflow replaces
+# that manual step with the `NPM_TOKEN` repo secret that already existed
+# (added 2024-06-08) but was never wired into any workflow. Found and fixed
+# 2026-08-29 — see colidevs/hefesto's docs/backlog.md ("create-coliapp is
+# not published to npm with any of this session's work").
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.4.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: pnpm
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm exec tsc --noEmit
+
+      - name: Build
+        run: pnpm run build
+
+      # Fails closed if the tag's version doesn't match package.json's —
+      # catches a forgotten version bump before it silently republishes the
+      # wrong bytes under a new tag.
+      - name: Verify tag matches package.json version
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::Tag v$TAG_VERSION does not match package.json version $PKG_VERSION"
+            exit 1
+          fi
+
+      - name: Publish
+        run: pnpm publish --no-git-checks --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
