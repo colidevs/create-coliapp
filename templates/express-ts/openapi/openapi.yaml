@@ -50,7 +50,7 @@ paths:
         route this template gates with real auth, replacing the previous
         HTTP Basic Auth placeholder.
       security:
-        - bearerAuth: []
+        - sessionCookie: []
       responses:
         "200":
           description: The authenticated caller's identity
@@ -83,13 +83,27 @@ paths:
                 $ref: "#/components/schemas/Problem"
 components:
   securitySchemes:
-    # OAuth2 Bearer (ADR 0009 / api-communication-standard.md: "OAuth2 Bearer;
-    # token stays server-side, never reaches the browser"). Represented as an
-    # HTTP bearer scheme here because OpenAPI has no dedicated "verify only"
-    # auth type — the token itself is issued and verified by Better Auth's
-    # `bearer` plugin (`src/lib/auth.ts`). Referenced by `/me` above — the
-    # first real, session-scoped endpoint this template ships (previously
-    # defined but unreferenced, pending exactly this).
+    # Session cookie (ADR 0022 / frontend-security-auth.md: httpOnly cookies
+    # are the default token-storage mechanism for the same-root-domain
+    # topology this template assumes — Arc A4 of hefesto's
+    # e2e-buildable-toolset-plan.md). The actually-implemented middleware
+    # (`src/v1/middlewares/auth.ts`) reads Better Auth's own session cookie
+    # via `fromNodeHeaders`/`getAuth().api.getSession` — never an
+    # `Authorization: Bearer` header, which `express-openapi-validator`
+    # would otherwise demand and reject every real cookie-authenticated
+    # request with, before Better Auth's own check ever runs (found live,
+    # Arc A6 smoke test, 2026-08-29 — every `/me` call 401'd on the
+    # validator layer itself). `bearerAuth` remains available below for a
+    # future cross-root-domain deployment (ADR 0036's escape hatch) that
+    # genuinely needs Better Auth's `bearer` plugin instead.
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: better-auth.session_token
+    # OAuth2 Bearer (ADR 0009 / api-communication-standard.md), for a
+    # cross-root-domain deployment using ADR 0036's escape hatch — not the
+    # default `/me` scheme (see `sessionCookie` above), kept available for
+    # a route/deployment that genuinely needs it.
     bearerAuth:
       type: http
       scheme: bearer
