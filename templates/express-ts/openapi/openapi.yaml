@@ -48,9 +48,13 @@ paths:
         Returns the caller's own identity, resolved from the Better Auth
         session (`src/lib/auth.ts` / `src/v1/middlewares/auth.ts`). The one
         route this template gates with real auth, replacing the previous
-        HTTP Basic Auth placeholder.
+        HTTP Basic Auth placeholder. Additionally requires the
+        service-to-service static key (`apiKeyAuth`, Arc A7) — both factors
+        together, not either/or: a single request must present a valid
+        session cookie AND a valid `x-service-key` header.
       security:
         - sessionCookie: []
+          apiKeyAuth: []
       responses:
         "200":
           description: The authenticated caller's identity
@@ -108,6 +112,21 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+    # Service-to-service static-key auth (ADR 0009's carve-out; Arc A7 of
+    # hefesto's e2e-buildable-toolset-plan.md). Enforced at runtime by
+    # `src/v1/middlewares/service-auth.ts`, mounted on `v1Router` ahead of
+    # every route — coarser than and independent of the per-route
+    # `sessionCookie`/`bearerAuth` checks above. Declared here only on `/me`
+    # (below) as a documented example of an AND-combined requirement; the
+    # actual middleware applies to every `/api/v1` operation regardless of
+    # what that operation's own `security` array says, per-operation
+    # `security: []` (e.g. `/healthcheck/status`) opts a route out of THIS
+    # scheme's presence check at the OpenAPI-validator layer only — it does
+    # not exempt that route from the real runtime middleware.
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-service-key
   schemas:
     # RFC 9457 Problem Details (ADR 0009 / api-communication-standard.md).
     # Mirrors `src/v1/res/errors.ts`'s `ProblemDetails` interface.
