@@ -1,8 +1,20 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
+import type { AuthSession } from "@/lib/auth";
 
 export interface ResponseWithContext extends Response {
 	locals: Response["locals"] & { context: string };
+}
+
+/**
+ * @description Response typed with the Better Auth session
+ * (`src/v1/middlewares/auth.ts`) attached by the session-checking middleware.
+ * Follows the same `res.locals.<field>` typing convention as
+ * `ResponseWithContext` above, rather than augmenting Express's global
+ * `Request` type.
+ */
+export interface ResponseWithSession extends Response {
+	locals: Response["locals"] & { session: AuthSession };
 }
 
 /**

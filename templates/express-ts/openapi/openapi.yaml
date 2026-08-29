@@ -40,18 +40,56 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /me:
+    get:
+      operationId: getMe
+      summary: Current authenticated caller
+      description: >-
+        Returns the caller's own identity, resolved from the Better Auth
+        session (`src/lib/auth.ts` / `src/v1/middlewares/auth.ts`). The one
+        route this template gates with real auth, replacing the previous
+        HTTP Basic Auth placeholder.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: The authenticated caller's identity
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - id
+                  - email
+                properties:
+                  id:
+                    type: string
+                    example: "usr_01hz8p7q9k2m3n4p5q6r7s8t9u"
+                  email:
+                    type: string
+                    format: email
+                    example: "jane@example.com"
+        "401":
+          description: Missing or invalid session
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        default:
+          description: Unexpected error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
 components:
   securitySchemes:
     # OAuth2 Bearer (ADR 0009 / api-communication-standard.md: "OAuth2 Bearer;
     # token stays server-side, never reaches the browser"). Represented as an
     # HTTP bearer scheme here because OpenAPI has no dedicated "verify only"
-    # auth type — the token itself is still issued via OAuth2/OIDC. Not yet
-    # referenced by any operation below: the only existing endpoint
-    # (`/healthcheck/status`) is deliberately public (`security: []`), same
-    # posture as `/health`/`/ready`. Defined now so the FIRST real,
-    # tenant-scoped endpoint an app author adds has a scheme to reference
-    # instead of inventing one — this is api-standard-check's own
-    # `.spectral.yaml` requiring `security` be declared per operation.
+    # auth type — the token itself is issued and verified by Better Auth's
+    # `bearer` plugin (`src/lib/auth.ts`). Referenced by `/me` above — the
+    # first real, session-scoped endpoint this template ships (previously
+    # defined but unreferenced, pending exactly this).
     bearerAuth:
       type: http
       scheme: bearer
