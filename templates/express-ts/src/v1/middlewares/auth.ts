@@ -15,21 +15,35 @@ import type { ResponseWithSession } from "@/v1/types";
  * `fromNodeHeaders`), attaches the resolved session to `res.locals.session`
  * for downstream handlers, and calls `next()` — or raises the existing RFC
  * 9457 `UnauthorizedHttpError` (401) on a missing/invalid session.
+ *
+ * **Arc A3 addition (proposed — pending review, see `src/lib/auth.ts`)**:
+ * once the session is confirmed valid, also mints a short-lived,
+ * PostgREST-verifiable JWT for THIS SAME session via `auth.api.getToken()`
+ * (the `jwt` plugin's server-side API — same headers, so it resolves the
+ * identical session; it throws `UNAUTHORIZED` internally if it somehow
+ * doesn't, which is acceptable here since we already know the session was
+ * valid a moment ago) and attaches it to `res.locals.jwt`, alongside
+ * `res.locals.session`. Only Better Auth's own opaque bearer token ever
+ * reaches this middleware from the client — the JWT is a server-minted,
+ * internal credential for the PostgREST bridge, never exposed back to the
+ * caller.
  */
 const auth = async (
 	req: Request,
 	res: ResponseWithSession,
 	next: NextFunction,
 ) => {
-	const session = await getAuth().api.getSession({
-		headers: fromNodeHeaders(req.headers),
-	});
+	const headers = fromNodeHeaders(req.headers);
+	const session = await getAuth().api.getSession({ headers });
 
 	if (!session) {
 		throw new UnauthorizedHttpError();
 	}
 
+	const { token } = await getAuth().api.getToken({ headers });
+
 	res.locals.session = session;
+	res.locals.jwt = token;
 
 	next();
 };
