@@ -1,0 +1,21 @@
+# Layer 1 (local, fast feedback) of the CI/Husky mandate for backend/API
+# templates — hefesto's ADR 0014 §"CI/Husky mandatory", ADR 0026, and
+# `.claude/rules/api-enforcement.md`'s enforcement-layer table ("1. Local —
+# Husky pre-commit/pre-push in `create-coliapp` scaffolds — Fast feedback").
+# Same shape as `templates/nextjs-kumo-console`'s own `.husky/pre-commit`:
+# lint + format check, then type check. Kept fast and pre-commit-appropriate
+# — no OpenAPI/license lint here (that's `.github/workflows/api-standard.yml`,
+# PR-time) and no attestation gate (see `.husky/pre-push` for why that one
+# can't run here).
+#
+# Deliberately excludes `pnpm test`: this template's own
+# `scripts/__tests__/api-standard-gate.test.ts` includes two tests that
+# assert against the `create-coliapp` monorepo's own root files (e.g.
+# `.github/workflows/ci.yml`, two levels above `templates/express-ts`) and
+# against real git history — both fail on a freshly scaffolded, standalone
+# repo's first commit (no such root file exists there, and there is no prior
+# HEAD to diff against yet). Running the full suite pre-commit would break
+# the very first commit of every scaffold. Tracked as a separate, unfixed
+# finding — not this hook's job to work around.
+pnpm exec biome check . || exit 1
+pnpm exec tsc --noEmit || exit 1
