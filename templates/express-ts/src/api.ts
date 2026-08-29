@@ -1,5 +1,6 @@
 import path from "node:path";
 import { toNodeHandler } from "better-auth/node";
+import cookieParser from "cookie-parser";
 import cors from "cors";
 import type { ErrorRequestHandler, RequestHandler, Router } from "express";
 import express from "express";
@@ -92,6 +93,17 @@ api.all("/api/auth/*splat", (req, res) => toNodeHandler(getAuth())(req, res));
 
 api.use(express.json());
 api.use(express.urlencoded({ extended: true }));
+
+// Required for the OpenAPI validator's `sessionCookie` (`apiKey`, `in:
+// cookie`) security scheme below to read `req.cookies` at all — without
+// this, express-openapi-validator throws `Cannot read properties of
+// undefined (reading 'better-auth.session_token')` on every /api/v1 call,
+// since Express itself never parses cookies on its own (found live, Arc A6
+// smoke test's follow-up verification, 2026-08-29). Better Auth's own
+// `getSession`/`getToken` calls (`src/v1/middlewares/auth.ts`) read the raw
+// `Cookie` header themselves via `fromNodeHeaders` and don't need this —
+// this is purely for the validator's own cookie-presence check.
+api.use(cookieParser());
 
 // express-openapi-validator: validates every /api/v1 request/response
 // against the current OpenAPI spec BEFORE the route handler runs. See

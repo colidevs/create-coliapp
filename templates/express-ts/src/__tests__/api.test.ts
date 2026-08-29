@@ -50,9 +50,16 @@ describe("api — full middleware chain", () => {
 	});
 
 	it("GET /api/v1/me is gated by Better Auth's session-checking middleware and passes OpenAPI validation", async () => {
+		// Cookie, not `Authorization: Bearer` — the OpenAPI spec's
+		// `sessionCookie` scheme (Arc A6's real-flow fix, 2026-08-29) matches
+		// how `src/v1/middlewares/auth.ts` actually authenticates (Better
+		// Auth's own session cookie, via `fromNodeHeaders`), not a bearer
+		// token. Found live: the original `bearerAuth` scheme made every real
+		// cookie-authenticated request 401 at the validator layer, before
+		// Better Auth's own check ever ran.
 		const res = await supertest(api)
 			.get("/api/v1/me")
-			.set("Authorization", "Bearer some-session-token")
+			.set("Cookie", "better-auth.session_token=some-session-token")
 			.expect(200);
 		expect(res.body).toEqual({ id: "usr_1", email: "jane@example.com" });
 	});
