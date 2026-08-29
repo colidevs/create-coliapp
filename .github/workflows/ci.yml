@@ -65,6 +65,18 @@ jobs:
           cache: pnpm
           cache-dependency-path: templates/express-ts/pnpm-lock.yaml
 
+      # Arc A7 (colidevs/hefesto's e2e-buildable-toolset-plan.md) added
+      # @colidevs/api-kit as this template's first-ever @colidevs/* dependency
+      # — same reason templates/nextjs-kumo-console's own job already has this
+      # step (see below): pnpm pack/publish unconditionally strips a file
+      # literally named .npmrc, so the real registry scoping ships as
+      # .npmrc.template and must be restored before install, same as a real
+      # scaffold's own restoreNpmrcFiles does. Missing this step 404s against
+      # the public registry (verified live, 2026-08-29 — the first PR to add
+      # this dependency failed CI exactly this way).
+      - name: Restore .npmrc
+        run: cp .npmrc.template .npmrc
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -152,6 +164,10 @@ jobs:
           node-version: "22"
           cache: pnpm
           cache-dependency-path: templates/express-ts/pnpm-lock.yaml
+
+      # See the identical step's comment in the templates/express-ts job above.
+      - name: Restore .npmrc
+        run: cp .npmrc.template .npmrc
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
