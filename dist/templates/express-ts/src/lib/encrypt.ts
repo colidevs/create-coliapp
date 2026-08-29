@@ -1,8 +1,14 @@
 import crypto from "node:crypto";
 import { config } from "@/config";
+import { EnvironmentError } from "@/v1/res/errors";
 
 const ALGORITHM = "aes-256-gcm";
-const SECRET_KEY = Buffer.from(config.secret!, "hex");
+
+if (!config.secret) {
+	throw new EnvironmentError("SECRET", "a 32-byte hex string");
+}
+
+const SECRET_KEY = Buffer.from(config.secret, "hex");
 
 function encrypt(str: string): string {
 	// init vector
@@ -34,4 +40,4 @@ function decrypt(str: string): string {
 	return decrypted;
 }
 
-export { encrypt, decrypt };
+export { decrypt, encrypt };

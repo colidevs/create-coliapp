@@ -1,0 +1,15 @@
+# Layer 1 (local, fast feedback) of the `frontend-standard-check` attestation
+# gate — hefesto's `.claude/skills/frontend-standard-check/SKILL.md` /
+# `sdd/frontend-standard-check/design` (Engram), decision D5.
+#
+# Runs at pre-push, deliberately never pre-commit: the gate resolves HEAD and
+# reads committed blobs via `git show <commit>:./<path>` — at pre-commit time
+# the candidate bytes live in the index, not any commit, so the digest can
+# never match. This mirrors why `express-ts`'s own `.husky/pre-commit`
+# (`create-coliapp/.husky/pre-commit`) does not invoke its `api-standard-gate
+# .mjs` either; pre-push is the earliest hook where committed bytes actually
+# exist.
+#
+# `.husky/pre-commit` in this template is intentionally untouched by this
+# change — it keeps running the fast biome/tsc/vitest subset only.
+node scripts/frontend-standard-gate.mjs || exit 1

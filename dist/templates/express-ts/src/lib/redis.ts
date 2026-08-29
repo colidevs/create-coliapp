@@ -2,7 +2,7 @@ import { createClient, type RedisClientType, type SetOptions } from "redis";
 import { config } from "@/config";
 import { err, info, log } from "@/lib/logger";
 import { removeLastSlashSymbol } from "@/lib/utils";
-import { EnvironmentError, InfraError } from "@/v1/res/errors";
+import { EnvironmentError, InfraError, RequiredError } from "@/v1/res/errors";
 import type { RequestWithId, ResponseWithContext } from "@/v1/types";
 
 let redisClient: RedisClientType | null = null;
@@ -126,10 +126,36 @@ export async function revalidatePattern(cacheKey: string): Promise<number> {
 	return res;
 }
 
-export function genCacheKey(
-	id: RequestWithId["params"]["id"],
-	context: ResponseWithContext["locals"]["context"],
-	pattern?: string,
-): string {
-	return `colitienda:${id}:${context}${pattern ?? ""}`;
+/**
+ * @description Builds a tenant-scoped cache key. `tenantId` is a mandatory
+ * dimension so two tenants requesting the same resource never collide on the
+ * same cache entry. This signature intentionally mirrors the
+ * `@colidevs/api-kit` `tenantCacheKey` helper (see ADR 0014) so that adopting
+ * the package later is a one-line import swap, not a call-site rewrite.
+ *
+ * TODO(ADR 0014 / Phase 3 task 3.1): swap this in-template implementation for
+ * `import { tenantCacheKey, createCacheClient } from "@colidevs/api-kit/cache"`
+ * once `@colidevs/api-kit@0.1.0` is published to verdaccio (blocked on
+ * https://github.com/colidevs/framework/pull/9 merging — still open at the
+ * time this template work landed). The signature already matches exactly, so
+ * the swap is a one-line import change, not a call-site rewrite.
+ */
+export function tenantCacheKey({
+	tenantId,
+	resource,
+	dims = [],
+}: {
+	tenantId: string;
+	resource: ResponseWithContext["locals"]["context"];
+	dims?: Array<RequestWithId["params"]["id"] | string | undefined>;
+}): string {
+	if (!tenantId) {
+		throw new RequiredError("tenantId");
+	}
+
+	const suffix = dims.filter((dim): dim is string => Boolean(dim)).join(":");
+
+	return suffix
+		? `${tenantId}:${resource}:${suffix}`
+		: `${tenantId}:${resource}`;
 }
