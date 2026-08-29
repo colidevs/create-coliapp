@@ -50,9 +50,24 @@ vs. Supabase-hosted):
   (`DATABASE_OWNER_URL`); the app itself connects with the `app_runtime` role (`DATABASE_RUNTIME_URL`,
   `NOBYPASSRLS`) — see `src/lib/db/client.ts`.
 - **Supabase-hosted / PostgREST** (`src/lib/postgrest/`): `attachPostgrestClient` middleware builds a
-  fresh `PostgrestClient` per request, forwarding that request's own `Authorization` header so
-  PostgREST resolves the correct Postgres role and RLS applies naturally — never a single
-  service-role client shared across requests.
+  fresh `PostgrestClient` per request, so PostgREST resolves the correct Postgres role and RLS applies
+  naturally — never a single service-role client shared across requests. Mount it AFTER the `auth`
+  session-checking middleware (`src/v1/middlewares/auth.ts`) on any route that needs a
+  session-scoped, RLS-authenticated client: `router.get(path, auth, attachPostgrestClient, handler)`.
+
+  **PostgREST/JWT bridge (Arc A3 of hefesto's `docs/backlog/e2e-buildable-toolset-plan.md`,
+  proposed — pending review, not yet an accepted ADR 0014 amendment):** Better Auth's `bearer`
+  plugin issues opaque session tokens that PostgREST cannot verify. `auth` also mints a short-lived,
+  PostgREST-verifiable JWT for the same session via Better Auth's `jwt` plugin
+  (`getAuth().api.getToken()`) and attaches it to `res.locals.jwt`; `attachPostgrestClient` signs the
+  PostgREST-bound `Authorization` header with THAT JWT, never the client's own opaque bearer token. A
+  route with no `auth` in front of it (intentionally public/anonymous) still gets a valid PostgREST
+  client — just with no `Authorization` header, matching PostgREST's own anon-role behavior.
+
+  The JWT carries a `role` claim (default `"authenticated"`, override via `POSTGREST_JWT_ROLE`) that
+  PostgREST uses to pick which Postgres role to switch into. PostgREST verifies the JWT against a
+  JWK Set, not this app's `BETTER_AUTH_SECRET` — see `.env.example` for the one-time deploy step
+  (fetch `GET {BETTER_AUTH_URL}/api/auth/jwks`, paste into PostgREST's own `PGRST_JWT_SECRET`).
 
 ## Errors
 

@@ -7,7 +7,9 @@ import { api } from "@/api";
 // `src/v1/middlewares/__tests__/auth.test.ts`) so `GET /api/v1/me` below can
 // exercise the full, real app — including `express-openapi-validator`
 // validating the response against `openapi/openapi.yaml` — without a real
-// Postgres/`BETTER_AUTH_*` env.
+// Postgres/`BETTER_AUTH_*` env. `getToken` (Arc A3, proposed — see
+// `src/lib/auth.ts`) is mocked alongside `getSession` since `auth` now
+// calls it right after a valid session is resolved.
 vi.mock("@/lib/auth", () => ({
 	getAuth: () => ({
 		api: {
@@ -15,6 +17,7 @@ vi.mock("@/lib/auth", () => ({
 				session: { id: "sess_1" },
 				user: { id: "usr_1", email: "jane@example.com" },
 			}),
+			getToken: vi.fn().mockResolvedValue({ token: "signed.jwt.token" }),
 		},
 	}),
 }));

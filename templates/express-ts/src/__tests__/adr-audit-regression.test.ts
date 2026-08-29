@@ -62,8 +62,10 @@ function readAuthMiddlewareSource(): string {
  * previous HTTP Basic Auth middleware, and `src/v1/middlewares/auth.ts`'s
  * session check gates `GET /api/v1/me` (see hefesto's
  * `docs/backlog/e2e-buildable-toolset-plan.md` Arc A1/A2 and
- * `colidevs/munod#44`). `organization`/`passkey` plugins and the
- * PostgREST/JWT bridge remain deliberately out of scope.
+ * `colidevs/munod#44`). The PostgREST/JWT bridge is now addressed by Arc A3
+ * (`src/lib/auth.ts`'s `jwt` plugin, `src/lib/postgrest/`) — proposed,
+ * pending review, not yet an accepted ADR 0014 amendment. `organization`/
+ * `passkey` plugins remain deliberately out of scope.
  */
 describe("ADR 0009-0013 audit regression guard", () => {
 	it("[finding 1] tenant-cache-key: mandatory tenantId, no hardcoded product prefix", () => {

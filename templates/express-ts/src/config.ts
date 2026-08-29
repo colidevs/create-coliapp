@@ -11,6 +11,7 @@ const {
 	SUPABASE_URL,
 	SUPABASE_KEY,
 	POSTGREST_URL,
+	POSTGREST_JWT_ROLE,
 	MP_PUBLIC_KEY,
 	MP_ACCESS_TOKEN,
 	CORS_ALLOWED_ORIGINS,
@@ -37,14 +38,27 @@ export const config = {
 		url: SUPABASE_URL,
 		key: SUPABASE_KEY,
 	},
-	/** Supabase-hosted path (PostgREST, `src/lib/postgrest/`). */
+	/**
+	 * Supabase-hosted path (PostgREST, `src/lib/postgrest/`).
+	 *
+	 * `jwtRole` (Arc A3, proposed — see `src/lib/auth.ts`) is the Postgres
+	 * role name embedded in the `role` claim of every PostgREST-bound JWT
+	 * this app mints — PostgREST switches into this role for the duration of
+	 * the request. Defaults to `"authenticated"` (Supabase's own convention),
+	 * overridable via `POSTGREST_JWT_ROLE`.
+	 *
+	 * Deliberately does NOT expose `PGRST_JWT_SECRET` here: that variable
+	 * configures the separate PostgREST *service's* own JWT verification and
+	 * is never read by this Express app — see `.env.example`.
+	 */
 	postgrest: {
 		url: POSTGREST_URL,
+		jwtRole: POSTGREST_JWT_ROLE || "authenticated",
 	},
 	/**
-	 * Better Auth (`src/lib/auth.ts`) — `bearer` + `emailAndPassword` only.
-	 * Deliberately no separate database-connection env var here: Better Auth
-	 * reuses `db.runtimeUrl` above, the same connection string
+	 * Better Auth (`src/lib/auth.ts`) — `bearer` + `emailAndPassword` +
+	 * `jwt`. Deliberately no separate database-connection env var here:
+	 * Better Auth reuses `db.runtimeUrl` above, the same connection string
 	 * `src/lib/db/client.ts`'s Drizzle pool already uses.
 	 */
 	betterAuth: {

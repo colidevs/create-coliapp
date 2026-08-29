@@ -12,9 +12,16 @@ export interface ResponseWithContext extends Response {
  * Follows the same `res.locals.<field>` typing convention as
  * `ResponseWithContext` above, rather than augmenting Express's global
  * `Request` type.
+ *
+ * `jwt` (Arc A3, proposed — see `src/lib/auth.ts`) is the short-lived,
+ * PostgREST-verifiable JWT minted from this same session via
+ * `getAuth().api.getToken()`, attached alongside `session` so downstream
+ * handlers/middlewares (`src/lib/postgrest/express.ts`'s
+ * `attachPostgrestClient`) can build a per-request PostgREST client without
+ * re-deriving it from the raw, non-JWT `Authorization` header.
  */
 export interface ResponseWithSession extends Response {
-	locals: Response["locals"] & { session: AuthSession };
+	locals: Response["locals"] & { session: AuthSession; jwt: string };
 }
 
 /**
