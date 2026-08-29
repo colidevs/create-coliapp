@@ -15,7 +15,6 @@ const {
 	MP_PUBLIC_KEY,
 	MP_ACCESS_TOKEN,
 	CORS_ALLOWED_ORIGINS,
-	SERVICE_KEY,
 } = process.env;
 
 export const config = {
@@ -78,16 +77,5 @@ export const config = {
 			.split(",")
 			.map((origin) => origin.trim())
 			.filter(Boolean),
-	},
-	/**
-	 * Service-to-service static-key auth (ADR 0009's carve-out,
-	 * `@colidevs/api-kit`'s `verifyStaticServiceKey` — see
-	 * `src/v1/middlewares/service-auth.ts`). Deliberately `?? ""`, not left
-	 * `undefined`: an unset `SERVICE_KEY` must fail closed (every /api/v1
-	 * request rejected), never silently accept an empty header value as a
-	 * match.
-	 */
-	serviceAuth: {
-		key: SERVICE_KEY ?? "",
 	},
 };

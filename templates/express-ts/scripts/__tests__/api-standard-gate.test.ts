@@ -1,7 +1,9 @@
 import { execFileSync } from "node:child_process";
 import {
+	existsSync,
 	mkdirSync,
 	mkdtempSync,
+	readdirSync,
 	readFileSync,
 	rmSync,
 	writeFileSync,
@@ -396,25 +398,74 @@ describe("Threat Matrix: PR commands — the workflow declares the job staticall
 	// intentionally document the absence of `pull_request_target` in prose.
 	const triggerKeyPattern = /^\s*pull_request_target\s*:/m;
 
-	it("templates/express-ts/.github/workflows/api-standard.yml has no pull_request_target trigger and no dynamic gh pr composition", () => {
-		const workflow = readFileSync(
-			path.join(templateRoot, ".github/workflows/api-standard.yml"),
-			"utf8",
-		);
+	function assertWorkflowIsSafe(workflowPath: string): void {
+		const workflow = readFileSync(workflowPath, "utf8");
 		expect(workflow).not.toMatch(triggerKeyPattern);
 		expect(workflow).not.toMatch(/gh\s+pr\s+/);
 		expect(workflow).toContain("node scripts/api-standard-gate.mjs");
+	}
+
+	it("templates/express-ts/.github/workflows/api-standard.yml has no pull_request_target trigger and no dynamic gh pr composition", () => {
+		assertWorkflowIsSafe(
+			path.join(templateRoot, ".github/workflows/api-standard.yml"),
+		);
 	});
 
-	it("the root ci.yml api-standard job has no pull_request_target trigger and no dynamic gh pr composition", () => {
+	/**
+	 * @description `templateRoot` is `templates/express-ts` while this suite
+	 * runs inside the `create-coliapp` monorepo, but `cpyTemplate`
+	 * (`index.ts`) is a plain recursive directory copy — once a project is
+	 * scaffolded from this template, this exact test file ships along with
+	 * it and `templateRoot` becomes that scaffolded project's OWN root. Two
+	 * directory levels above `templateRoot` only ever lands back on
+	 * `create-coliapp`'s own repo root in the first case; in the second, it
+	 * lands outside the scaffolded project entirely (or nowhere at all), and
+	 * `create-coliapp`'s dogfooding `ci.yml` legitimately does not exist
+	 * there — that is not a coverage gap, it is a different context this
+	 * test must recognize rather than assume away (`docs/backlog.md` row 93,
+	 * `colidevs/hefesto`).
+	 *
+	 * Detected structurally, not by mere file existence (a scaffolded
+	 * project could coincidentally sit two directories below some unrelated
+	 * `ci.yml`): `rootRoot`'s own `package.json` `name` field is literally
+	 * `"create-coliapp"` only inside the real monorepo checkout.
+	 *
+	 * Either way this test asserts the SAME Threat Matrix invariant against
+	 * whichever workflow file(s) actually govern this context — it never
+	 * skips the check, it retargets it.
+	 */
+	it("the api-standard job's workflow has no pull_request_target trigger and no dynamic gh pr composition, in both the create-coliapp monorepo and a standalone scaffold", () => {
 		const rootRoot = path.resolve(templateRoot, "..", "..");
-		const workflow = readFileSync(
-			path.join(rootRoot, ".github/workflows/ci.yml"),
-			"utf8",
-		);
-		expect(workflow).not.toMatch(triggerKeyPattern);
-		expect(workflow).not.toMatch(/gh\s+pr\s+/);
-		expect(workflow).toContain("node scripts/api-standard-gate.mjs");
+		const rootPackageJsonPath = path.join(rootRoot, "package.json");
+		const isCreateColiappMonorepoCheckout =
+			existsSync(rootPackageJsonPath) &&
+			JSON.parse(readFileSync(rootPackageJsonPath, "utf8")).name ===
+				"create-coliapp";
+
+		if (isCreateColiappMonorepoCheckout) {
+			// Inside the monorepo: the real dogfooding job this test was
+			// originally written against.
+			assertWorkflowIsSafe(path.join(rootRoot, ".github/workflows/ci.yml"));
+			return;
+		}
+
+		// Standalone scaffold: `create-coliapp`'s own root `ci.yml` does not
+		// exist in this context by construction, not by accident. Assert the
+		// identical invariant against every workflow file this standalone
+		// copy actually ships (`.github/workflows/api-standard.yml` today,
+		// plus any future addition) instead of silently doing nothing —
+		// `toBeGreaterThan(0)` guards against this branch passing vacuously
+		// if the workflows directory were ever empty or missing.
+		const workflowsDir = path.join(templateRoot, ".github/workflows");
+		const workflowFiles = existsSync(workflowsDir)
+			? readdirSync(workflowsDir).filter(
+					(file) => file.endsWith(".yml") || file.endsWith(".yaml"),
+				)
+			: [];
+		expect(workflowFiles.length).toBeGreaterThan(0);
+		for (const file of workflowFiles) {
+			assertWorkflowIsSafe(path.join(workflowsDir, file));
+		}
 	});
 });
 

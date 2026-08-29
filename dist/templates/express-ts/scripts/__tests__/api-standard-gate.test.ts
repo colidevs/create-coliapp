@@ -46,27 +46,8 @@ const scriptPath = path.resolve(
 );
 const TODAY = "2026-08-17";
 
-/**
- * Environment for every spawned `git` call in this suite, with all `GIT_*`
- * variables stripped. When this test file runs from inside a git hook (e.g.
- * the repo's own pre-commit hook, which runs `pnpm test`), the hook's
- * process environment carries `GIT_DIR`/`GIT_WORK_TREE`/`GIT_INDEX_FILE`
- * scoped to the commit currently in progress. A child `git` process
- * inheriting those variables ignores the explicit `cwd` passed to `initRepo`
- * below and silently operates against the REAL repository instead of the
- * intended `mkdtempSync` sandbox — confirmed directly: without this fix,
- * every "isolated" fixture commit this suite makes (`seed`, `malformed`,
- * `wrong version`, ...) actually lands on the real repository's HEAD when
- * the suite runs inside a pre-commit hook, corrupting it. Found 2026-08-29
- * after a background agent's ~6-hour thrash and a second, independent
- * repro on a normal commit — see docs/backlog.md for the full incident.
- */
-const GIT_ENV = Object.fromEntries(
-	Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")),
-) as NodeJS.ProcessEnv;
-
 function git(args: string[], cwd: string): string {
-	return execFileSync("git", args, { cwd, encoding: "utf8", env: GIT_ENV });
+	return execFileSync("git", args, { cwd, encoding: "utf8" });
 }
 
 const createdRepos: string[] = [];
@@ -373,7 +354,10 @@ describe("resolveCommit ignores process.env.GITHUB_SHA (real CI regression, foun
 
 	it("resolveCommit always returns cwd's own HEAD, never the unrelated env var", () => {
 		const repo = seedCleanRepo();
-		const expected = git(["rev-parse", "HEAD"], repo).trim();
+		const expected = execFileSync("git", ["rev-parse", "HEAD"], {
+			cwd: repo,
+			encoding: "utf8",
+		}).trim();
 		const previousGithubSha = process.env.GITHUB_SHA;
 		process.env.GITHUB_SHA = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
 		try {
@@ -499,7 +483,8 @@ describe("Decision 2, fail condition (c): exception missing rule/reason/approver
 				rule: "ADR-0013/webhook-signing",
 				path: "src/lib/redis.ts",
 				status: "exception",
-				exception: { approver: "thomas", review_after: "2099-01-01" },
+				approver: "thomas",
+				review_after: "2099-01-01",
 			},
 		]);
 		const result = runGate(repo, { today: TODAY });
@@ -513,10 +498,8 @@ describe("Decision 2, fail condition (c): exception missing rule/reason/approver
 				rule: "ADR-0013/webhook-signing",
 				path: "src/lib/redis.ts",
 				status: "exception",
-				exception: {
-					reason: "no third-party sender to verify",
-					review_after: "2099-01-01",
-				},
+				reason: "no third-party sender to verify",
+				review_after: "2099-01-01",
 			},
 		]);
 		const result = runGate(repo, { today: TODAY });
@@ -530,43 +513,13 @@ describe("Decision 2, fail condition (c): exception missing rule/reason/approver
 				rule: "ADR-0013/webhook-signing",
 				path: "src/lib/redis.ts",
 				status: "exception",
-				exception: {
-					reason: "no third-party sender to verify",
-					approver: "thomas",
-				},
+				reason: "no third-party sender to verify",
+				approver: "thomas",
 			},
 		]);
 		const result = runGate(repo, { today: TODAY });
 		expect(result.code).toBe(2);
 		expect(result.message).toContain("review_after");
-	});
-
-	it("exception fields flat on the finding (not nested) fail with exit 2", () => {
-		const repo = seedRepoWithFindings([
-			{
-				rule: "ADR-0013/webhook-signing",
-				path: "src/lib/redis.ts",
-				status: "exception",
-				reason: "no third-party sender to verify",
-				approver: "thomas",
-				review_after: "2099-01-01",
-			},
-		]);
-		const result = runGate(repo, { today: TODAY });
-		expect(result.code).toBe(2);
-		expect(result.message).toContain("nested");
-	});
-
-	it("'not_applicable' status is accepted and never blocks", () => {
-		const repo = seedRepoWithFindings([
-			{
-				rule: "ADR-0012/tenant-cache-key",
-				path: "src/lib/redis.ts",
-				status: "not_applicable",
-			},
-		]);
-		const result = runGate(repo, { today: TODAY });
-		expect(result.code).toBe(0);
 	});
 
 	it("a finding missing 'rule' entirely fails with exit 2 regardless of status", () => {
@@ -587,11 +540,9 @@ describe("Decision 2, fail condition (d): review_after < today (expired exceptio
 				rule: "ADR-0013/webhook-signing",
 				path: "src/lib/redis.ts",
 				status: "exception",
-				exception: {
-					reason: "no third-party sender to verify",
-					approver: "thomas",
-					review_after: "2020-01-01",
-				},
+				reason: "no third-party sender to verify",
+				approver: "thomas",
+				review_after: "2020-01-01",
 			},
 		]);
 		const result = runGate(repo, { today: TODAY });
@@ -605,11 +556,9 @@ describe("Decision 2, fail condition (d): review_after < today (expired exceptio
 				rule: "ADR-0013/webhook-signing",
 				path: "src/lib/redis.ts",
 				status: "exception",
-				exception: {
-					reason: "no third-party sender to verify",
-					approver: "thomas",
-					review_after: "2099-01-01",
-				},
+				reason: "no third-party sender to verify",
+				approver: "thomas",
+				review_after: "2099-01-01",
 			},
 		]);
 		const result = runGate(repo, { today: TODAY });

@@ -94,24 +94,8 @@ export function assertSafeRelativePath(value, label) {
 	}
 }
 
-/**
- * Environment for every spawned `git` call, with all `GIT_*` variables
- * stripped. Git hooks run with `GIT_DIR`/`GIT_WORK_TREE`/`GIT_INDEX_FILE`
- * (and others) set in their own process environment, scoped to the commit
- * currently in progress. A child `git` process inheriting those variables
- * ignores the explicit `cwd` passed below and silently operates against
- * whichever repository/worktree/index those inherited variables point to —
- * this is what let this script's own test suite corrupt the real repository
- * it was running inside of, whenever `pnpm test` ran from inside a
- * pre-commit hook (found 2026-08-29, see docs/backlog.md's "agent
- * thrashed for 6 hours" row for the full incident this fixes).
- */
-const GIT_ENV = Object.fromEntries(
-	Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")),
-);
-
 function git(args, cwd) {
-	return execFileSync("git", args, { cwd, encoding: "utf8", env: GIT_ENV });
+	return execFileSync("git", args, { cwd, encoding: "utf8" });
 }
 
 /**
@@ -206,61 +190,6 @@ export function readFindingsDocument(cwd, commit) {
 
 const REVIEW_AFTER_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
-// Doc-vs-gate reconciliation (found 2026-08-22 during frontend-standard-check's
-// own design validation, colidevs/hefesto docs/backlog.md — this gate only
-// ever accepted two statuses and read exception fields flat, contradicting
-// this skill's own SKILL.md, which always documented the three-value status
-// domain and nested exception shape below. frontend-standard-check's sibling
-// gate already shipped the doc-conformant shape; ported here verbatim rather
-// than independently re-derived, per the doc-vs-gate call this row asked for:
-// fix the gate to match the doc, since the doc's shape is strictly more
-// expressive and already proven correct in the sibling skill.
-const FLAT_EXCEPTION_FIELD_NAMES = ["reason", "approver", "review_after"];
-
-function hasFlatExceptionFields(finding) {
-	return FLAT_EXCEPTION_FIELD_NAMES.some((field) =>
-		Object.hasOwn(finding, field),
-	);
-}
-
-function validateNestedException(finding, index) {
-	const exception = finding.exception;
-	if (
-		typeof exception !== "object" ||
-		exception === null ||
-		Array.isArray(exception)
-	) {
-		throw new GateError(
-			2,
-			`findings[${index}] is an exception missing a nested 'exception: { reason, approver, review_after }' object`,
-		);
-	}
-	if (typeof exception.reason !== "string" || exception.reason.length === 0) {
-		throw new GateError(
-			2,
-			`findings[${index}] is an exception missing 'exception.reason'`,
-		);
-	}
-	if (
-		typeof exception.approver !== "string" ||
-		exception.approver.length === 0
-	) {
-		throw new GateError(
-			2,
-			`findings[${index}] is an exception missing 'exception.approver'`,
-		);
-	}
-	if (
-		typeof exception.review_after !== "string" ||
-		!REVIEW_AFTER_PATTERN.test(exception.review_after)
-	) {
-		throw new GateError(
-			2,
-			`findings[${index}] is an exception missing a well-formed 'exception.review_after' (YYYY-MM-DD)`,
-		);
-	}
-}
-
 /**
  * Structural validation for the parsed `findings.json` document. Every
  * failure here is a malformed-attestation condition (exit 2).
@@ -304,31 +233,38 @@ export function validateFindingsShape(doc) {
 		}
 		assertSafeRelativePath(finding.path, `findings[${index}].path`);
 
-		if (
-			finding.status !== "open" &&
-			finding.status !== "exception" &&
-			finding.status !== "not_applicable"
-		) {
+		if (finding.status !== "open" && finding.status !== "exception") {
 			throw new GateError(
 				2,
-				`findings[${index}] has an unrecognized status: ${JSON.stringify(finding.status)} (expected 'open', 'exception', or 'not_applicable')`,
-			);
-		}
-
-		if (hasFlatExceptionFields(finding)) {
-			throw new GateError(
-				2,
-				`findings[${index}] has exception fields ('reason'/'approver'/'review_after') flat on the finding — they must be nested under 'exception: { reason, approver, review_after }'`,
+				`findings[${index}] has an unrecognized status: ${JSON.stringify(finding.status)} (expected 'open' or 'exception')`,
 			);
 		}
 
 		if (finding.status === "exception") {
-			validateNestedException(finding, index);
-		} else if (finding.exception !== undefined) {
-			throw new GateError(
-				2,
-				`findings[${index}] has 'exception' details but status is ${JSON.stringify(finding.status)} — exception details are forbidden unless status is 'exception'`,
-			);
+			if (typeof finding.reason !== "string" || finding.reason.length === 0) {
+				throw new GateError(
+					2,
+					`findings[${index}] is an exception missing 'reason'`,
+				);
+			}
+			if (
+				typeof finding.approver !== "string" ||
+				finding.approver.length === 0
+			) {
+				throw new GateError(
+					2,
+					`findings[${index}] is an exception missing 'approver'`,
+				);
+			}
+			if (
+				typeof finding.review_after !== "string" ||
+				!REVIEW_AFTER_PATTERN.test(finding.review_after)
+			) {
+				throw new GateError(
+					2,
+					`findings[${index}] is an exception missing a well-formed 'review_after' (YYYY-MM-DD)`,
+				);
+			}
 		}
 	});
 }
@@ -336,9 +272,8 @@ export function validateFindingsShape(doc) {
 /**
  * Evaluates already-shape-validated findings against `today` (ISO
  * `YYYY-MM-DD`). Returns the list of blocking reasons — empty means pass.
- * An expired exception (`exception.review_after < today`) reactivates its
- * original finding as blocking, per Decision 2. `status: not_applicable` is
- * always non-blocking.
+ * An expired exception (`review_after < today`) reactivates its original
+ * finding as blocking, per Decision 2.
  */
 export function evaluateFindings(doc, today) {
 	const blocking = [];
@@ -347,12 +282,9 @@ export function evaluateFindings(doc, today) {
 			blocking.push(`open finding: ${finding.rule} (${finding.path})`);
 			continue;
 		}
-		if (
-			finding.status === "exception" &&
-			finding.exception.review_after < today
-		) {
+		if (finding.review_after < today) {
 			blocking.push(
-				`expired exception: ${finding.rule} (${finding.path}) — review_after ${finding.exception.review_after} < ${today}`,
+				`expired exception: ${finding.rule} (${finding.path}) — review_after ${finding.review_after} < ${today}`,
 			);
 		}
 	}
@@ -376,11 +308,7 @@ export function runGate(cwd, options = {}) {
 		if (doc.scope_digest !== actualDigest) {
 			throw new GateError(
 				2,
-				`scope_digest mismatch at commit ${commit} — recorded ${doc.scope_digest}, recomputed ${actualDigest}. The attestation does not match these exact bytes (stale, partial, or never run). ` +
-					"If this commit is a genuine fix for a stale attestation (not new API-shaped changes), this is expected — a pre-commit hook can never see the bytes it is about to create. " +
-					"Commit with `git commit --no-verify`, then re-run this gate (`node scripts/api-standard-gate.mjs`) against the new HEAD to confirm it now passes. " +
-					"If your change doesn't touch API-shaped files at all, an earlier commit already left the attestation stale — the same fix applies. " +
-					"Do not hand-edit findings.json to force a match; recompute it via the api-standard-check skill instead.",
+				`scope_digest mismatch at commit ${commit} — recorded ${doc.scope_digest}, recomputed ${actualDigest}. The attestation does not match these exact bytes (stale, partial, or never run).`,
 			);
 		}
 
