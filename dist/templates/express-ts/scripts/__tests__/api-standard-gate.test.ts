@@ -483,8 +483,7 @@ describe("Decision 2, fail condition (c): exception missing rule/reason/approver
 				rule: "ADR-0013/webhook-signing",
 				path: "src/lib/redis.ts",
 				status: "exception",
-				approver: "thomas",
-				review_after: "2099-01-01",
+				exception: { approver: "thomas", review_after: "2099-01-01" },
 			},
 		]);
 		const result = runGate(repo, { today: TODAY });
@@ -498,8 +497,10 @@ describe("Decision 2, fail condition (c): exception missing rule/reason/approver
 				rule: "ADR-0013/webhook-signing",
 				path: "src/lib/redis.ts",
 				status: "exception",
-				reason: "no third-party sender to verify",
-				review_after: "2099-01-01",
+				exception: {
+					reason: "no third-party sender to verify",
+					review_after: "2099-01-01",
+				},
 			},
 		]);
 		const result = runGate(repo, { today: TODAY });
@@ -513,13 +514,43 @@ describe("Decision 2, fail condition (c): exception missing rule/reason/approver
 				rule: "ADR-0013/webhook-signing",
 				path: "src/lib/redis.ts",
 				status: "exception",
-				reason: "no third-party sender to verify",
-				approver: "thomas",
+				exception: {
+					reason: "no third-party sender to verify",
+					approver: "thomas",
+				},
 			},
 		]);
 		const result = runGate(repo, { today: TODAY });
 		expect(result.code).toBe(2);
 		expect(result.message).toContain("review_after");
+	});
+
+	it("exception fields flat on the finding (not nested) fail with exit 2", () => {
+		const repo = seedRepoWithFindings([
+			{
+				rule: "ADR-0013/webhook-signing",
+				path: "src/lib/redis.ts",
+				status: "exception",
+				reason: "no third-party sender to verify",
+				approver: "thomas",
+				review_after: "2099-01-01",
+			},
+		]);
+		const result = runGate(repo, { today: TODAY });
+		expect(result.code).toBe(2);
+		expect(result.message).toContain("nested");
+	});
+
+	it("'not_applicable' status is accepted and never blocks", () => {
+		const repo = seedRepoWithFindings([
+			{
+				rule: "ADR-0012/tenant-cache-key",
+				path: "src/lib/redis.ts",
+				status: "not_applicable",
+			},
+		]);
+		const result = runGate(repo, { today: TODAY });
+		expect(result.code).toBe(0);
 	});
 
 	it("a finding missing 'rule' entirely fails with exit 2 regardless of status", () => {
@@ -540,9 +571,11 @@ describe("Decision 2, fail condition (d): review_after < today (expired exceptio
 				rule: "ADR-0013/webhook-signing",
 				path: "src/lib/redis.ts",
 				status: "exception",
-				reason: "no third-party sender to verify",
-				approver: "thomas",
-				review_after: "2020-01-01",
+				exception: {
+					reason: "no third-party sender to verify",
+					approver: "thomas",
+					review_after: "2020-01-01",
+				},
 			},
 		]);
 		const result = runGate(repo, { today: TODAY });
@@ -556,9 +589,11 @@ describe("Decision 2, fail condition (d): review_after < today (expired exceptio
 				rule: "ADR-0013/webhook-signing",
 				path: "src/lib/redis.ts",
 				status: "exception",
-				reason: "no third-party sender to verify",
-				approver: "thomas",
-				review_after: "2099-01-01",
+				exception: {
+					reason: "no third-party sender to verify",
+					approver: "thomas",
+					review_after: "2099-01-01",
+				},
 			},
 		]);
 		const result = runGate(repo, { today: TODAY });

@@ -1,0 +1,9 @@
+# @colidevs/* packages (e.g. @colidevs/api-kit, ADR 0014 §"@colidevs/api-kit")
+# are published to colidevs' own Verdaccio registry, not the public npm
+# registry. Scoped so `pnpm install` resolves them without affecting
+# resolution of any other package. Same convention as
+# `templates/nextjs-kumo-console/.npmrc.template` — see this template's own
+# `index.ts`'s `restoreNpmrcFiles` for why this ships as `.npmrc.template`
+# and gets renamed back to `.npmrc` at scaffold time (pnpm pack/publish
+# unconditionally strips a file literally named `.npmrc`).
+@colidevs:registry=https://verdaccio.coli.com.ar
