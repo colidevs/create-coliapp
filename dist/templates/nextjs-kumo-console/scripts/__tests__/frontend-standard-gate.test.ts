@@ -52,8 +52,26 @@ const scriptPath = path.resolve(
 );
 const TODAY = "2026-08-22";
 
+/**
+ * Environment for every spawned `git` call in this suite, with all `GIT_*`
+ * variables stripped. When this test file runs from inside a git hook (e.g.
+ * the repo's own pre-commit hook, which runs `pnpm test`), the hook's
+ * process environment carries `GIT_DIR`/`GIT_WORK_TREE`/`GIT_INDEX_FILE`
+ * scoped to the commit currently in progress. A child `git` process
+ * inheriting those variables ignores the explicit `cwd` passed to `initRepo`
+ * below and silently operates against the REAL repository instead of the
+ * intended `mkdtempSync` sandbox — confirmed directly on this suite's
+ * sibling (`api-standard-gate.test.ts`): without this fix, every "isolated"
+ * fixture commit lands on the real repository's HEAD when the suite runs
+ * inside a pre-commit hook, corrupting it. Found 2026-08-29 — see
+ * docs/backlog.md for the full incident.
+ */
+const GIT_ENV = Object.fromEntries(
+	Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")),
+) as NodeJS.ProcessEnv;
+
 function git(args: string[], cwd: string): string {
-	return execFileSync("git", args, { cwd, encoding: "utf8" });
+	return execFileSync("git", args, { cwd, encoding: "utf8", env: GIT_ENV });
 }
 
 const createdRepos: string[] = [];
@@ -392,10 +410,7 @@ describe("resolveCommit ignores process.env.GITHUB_SHA (same real-CI regression 
 
 	it("resolveCommit always returns cwd's own HEAD, never the unrelated env var", () => {
 		const repo = seedCleanRepo();
-		const expected = execFileSync("git", ["rev-parse", "HEAD"], {
-			cwd: repo,
-			encoding: "utf8",
-		}).trim();
+		const expected = git(["rev-parse", "HEAD"], repo).trim();
 		const previousGithubSha = process.env.GITHUB_SHA;
 		process.env.GITHUB_SHA = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
 		try {
