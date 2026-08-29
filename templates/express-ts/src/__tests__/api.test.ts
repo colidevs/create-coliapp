@@ -1,6 +1,23 @@
 import supertest from "supertest";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { api } from "@/api";
+
+// `@/lib/auth` is mocked to a resolved session here (unlike the 401 case
+// covered in `src/__tests__/adr-audit-regression.test.ts` and
+// `src/v1/middlewares/__tests__/auth.test.ts`) so `GET /api/v1/me` below can
+// exercise the full, real app — including `express-openapi-validator`
+// validating the response against `openapi/openapi.yaml` — without a real
+// Postgres/`BETTER_AUTH_*` env.
+vi.mock("@/lib/auth", () => ({
+	getAuth: () => ({
+		api: {
+			getSession: vi.fn().mockResolvedValue({
+				session: { id: "sess_1" },
+				user: { id: "usr_1", email: "jane@example.com" },
+			}),
+		},
+	}),
+}));
 
 /**
  * @description End-to-end smoke test for the full middleware chain wired in
@@ -27,6 +44,14 @@ describe("api — full middleware chain", () => {
 			.get("/api/v1/healthcheck/status")
 			.expect(200);
 		expect(res.body).toHaveProperty("msg");
+	});
+
+	it("GET /api/v1/me is gated by Better Auth's session-checking middleware and passes OpenAPI validation", async () => {
+		const res = await supertest(api)
+			.get("/api/v1/me")
+			.set("Authorization", "Bearer some-session-token")
+			.expect(200);
+		expect(res.body).toEqual({ id: "usr_1", email: "jane@example.com" });
 	});
 
 	it("an undocumented /api/v1 path is rejected by the OpenAPI validator before any handler runs", async () => {

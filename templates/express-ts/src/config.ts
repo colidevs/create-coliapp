@@ -5,8 +5,8 @@ const {
 	DATABASE_URL,
 	DATABASE_RUNTIME_URL,
 	DATABASE_OWNER_URL,
-	BASIC_AUTH_USER,
-	BASIC_AUTH_PWD,
+	BETTER_AUTH_SECRET,
+	BETTER_AUTH_URL,
 	REDIS_URL,
 	SUPABASE_URL,
 	SUPABASE_KEY,
@@ -41,9 +41,15 @@ export const config = {
 	postgrest: {
 		url: POSTGREST_URL,
 	},
-	basicAuth: {
-		user: BASIC_AUTH_USER,
-		pwd: BASIC_AUTH_PWD,
+	/**
+	 * Better Auth (`src/lib/auth.ts`) — `bearer` + `emailAndPassword` only.
+	 * Deliberately no separate database-connection env var here: Better Auth
+	 * reuses `db.runtimeUrl` above, the same connection string
+	 * `src/lib/db/client.ts`'s Drizzle pool already uses.
+	 */
+	betterAuth: {
+		secret: BETTER_AUTH_SECRET,
+		url: BETTER_AUTH_URL,
 	},
 	redis: {
 		url: REDIS_URL,

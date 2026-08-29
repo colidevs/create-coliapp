@@ -1,4 +1,5 @@
 import path from "node:path";
+import { toNodeHandler } from "better-auth/node";
 import cors from "cors";
 import type { ErrorRequestHandler, RequestHandler, Router } from "express";
 import express from "express";
@@ -6,6 +7,7 @@ import * as OpenApiValidator from "express-openapi-validator";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import { config } from "@/config";
+import { getAuth } from "@/lib/auth";
 import { healthRouter } from "@/v1/modules/health/route";
 import { v1ErrorHandler } from "@/v1/res/error-handler";
 import { v1Router } from "@/v1/route";
@@ -79,6 +81,14 @@ api.use(
 // (Compose HEALTHCHECK / Ansible rollout gating), not part of the
 // versioned, Apidog-designed API contract.
 api.use(healthRouter);
+
+// Better Auth needs the raw, unparsed request body — mounted before
+// `express.json()` below. Express 5 (path-to-regexp v6+) requires a named
+// wildcard (`*splat`), not a bare `*`. `getAuth()` is called lazily, inside
+// the handler, not at module-load time — see `src/lib/auth.ts`'s doc comment
+// for why (this template's test suite imports this module with no
+// `BETTER_AUTH_*`/`DATABASE_RUNTIME_URL` env vars set).
+api.all("/api/auth/*splat", (req, res) => toNodeHandler(getAuth())(req, res));
 
 api.use(express.json());
 api.use(express.urlencoded({ extended: true }));
