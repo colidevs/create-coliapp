@@ -5,10 +5,13 @@ Next.js console app on Kumo UI (`@cloudflare/kumo`), scaffolded from `create-col
 frontend standard (ADR 0001, 0004, 0013, 0014, 0019-0026 in the hefesto repo, mirrored under
 `.claude/rules/console-*.md` and `.claude/rules/frontend-*.md`).
 
-This is the Phase 4 (cross-cutting concerns) state: Phase 1's skeleton, Phase 2's auth/tenant layer,
-Phase 3's contract-first `orders` CRUD example, plus Phase 4's own additions — a real demo `/login`
-route, static CSP/`Permissions-Policy`, an ECharts example, signed Thumbor image usage, Storybook
-component tests, Playwright E2E (+ `@axe-core/playwright`), and a Lighthouse CI budget.
+This is the Phase 4 (cross-cutting concerns) state, plus Arc A4's real Better Auth wiring on top:
+Phase 1's skeleton, Phase 2's auth/tenant layer, Phase 3's contract-first `orders` CRUD example,
+Phase 4's own additions (a `/login` route, static CSP/`Permissions-Policy`, an ECharts example,
+signed Thumbor image usage, Storybook component tests, Playwright E2E with
+`@axe-core/playwright`, and a Lighthouse CI budget), and Arc A4's real login flow against
+`templates/express-ts`'s Better Auth instance, alongside (not replacing) the original MSW/demo
+flow — see "Login / auth" below.
 
 ## `orders` module (Phase 3)
 
@@ -43,14 +46,35 @@ change.
 `src/proxy.ts`'s optimistic Proxy matcher already covers `/orders/:path*` (updated in Phase 3) —
 `verifySession()` is the real authorization boundary regardless.
 
-## Login / auth (Phase 4)
+## Login / auth (Phase 4, real backend added Arc A4)
 
-`src/app/login/` — the demo sign-in route Phase 2 deferred (there is still no real backend auth;
-`templates/express-ts` ships only HTTP Basic Auth). `src/app/login/actions.ts`'s `signInDemoAction`
-sets the `session_id` cookie to a fixed truthy value and redirects to `?from=` (the path `proxy.ts`
-already round-trips) or `/orders`. See that file's own doc comment for exactly why a "Sign in as demo
-user" button — not an invented username/password UI — is the honest scope here: MSW's
-`/api/v1/session` handler only ever checks the cookie's presence, never a credential.
+`src/app/login/page.tsx` renders one of two mutually-exclusive paths, gated on `API_MOCKING`:
+
+- **Real** (`API_MOCKING` unset/anything else) — `src/app/login/login-form.client.tsx`, a genuine
+  email/password form against `src/lib/auth-client.ts`'s Better Auth React client
+  (`createAuthClient`, no bearer plugin/`localStorage` — same-root-domain httpOnly cookies only),
+  talking to `templates/express-ts`'s real Better Auth instance (`bearer` + `emailAndPassword`,
+  Arc A1/A2 of hefesto's `docs/backlog/e2e-buildable-toolset-plan.md`).
+- **MSW/demo** (`API_MOCKING=enabled`, the default) — `src/app/login/actions.ts`'s
+  `signInDemoAction`, sets the `SESSION_COOKIE` (`src/lib/session.ts`; matches Better Auth's own
+  default `better-auth.session_token` cookie name) to a fixed truthy value and redirects via
+  `resolveSafeRedirect` to `?from=` (the path `proxy.ts` already round-trips) or `/orders`. See that
+  file's own doc comment for exactly why a "Sign in as demo user" button — not an invented
+  username/password UI — is the honest scope for *this* path: MSW's `/api/v1/session` handler only
+  ever checks the cookie's presence, never a credential. `e2e/login.spec.ts` still exercises exactly
+  this path (Playwright's `webServer.env` fixes `API_MOCKING=enabled`).
+
+`src/lib/dal.ts`'s `verifySession()` mirrors the same split when reading a session back: MSW's
+`/api/v1/session` (full multi-tenant `sessionSchema`) vs. the real `/api/v1/me`
+(`meResponseSchema`, mapped onto the same shape via `sessionFromMeResponse` — see that function's
+doc comment in `src/lib/session.ts` for the disclosed personal-workspace placeholder used until
+Arc A3 wires real tenant/membership data).
+
+**Real backend requires backend-side CORS/`trustedOrigins` wiring this template does not own** —
+`templates/express-ts`'s `CORS_ALLOWED_ORIGINS` must include this app's dev origin
+(`http://localhost:3000`), and its `cors()` middleware needs `credentials: true` added (not
+present as of Arc A1/A2) for the browser's cross-port cookie flow to work. See this repo's PR
+history for the exact, tracked follow-up.
 
 `src/components/tenant-switcher.client.tsx` is the UI trigger for `selectTenant`
 (`src/lib/actions/select-tenant.ts`) that didn't exist before this phase — mounted in
@@ -104,18 +128,22 @@ cp .env.example .env.local
 pnpm dev
 ```
 
-## Auth/tenant layer (Phase 2)
+## Auth/tenant layer (Phase 2, real backend option added Arc A4)
 
-**No real backend exists yet.** `templates/express-ts` ships only HTTP Basic Auth — no session
-issuance, no `/session` endpoint. Per this change's design decision D2, [MSW](https://mswjs.io/) is
-the default dev/test backend for everything, including session/membership data; `API_BASE_URL` (see
-`.env.example`) is switchable to a real `express-ts` instance once one exists.
+Per design decision D2, [MSW](https://mswjs.io/) remains a fully supported dev/test backend for
+everything, including session/membership data — unchanged, not replaced. `templates/express-ts` now
+also ships a real Better Auth instance (`bearer` + `emailAndPassword`, Arc A1/A2), gating a real
+`GET /api/v1/me`. `API_BASE_URL`/`NEXT_PUBLIC_API_BASE_URL`/`API_MOCKING` (see `.env.example`)
+switch between the two — no code change needed either way.
 
-- `src/lib/session.ts` — shared session/tenant types, Zod schemas, and the pure
-  `resolveActiveTenantId` tenant-scoping helper.
+- `src/lib/session.ts` — shared session/tenant types, Zod schemas (`sessionSchema` for the MSW path,
+  `meResponseSchema` for the real one), the pure `resolveActiveTenantId` tenant-scoping helper,
+  `sessionFromMeResponse` (the real→`Session` mapping, with its disclosed personal-workspace
+  placeholder), and `resolveSafeRedirect` (the shared open-redirect guard both login paths use).
 - `src/lib/dal.ts` — `verifySession()`, the real Data Access Layer boundary (`server-only`, React
-  `cache()`). Redirects to `/login` when the session is absent or invalid — see "Login / auth (Phase
-  4)" above for the now-real `/login` route.
+  `cache()`). Redirects to `/login` when the session is absent or invalid — see "Login / auth" above.
+- `src/lib/auth-client.ts` — Better Auth's React client (`createAuthClient`), browser-side, backing
+  the real login form.
 - `src/proxy.ts` — the optimistic, cookie-presence-only fast path (Next.js's renamed
   `middleware.ts`). UX-shaping only; `verifySession()` is the real check.
 - `src/lib/actions/select-tenant.ts` — the only writer of the httpOnly `active_tenant` cookie,
