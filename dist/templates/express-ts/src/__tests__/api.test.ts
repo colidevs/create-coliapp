@@ -22,6 +22,13 @@ vi.mock("@/lib/auth", () => ({
 	}),
 }));
 
+// Arc A7's service-to-service static-key gate (`src/v1/middlewares/
+// service-auth.ts`) applies to every `/api/v1` route. `vitest.config.ts`
+// sets `SERVICE_KEY=test-service-key` in `process.env` before this (or any)
+// test file's modules are evaluated, so `@/config`'s `serviceAuth.key`
+// resolves to this same value here — no mocking needed for the happy path.
+const VALID_SERVICE_KEY = "test-service-key";
+
 /**
  * @description End-to-end smoke test for the full middleware chain wired in
  * `src/api.ts` (task 3.7/3.9): helmet, CORS, rate limiting, `/health`+
@@ -42,14 +49,26 @@ describe("api — full middleware chain", () => {
 		expect(res.body.checks).toHaveProperty("db");
 	});
 
-	it("GET /api/v1/healthcheck/status passes OpenAPI validation and returns 200", async () => {
+	it("GET /api/v1/healthcheck/status passes OpenAPI validation and returns 200 with a valid service key", async () => {
 		const res = await supertest(api)
 			.get("/api/v1/healthcheck/status")
+			.set("x-service-key", VALID_SERVICE_KEY)
 			.expect(200);
 		expect(res.body).toHaveProperty("msg");
 	});
 
-	it("GET /api/v1/me is gated by Better Auth's session-checking middleware and passes OpenAPI validation", async () => {
+	it("GET /api/v1/healthcheck/status 401s with no service key, even though it is a public/unauthenticated route otherwise", async () => {
+		// The service-key gate (Arc A7) is coarser than and independent of any
+		// per-route auth — `/healthcheck/status` is public with respect to
+		// Better Auth (openapi.yaml's `security: []`), but still gated by
+		// `src/v1/middlewares/service-auth.ts`, mounted on `v1Router` ahead of
+		// every route.
+		const res = await supertest(api).get("/api/v1/healthcheck/status");
+		expect(res.status).toBe(401);
+		expect(res.headers["content-type"]).toContain("application/problem+json");
+	});
+
+	it("GET /api/v1/me is gated by Better Auth's session-checking middleware AND the service key, and passes OpenAPI validation", async () => {
 		// Cookie, not `Authorization: Bearer` — the OpenAPI spec's
 		// `sessionCookie` scheme (Arc A6's real-flow fix, 2026-08-29) matches
 		// how `src/v1/middlewares/auth.ts` actually authenticates (Better
@@ -60,12 +79,43 @@ describe("api — full middleware chain", () => {
 		const res = await supertest(api)
 			.get("/api/v1/me")
 			.set("Cookie", "better-auth.session_token=some-session-token")
+			.set("x-service-key", VALID_SERVICE_KEY)
 			.expect(200);
 		expect(res.body).toEqual({ id: "usr_1", email: "jane@example.com" });
 	});
 
+	it("GET /api/v1/me 401s with a valid session but a missing service key (Arc A7 — both factors required together)", async () => {
+		const res = await supertest(api)
+			.get("/api/v1/me")
+			.set("Cookie", "better-auth.session_token=some-session-token");
+
+		expect(res.status).toBe(401);
+		expect(res.headers["content-type"]).toContain("application/problem+json");
+	});
+
+	it("GET /api/v1/me 401s with a valid session but an invalid service key", async () => {
+		const res = await supertest(api)
+			.get("/api/v1/me")
+			.set("Cookie", "better-auth.session_token=some-session-token")
+			.set("x-service-key", "wrong-key");
+
+		expect(res.status).toBe(401);
+		expect(res.headers["content-type"]).toContain("application/problem+json");
+	});
+
+	it("GET /api/v1/me 401s with a valid service key but no session", async () => {
+		const res = await supertest(api)
+			.get("/api/v1/me")
+			.set("x-service-key", VALID_SERVICE_KEY);
+
+		expect(res.status).toBe(401);
+		expect(res.headers["content-type"]).toContain("application/problem+json");
+	});
+
 	it("an undocumented /api/v1 path is rejected by the OpenAPI validator before any handler runs", async () => {
-		const res = await supertest(api).get("/api/v1/definitely-not-a-real-route");
+		const res = await supertest(api)
+			.get("/api/v1/definitely-not-a-real-route")
+			.set("x-service-key", VALID_SERVICE_KEY);
 		expect(res.status).toBe(404);
 	});
 
