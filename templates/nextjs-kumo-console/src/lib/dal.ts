@@ -3,11 +3,14 @@ import "server-only";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
-import type { Membership, Session } from "@/lib/session";
+import type { Membership, MeResponse, Session } from "@/lib/session";
 import {
 	ACTIVE_TENANT_COOKIE,
+	API_BASE_URL,
+	meResponseSchema,
 	resolveActiveTenantId,
 	SESSION_COOKIE,
+	sessionFromMeResponse,
 	sessionSchema,
 } from "@/lib/session";
 
@@ -18,13 +21,6 @@ export interface ActiveSession extends Session {
 	activeTenantId: string;
 }
 
-// Switchable per design decision D2 (kumo-console-template SDD change): MSW is
-// the default dev/test backend, including auth/session data. Nothing here may
-// assume a real backend is present — API_BASE_URL points at a running
-// express-ts instance once one exists; until then it resolves against the
-// MSW node server wired in src/instrumentation.ts + src/mocks/node.ts.
-const API_BASE_URL = process.env.API_BASE_URL ?? "http://localhost:3000";
-
 /**
  * The real authorization boundary (frontend-security-auth.md's Data Access
  * Layer tier — `proxy.ts`'s cookie-presence check is only the optimistic,
@@ -32,18 +28,27 @@ const API_BASE_URL = process.env.API_BASE_URL ?? "http://localhost:3000";
  * only ever looks the session up once, no matter how many Server Components
  * call it.
  *
- * Reads the httpOnly session cookie, forwards it to the mocked (or, later,
- * real) `/api/v1/session` endpoint, validates the response shape with Zod,
- * and resolves the active tenant. Redirects to `/login` whenever the session
- * is absent, the backend rejects it, or the response doesn't parse — this
- * function never returns a fixed truthy placeholder.
+ * Reads the httpOnly session cookie and forwards it to one of two backends,
+ * gated by the same `API_MOCKING` on/off signal `src/instrumentation.ts`
+ * already uses to decide whether to start the MSW node server (design
+ * decision D2 stays in force — MSW remains a fully supported dev/test
+ * option, not replaced):
  *
- * **Known gap (flagged, not silently filled)**: `/login` is not yet a real
- * route in this template — there is no login flow to build in this phase
- * (Phase 2 of `kumo-console-template`; a real login page/form is explicitly
- * out of scope here). Any request that actually reaches this redirect today
- * 404s. See this phase's report for why that's a deliberate, flagged gap
- * rather than something patched over here.
+ * - **MSW/mock** (`API_MOCKING=enabled`, the default): `/api/v1/session`,
+ *   MSW-mocked (`src/mocks/handlers.ts`), validated against the full
+ *   multi-tenant `sessionSchema`.
+ * - **Real backend** (`API_MOCKING` unset/anything else, Arc A4 —
+ *   hefesto's `docs/backlog/e2e-buildable-toolset-plan.md`): `/api/v1/me`,
+ *   `templates/express-ts`'s real Better Auth-gated route (Arc A1/A2),
+ *   validated against `meResponseSchema` and mapped onto the same `Session`
+ *   shape via `sessionFromMeResponse` — see that function's own doc comment
+ *   in `src/lib/session.ts` for the disclosed personal-workspace
+ *   placeholder this uses pending Arc A3's real tenant/membership data.
+ *
+ * Either way, this function redirects to `/login` whenever the session
+ * cookie is absent, the backend rejects it, or the response doesn't parse —
+ * it never returns a fixed truthy placeholder. `/login` is now a real route
+ * (`src/app/login/page.tsx`), closing the gap this doc comment used to flag.
  */
 export const verifySession = cache(async (): Promise<ActiveSession> => {
 	const cookieStore = await cookies();
@@ -53,7 +58,10 @@ export const verifySession = cache(async (): Promise<ActiveSession> => {
 		redirect("/login");
 	}
 
-	const response = await fetch(`${API_BASE_URL}/api/v1/session`, {
+	const usingRealBackend = process.env.API_MOCKING !== "enabled";
+	const endpoint = usingRealBackend ? "/api/v1/me" : "/api/v1/session";
+
+	const response = await fetch(`${API_BASE_URL}${endpoint}`, {
 		headers: { cookie: `${SESSION_COOKIE}=${sessionCookie}` },
 		cache: "no-store",
 	});
@@ -62,16 +70,23 @@ export const verifySession = cache(async (): Promise<ActiveSession> => {
 		redirect("/login");
 	}
 
-	const parsed = sessionSchema.safeParse(await response.json());
+	const body: unknown = await response.json();
+	const parsed = usingRealBackend
+		? meResponseSchema.safeParse(body)
+		: sessionSchema.safeParse(body);
 
 	if (!parsed.success) {
 		redirect("/login");
 	}
 
+	const session: Session = usingRealBackend
+		? sessionFromMeResponse(parsed.data as MeResponse)
+		: (parsed.data as Session);
+
 	const activeTenantId = resolveActiveTenantId(
-		parsed.data,
+		session,
 		cookieStore.get(ACTIVE_TENANT_COOKIE)?.value,
 	);
 
-	return { ...parsed.data, activeTenantId };
+	return { ...session, activeTenantId };
 });
