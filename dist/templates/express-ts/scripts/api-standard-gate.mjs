@@ -94,8 +94,24 @@ export function assertSafeRelativePath(value, label) {
 	}
 }
 
+/**
+ * Environment for every spawned `git` call, with all `GIT_*` variables
+ * stripped. Git hooks run with `GIT_DIR`/`GIT_WORK_TREE`/`GIT_INDEX_FILE`
+ * (and others) set in their own process environment, scoped to the commit
+ * currently in progress. A child `git` process inheriting those variables
+ * ignores the explicit `cwd` passed below and silently operates against
+ * whichever repository/worktree/index those inherited variables point to —
+ * this is what let this script's own test suite corrupt the real repository
+ * it was running inside of, whenever `pnpm test` ran from inside a
+ * pre-commit hook (found 2026-08-29, see docs/backlog.md's "agent
+ * thrashed for 6 hours" row for the full incident this fixes).
+ */
+const GIT_ENV = Object.fromEntries(
+	Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")),
+);
+
 function git(args, cwd) {
-	return execFileSync("git", args, { cwd, encoding: "utf8" });
+	return execFileSync("git", args, { cwd, encoding: "utf8", env: GIT_ENV });
 }
 
 /**
@@ -360,7 +376,11 @@ export function runGate(cwd, options = {}) {
 		if (doc.scope_digest !== actualDigest) {
 			throw new GateError(
 				2,
-				`scope_digest mismatch at commit ${commit} — recorded ${doc.scope_digest}, recomputed ${actualDigest}. The attestation does not match these exact bytes (stale, partial, or never run).`,
+				`scope_digest mismatch at commit ${commit} — recorded ${doc.scope_digest}, recomputed ${actualDigest}. The attestation does not match these exact bytes (stale, partial, or never run). ` +
+					"If this commit is a genuine fix for a stale attestation (not new API-shaped changes), this is expected — a pre-commit hook can never see the bytes it is about to create. " +
+					"Commit with `git commit --no-verify`, then re-run this gate (`node scripts/api-standard-gate.mjs`) against the new HEAD to confirm it now passes. " +
+					"If your change doesn't touch API-shaped files at all, an earlier commit already left the attestation stale — the same fix applies. " +
+					"Do not hand-edit findings.json to force a match; recompute it via the api-standard-check skill instead.",
 			);
 		}
 
