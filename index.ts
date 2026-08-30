@@ -126,7 +126,7 @@ async function main() {
   // replace {{name}} on package.json, README.md, src/app/layout.tsx
   await replaceName(destination, answer.name);
 
-  projectCreatedSuccessfully(answer.name);
+  projectCreatedSuccessfully(answer.name, answer.template);
 }
 
 main().catch(console.error);
@@ -191,7 +191,27 @@ async function restoreNpmrcFiles(destination: string) {
   }
 }
 
-function projectCreatedSuccessfully(projectName: string) {
+/**
+ * Points a scaffolded project at the colidevs standard plugin relevant to its
+ * template, if any — real discoverability for `coli-marketplace`'s
+ * `api-standard`/`frontend-standard` plugins, surfaced at the one moment every
+ * scaffolded project reaches: the CLI's own completion message. Deliberately
+ * not wired into any `sdd-*` skill (see hefesto's own standing rule against
+ * touching those files) — this lives entirely in the scaffolder's own output.
+ */
+function standardPluginHint(template: string): string | undefined {
+  if (template === "express-ts") {
+    return "Building an API? Check colidevs' `api-standard` plugin (coli-marketplace) for design-time guidance against colidevs' API standard.";
+  }
+
+  if (template === "nextjs-kumo-console") {
+    return "Building a console? Check colidevs' `frontend-standard` plugin (coli-marketplace) for design-time guidance against colidevs' frontend standard.";
+  }
+
+  return undefined;
+}
+
+function projectCreatedSuccessfully(projectName: string, template: string) {
   $("\nProject created successfully 🚀🚀");
 
   $("--------------------------------------------------");
@@ -202,4 +222,11 @@ function projectCreatedSuccessfully(projectName: string) {
   $("--------------------------------------------------");
   $("Run dev server:");
   $("👉", "pnpm dev\n");
+
+  const hint = standardPluginHint(template);
+
+  if (hint) {
+    $("--------------------------------------------------");
+    $("💡", hint, "\n");
+  }
 }
