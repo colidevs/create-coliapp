@@ -19,3 +19,11 @@
 # finding — not this hook's job to work around.
 pnpm exec biome check . || exit 1
 pnpm exec tsc --noEmit || exit 1
+
+# OpenAPI generate-and-diff freshness (ADR 0040's 2026-08-31 addendum).
+# Unlike `scripts/api-standard-gate.mjs` (`.husky/pre-push`), this reads the
+# WORKING-TREE `openapi/openapi.yaml`, not a committed git blob — so, unlike
+# that gate, it works correctly at pre-commit time and belongs here, not
+# pre-push. Fast (sub-second): a small in-memory Zod→OpenAPI regeneration,
+# no network, no git history walk.
+pnpm run generate:openapi:check || exit 1

@@ -14,6 +14,11 @@ name: API Standard (schema-shape)
 # Schema-shape (ADR 0009 + ADR 0011): Spectral (this template's own
 # `.spectral.yaml`), oasdiff (additive-only diff), license-checker.
 #
+# Plus the generate-and-diff freshness check (ADR 0040's 2026-08-31
+# addendum, superseding ADR 0005): `scripts/generate-openapi.ts --check`
+# re-runs this template's Zod→OpenAPI generation and fails the job if
+# `openapi/openapi.yaml` has drifted from its own generation source.
+#
 # Plus the attestation gate (Phase 3 of the same SDD change):
 # `scripts/api-standard-gate.mjs` recomputes `api-standard/findings.json`'s
 # `scope_digest` against the checked-out commit and fails closed on any
@@ -56,6 +61,17 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      # Generate-and-diff freshness check (ADR 0040's 2026-08-31 addendum,
+      # "generate-and-diff verification is mandatory, not implied"):
+      # re-runs the Zod→OpenAPI generation step (`scripts/generate-
+      # openapi.ts`) and fails if the committed `openapi/openapi.yaml`
+      # differs byte-for-byte from what the current Zod schemas produce.
+      # Distinct from, and runs before, the Spectral shape check below —
+      # this proves the file is CURRENT, Spectral proves it is well-formed;
+      # neither implies the other.
+      - name: OpenAPI spec freshness (ADR 0040 generate-and-diff)
+        run: pnpm run generate:openapi:check
 
       - name: Lint OpenAPI spec (ADR 0009 shape rules)
         run: pnpm run api-standard:lint
