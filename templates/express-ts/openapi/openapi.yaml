@@ -1,18 +1,25 @@
-# TEMPLATE PLACEHOLDER — replace with the real Apidog-exported spec (ADR
-# 0005 / `.claude/rules/api-design-apidog.md`: design the contract in Apidog
-# BEFORE implementation, this file is not where new endpoints should be
-# hand-authored going forward). Scaffolded here only so
-# `express-openapi-validator` (task 3.6) has a real, valid spec to validate
-# against out of the box, covering exactly this template's one existing
-# endpoint (`/api/v1/healthcheck/status`).
+# GENERATED FILE — DO NOT EDIT BY HAND.
+#
+# Produced by `pnpm generate:openapi` (`scripts/generate-openapi.ts`) from
+# this template's Zod schemas via `zod-openapi` — colidevs' code-first
+# OpenAPI standard (hefesto ADR 0040, superseding ADR 0005's Apidog-first
+# design mandate; see `.claude/rules/api-design-apidog.md`). To change this
+# document, edit the Zod schemas (`src/v1/modules/**/types.ts`,
+# `src/v1/res/problem-schema.ts`) and/or the route wiring in
+# `scripts/generate-openapi.ts`, then re-run the generator.
+#
+# `pnpm generate:openapi:check` (wired into
+# `.github/workflows/api-standard.yml`) fails the build the moment this
+# file drifts from a fresh regeneration — ADR 0040's 2026-08-31 addendum.
+
 openapi: 3.1.0
 info:
   title: "{{name}}"
-  version: "1.0.0"
-  description: >-
-    Minimal starter spec for this template's existing endpoints. Replace
-    wholesale with the real Apidog-exported OpenAPI document once the
-    project's actual API contract is designed there.
+  version: 1.0.0
+  description: Minimal starter spec for this template's existing endpoints,
+    generated from its Zod schemas (ADR 0040). Extend the schema/route modules
+    this script imports as the project's real API contract grows — never
+    hand-edit this file.
 servers:
   - url: /api/v1
 paths:
@@ -27,13 +34,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                required:
-                  - msg
-                properties:
-                  msg:
-                    type: string
-                    example: "V1 Healthcheck Status OK ✅"
+                $ref: "#/components/schemas/HealthcheckStatusResponse"
         default:
           description: Unexpected error
           content:
@@ -44,14 +45,11 @@ paths:
     get:
       operationId: getMe
       summary: Current authenticated caller
-      description: >-
-        Returns the caller's own identity, resolved from the Better Auth
-        session (`src/lib/auth.ts` / `src/v1/middlewares/auth.ts`). The one
-        route this template gates with real auth, replacing the previous
-        HTTP Basic Auth placeholder. Additionally requires the
-        service-to-service static key (`apiKeyAuth`, Arc A7) — both factors
-        together, not either/or: a single request must present a valid
-        session cookie AND a valid `x-service-key` header.
+      description: Returns the caller's own identity, resolved from the Better Auth
+        session (`src/lib/auth.ts` / `src/v1/middlewares/auth.ts`). Requires
+        both a valid session cookie AND the service-to-service static key
+        (`x-service-key`) — see the `sessionCookie`/`apiKeyAuth` security
+        schemes.
       security:
         - sessionCookie: []
           apiKeyAuth: []
@@ -61,18 +59,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                required:
-                  - id
-                  - email
-                properties:
-                  id:
-                    type: string
-                    example: "usr_01hz8p7q9k2m3n4p5q6r7s8t9u"
-                  email:
-                    type: string
-                    format: email
-                    example: "jane@example.com"
+                $ref: "#/components/schemas/MeResponse"
         "401":
           description: Missing or invalid session
           content:
@@ -86,80 +73,58 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
 components:
-  securitySchemes:
-    # Session cookie (ADR 0022 / frontend-security-auth.md: httpOnly cookies
-    # are the default token-storage mechanism for the same-root-domain
-    # topology this template assumes — Arc A4 of hefesto's
-    # e2e-buildable-toolset-plan.md). The actually-implemented middleware
-    # (`src/v1/middlewares/auth.ts`) reads Better Auth's own session cookie
-    # via `fromNodeHeaders`/`getAuth().api.getSession` — never an
-    # `Authorization: Bearer` header, which `express-openapi-validator`
-    # would otherwise demand and reject every real cookie-authenticated
-    # request with, before Better Auth's own check ever runs (found live,
-    # Arc A6 smoke test, 2026-08-29 — every `/me` call 401'd on the
-    # validator layer itself). `bearerAuth` remains available below for a
-    # future cross-root-domain deployment (ADR 0036's escape hatch) that
-    # genuinely needs Better Auth's `bearer` plugin instead.
-    sessionCookie:
-      type: apiKey
-      in: cookie
-      name: better-auth.session_token
-    # OAuth2 Bearer (ADR 0009 / api-communication-standard.md), for a
-    # cross-root-domain deployment using ADR 0036's escape hatch — not the
-    # default `/me` scheme (see `sessionCookie` above), kept available for
-    # a route/deployment that genuinely needs it.
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-    # Service-to-service static-key auth (ADR 0009's carve-out; Arc A7 of
-    # hefesto's e2e-buildable-toolset-plan.md). Enforced at runtime by
-    # `src/v1/middlewares/service-auth.ts`, mounted on `v1Router` ahead of
-    # every route — coarser than and independent of the per-route
-    # `sessionCookie`/`bearerAuth` checks above. Declared here only on `/me`
-    # (below) as a documented example of an AND-combined requirement; the
-    # actual middleware applies to every `/api/v1` operation regardless of
-    # what that operation's own `security` array says, per-operation
-    # `security: []` (e.g. `/healthcheck/status`) opts a route out of THIS
-    # scheme's presence check at the OpenAPI-validator layer only — it does
-    # not exempt that route from the real runtime middleware.
-    apiKeyAuth:
-      type: apiKey
-      in: header
-      name: x-service-key
   schemas:
-    # RFC 9457 Problem Details (ADR 0009 / api-communication-standard.md).
-    # Mirrors `src/v1/res/errors.ts`'s `ProblemDetails` interface.
+    HealthcheckStatusResponse:
+      type: object
+      properties:
+        msg:
+          type: string
+          description: Healthcheck status message
+          example: V1 Healthcheck Status OK ✅
+      required:
+        - msg
+      additionalProperties: false
+    MeResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          example: usr_01hz8p7q9k2m3n4p5q6r7s8t9u
+        email:
+          type: string
+          format: email
+          pattern: ^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$
+          example: jane@example.com
+      required:
+        - id
+        - email
+      additionalProperties: false
     Problem:
       type: object
-      required:
-        - type
-        - status
-        - title
       properties:
         type:
           type: string
           format: uri-reference
-          example: "https://coli.dev/errors/not-found"
+          description: A URI reference identifying the problem type.
+          example: https://coli.dev/errors/not-found
         status:
           type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
           example: 404
         title:
           type: string
-          example: "Resource not found."
+          example: Resource not found.
         detail:
+          example: Resource not found. order 1
           type: string
-          example: "Resource not found. order 1"
         instance:
+          example: /api/v1/orders/1
           type: string
-          example: "/api/v1/orders/1"
         errors:
           type: array
           items:
             type: object
-            required:
-              - field
-              - message
             properties:
               field:
                 type: string
@@ -167,3 +132,25 @@ components:
               message:
                 type: string
                 example: must be a valid email
+            required:
+              - field
+              - message
+            additionalProperties: false
+      required:
+        - type
+        - status
+        - title
+      additionalProperties: false
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: better-auth.session_token
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-service-key

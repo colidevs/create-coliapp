@@ -76,9 +76,23 @@ vs. Supabase-hosted):
 
 ## API contract
 
-`openapi/openapi.yaml` is a scaffolded placeholder — replace it with the real Apidog-exported spec
-(ADR 0005) as soon as one exists. `express-openapi-validator` validates every `/api/v1` request and
+`openapi/openapi.yaml` is a **generated file** — do not hand-edit it. It is produced from this
+template's Zod schemas (`src/v1/modules/**/types.ts`, `src/v1/res/problem-schema.ts`) via
+`zod-openapi`, colidevs' code-first OpenAPI standard (ADR 0040, superseding ADR 0005's prior
+Apidog-first design mandate). `express-openapi-validator` validates every `/api/v1` request and
 response against it before the route handler runs.
+
+Add a new endpoint by writing its request/response Zod schemas, wiring the route into
+`scripts/generate-openapi.ts`'s `buildDocument()`, then running:
+
+```sh
+pnpm generate:openapi
+```
+
+`pnpm generate:openapi:check` re-runs the same generation and diffs it byte-for-byte against the
+committed file without writing anything — it fails the moment the two disagree. It runs in
+`.husky/pre-commit` and as a CI step in `.github/workflows/api-standard.yml`, so a stale
+`openapi/openapi.yaml` cannot land on `main`.
 
 ### API standard checks (schema-shape)
 

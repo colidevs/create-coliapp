@@ -18,6 +18,8 @@
 		"test": "vitest run",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "drizzle-kit migrate",
+		"generate:openapi": "tsx scripts/generate-openapi.ts",
+		"generate:openapi:check": "tsx scripts/generate-openapi.ts --check",
 		"api-standard:lint": "spectral lint openapi/openapi.yaml --ruleset .spectral.yaml",
 		"api-standard:license": "license-checker-rseidelsohn --production --failOn \"GPL;LGPL;AGPL;SSPL\" --summary",
 		"prepare": "node .husky/install.mjs"
@@ -63,7 +65,10 @@
 		"license-checker-rseidelsohn": "5.0.1",
 		"supertest": "7.2.2",
 		"tsup": "8.5.1",
+		"tsx": "4.23.13",
 		"typescript": "7.0.2",
-		"vitest": "4.1.10"
+		"vitest": "4.1.10",
+		"yaml": "2.9.0",
+		"zod-openapi": "6.0.2"
 	}
 }

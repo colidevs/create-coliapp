@@ -80,7 +80,7 @@ api.use(
 // connectivity) per ADR 0009. Deliberately mounted OUTSIDE `/api/v1` and
 // BEFORE the OpenAPI validator below — these are infra-facing endpoints
 // (Compose HEALTHCHECK / Ansible rollout gating), not part of the
-// versioned, Apidog-designed API contract.
+// versioned, Zod-generated API contract (ADR 0040).
 api.use(healthRouter);
 
 // Better Auth needs the raw, unparsed request body — mounted before
@@ -107,8 +107,10 @@ api.use(cookieParser());
 
 // express-openapi-validator: validates every /api/v1 request/response
 // against the current OpenAPI spec BEFORE the route handler runs. See
-// `openapi/openapi.yaml` — a scaffolded placeholder pending the real
-// Apidog-exported spec (task 3.6).
+// `openapi/openapi.yaml` — generated from this template's Zod schemas via
+// `scripts/generate-openapi.ts` (ADR 0040, superseding ADR 0005's
+// Apidog-first design mandate). Only the spec's origin changed; this
+// validator's wiring is unaffected.
 api.use(
 	"/api/v1",
 	OpenApiValidator.middleware({
