@@ -1,16 +1,45 @@
 import { betterAuth } from "better-auth";
-import { bearer, jwt } from "better-auth/plugins";
+import { bearer, jwt, organization } from "better-auth/plugins";
 import { Pool } from "pg";
 import { config } from "@/config";
 import { EnvironmentError } from "@/v1/res/errors";
 
 /**
  * @description Better Auth wiring — `bearer` + `emailAndPassword` +, as of
- * hefesto's `docs/backlog/e2e-buildable-toolset-plan.md` Arc A3, `jwt`.
- * `organization`/`passkey` plugins remain out of scope — see
+ * hefesto's `docs/backlog/e2e-buildable-toolset-plan.md` Arc A3, `jwt` +, as
+ * of this change, `organization`. `passkey` remains out of scope — see
  * `colidevs/munod#44` (the validated production reference this template's
  * shape is drawn from).
  *
+ * **`organization` plugin — minimal wiring, closing a real finding, not a
+ * feature build.** hefesto's `backend-template-stack.md` (ADR 0014) always
+ * said to adopt `organization` + `passkey` + `bearer`, but this template
+ * never wired `organization` — its absence is exactly what let
+ * `src/v1/middlewares/cache.ts`'s `resolveTenantId()` fall back to reading
+ * the unauthenticated, client-controlled `x-tenant-id` header (the
+ * `adr0012.tenant-safe-caching` finding this change closes, see
+ * `api-standard/findings.json`). `organization()` is called with zero
+ * options — every option (`allowUserToCreateOrganization`, `creatorRole`,
+ * `membershipLimit`, ...) already defaults to a safe, documented value
+ * (`node_modules/better-auth/dist/plugins/organization/types.d.mts`), and
+ * this change needs none of them changed. No invite-flow UI, member-CRUD
+ * endpoints, or admin surface is built here — the plugin already exposes its
+ * own REST endpoints (`/api/auth/organization/*`) the moment it's
+ * registered; building a *console* around them is separate, larger,
+ * out-of-scope work.
+ *
+ * The one property this change actually needs: the plugin stamps
+ * `session.activeOrganizationId` onto every session (nullable — unset until
+ * a user has an organization), and **auto-sets it** the moment a user
+ * creates their first organization (`routes/crud-org.mjs`'s
+ * `createOrganization` calls `adapter.setActiveOrganization(...)`
+ * immediately after insert, unless the caller explicitly opts out via
+ * `keepCurrentActiveOrganization`) — confirmed by reading the actual
+ * `better-auth@1.7.2` plugin source, not assumed from docs. That field is
+ * what `src/v1/middlewares/auth.ts` now reads as the authenticated tenant
+ * identifier, replacing the raw header.
+ *
+
  * **PostgREST/JWT bridge (Arc A3, proposed — pending Thomas's review, not
  * yet an accepted ADR 0014 amendment)**: `bearer()` alone issues opaque
  * session tokens, which PostgREST cannot verify (it needs a JWT it can check
@@ -99,6 +128,7 @@ function createAuth() {
 					}),
 				},
 			}),
+			organization(),
 		],
 		trustedOrigins: config.cors.allowedOrigins,
 	});

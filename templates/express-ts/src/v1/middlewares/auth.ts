@@ -27,6 +27,13 @@ import type { ResponseWithSession } from "@/v1/types";
  * reaches this middleware from the client — the JWT is a server-minted,
  * internal credential for the PostgREST bridge, never exposed back to the
  * caller.
+ *
+ * Also attaches `res.locals.tenantId` — the `organization` plugin's
+ * `session.activeOrganizationId` (see `src/lib/auth.ts`), i.e. the real,
+ * authenticated tenant identifier. This is the source
+ * `src/v1/middlewares/cache.ts`'s `resolveTenantId()` now reads instead of
+ * the raw, client-controlled `x-tenant-id` header — closes the
+ * `adr0012.tenant-safe-caching` finding in `api-standard/findings.json`.
  */
 const auth = async (
 	req: Request,
@@ -44,6 +51,11 @@ const auth = async (
 
 	res.locals.session = session;
 	res.locals.jwt = token;
+	// Kysely/pg maps a nullable column to `string | null`, not `| undefined` —
+	// `?? undefined` normalizes it to this template's existing "absent"
+	// convention (`res.locals.tenantId?: string`, matching `RequestWithId`'s
+	// `id?: string`), never treating `null` and "unset" as different states.
+	res.locals.tenantId = session.session.activeOrganizationId ?? undefined;
 
 	next();
 };
