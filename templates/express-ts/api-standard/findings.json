@@ -1,6 +1,6 @@
 {
 	"version": 1,
-	"scope_digest": "sha256:PLACEHOLDER_RECOMPUTED_AFTER_COMMIT",
+	"scope_digest": "sha256:be903cd10c792df580e56c801a18cdcc1075541dcca8ea002c96b996734597bd",
 	"checked_at": "2026-09-02",
 	"findings": []
 }
