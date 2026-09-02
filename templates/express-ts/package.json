@@ -6,7 +6,7 @@
 	"main": "dist/index.cjs",
 	"scripts": {
 		"dev": "tsup --watch --onSuccess \"node --env-file=.env dist/index.cjs\"",
-		"dev:infisical": "infisical run --projectId $INFISICAL_PROJECT_ID --env prod --silent --domain https://infisical.coli.com.ar -- pnpm dev",
+		"dev:infisical": "infisical run --env=dev --path=/api -- pnpm dev",
 		"build": "tsup",
 		"start": "node dist/index.cjs",
 		"check": "biome check .",
