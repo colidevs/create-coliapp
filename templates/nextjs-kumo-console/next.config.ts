@@ -53,6 +53,23 @@ const nextConfig: NextConfig = {
 		},
 	},
 	async headers() {
+		// Production-only (addendum 2026-09-02): applying this CSP during
+		// `next dev` breaks two real things. (1) React needs `eval()` in dev
+		// to reconstruct server-side error stacks in the browser — Next's own
+		// CSP guide states this outright ("In development, you will need to
+		// enable 'unsafe-eval'..."), and this policy doesn't grant it at all,
+		// blocking dev debugging with a visible console error. (2) a fixed
+		// `connect-src 'self'` blocks testing from another device (e.g. a
+		// phone over Tailscale) without editing this file every time. CSP's
+		// actual job is done once it applies to the deployed target — gating
+		// the whole header set (not just relaxing `unsafe-eval`) resolves
+		// both frictions with one change. Explicit `=== "production"`, never
+		// a negated `!== "production"` — the latter would also silently
+		// loosen a `test` execution environment (e.g. Vitest).
+		if (process.env.NODE_ENV !== "production") {
+			return [];
+		}
+
 		return [
 			{
 				source: "/:path*",
