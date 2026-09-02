@@ -1,13 +1,6 @@
 {
 	"version": 1,
-	"scope_digest": "sha256:f10e50a0acba118bdc9c41db37b963ce9b011c262f9fd92fa4fcac11c5239770",
+	"scope_digest": "sha256:PLACEHOLDER_RECOMPUTED_AFTER_COMMIT",
 	"checked_at": "2026-09-02",
-	"findings": [
-		{
-			"rule": "adr0012.tenant-safe-caching",
-			"path": "src/v1/middlewares/cache.ts:13-24",
-			"status": "open",
-			"description": "resolveTenantId() (lines 13-17) reads the tenant ID used to build the Redis cache key directly from the unauthenticated, client-controlled `x-tenant-id` request header, then passes it unvalidated into tenantCacheKey() at line 24. Violates api-caching-resilience.md's Tenant-safe caching rule: 'Tenant ID is a cache-key dimension distinct from and never derived from Authorization/session identity — resolved server-side after auth validation, never trusted from a raw client header.' tenantCacheKey() itself (src/lib/redis.ts:143-161) is sound — it correctly requires a non-empty tenantId and throws if absent — but nothing here validates that the VALUE it is given actually belongs to the authenticated caller, so a client can set x-tenant-id to any value including another tenant's ID. Not currently wired to any route within this template (confirmed: `rg` for `middlewares/cache`/`cacheAndSend` outside cache.ts itself returns zero call sites), so not live/exploitable today — but this is the template's shipped, documented caching pattern and will be copied as-is by scaffolded projects the moment it is wired to a real tenant-scoped route."
-		}
-	]
+	"findings": []
 }

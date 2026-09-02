@@ -19,9 +19,36 @@ export interface ResponseWithContext extends Response {
  * handlers/middlewares (`src/lib/postgrest/express.ts`'s
  * `attachPostgrestClient`) can build a per-request PostgREST client without
  * re-deriving it from the raw, non-JWT `Authorization` header.
+ *
+ * `tenantId` is the authenticated tenant identifier — Better Auth's
+ * `organization` plugin's `session.activeOrganizationId`
+ * (`src/lib/auth.ts`), copied here by the `auth` middleware. Optional
+ * because a session's active organization is genuinely unset until a user
+ * has one. This is what `src/v1/middlewares/cache.ts` now reads instead of
+ * the raw, client-controlled `x-tenant-id` header — see
+ * `ResponseWithCacheContext` below.
  */
 export interface ResponseWithSession extends Response {
-	locals: Response["locals"] & { session: AuthSession; jwt: string };
+	locals: Response["locals"] & {
+		session: AuthSession;
+		jwt: string;
+		tenantId?: string;
+	};
+}
+
+/**
+ * @description Response shape `src/v1/middlewares/cache.ts` needs once it is
+ * wired behind both the `auth` middleware (sets `tenantId`, above) and the
+ * `context` middleware (sets `context`, `ResponseWithContext` above) on a
+ * real route. Composes the two independently-set `res.locals` fields rather
+ * than requiring cache.ts to depend on the full session/jwt shape it has no
+ * use for.
+ */
+export interface ResponseWithCacheContext extends Response {
+	locals: Response["locals"] & {
+		context: ResponseWithContext["locals"]["context"];
+		tenantId?: ResponseWithSession["locals"]["tenantId"];
+	};
 }
 
 /**

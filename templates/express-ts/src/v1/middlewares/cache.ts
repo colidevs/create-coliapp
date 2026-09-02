@@ -2,26 +2,36 @@ import type { NextFunction, Response } from "express";
 import { err, info, warn } from "@/lib/logger";
 import { getCache, setCache, tenantCacheKey } from "@/lib/redis";
 import { createApiResponse } from "@/v1/res/responses";
-import type { RequestWithId, ResponseWithContext } from "@/v1/types";
+import type { RequestWithId, ResponseWithCacheContext } from "@/v1/types";
 
 /**
- * @description Resolves the tenant ID for the current request. This reads
- * the `x-tenant-id` header as an interim resolution hook until a dedicated
- * tenant-context middleware lands (see ADR 0014 / RLS session pattern);
- * caching is skipped (fail-closed) whenever it cannot be resolved.
+ * @description Resolves the tenant ID for the current request from the
+ * authenticated session's active organization — never from a client-
+ * suppliable header. `res.locals.tenantId` is populated by the `auth`
+ * middleware (`src/v1/middlewares/auth.ts`) from Better Auth's
+ * `organization` plugin (`session.activeOrganizationId`, `src/lib/auth.ts`),
+ * so this middleware only works correctly when composed AFTER `auth` on a
+ * route (`auth` runs before `context`/`cache`, same order `me/route.ts`
+ * already establishes for its own protected route).
+ *
+ * Previously read the raw, unauthenticated `x-tenant-id` request header —
+ * the real, previously-open `adr0012.tenant-safe-caching` finding recorded
+ * in `api-standard/findings.json`: any client could set that header to an
+ * arbitrary value, including another tenant's ID, and have it accepted
+ * verbatim as the Redis cache-key tenant dimension. Fixed here, not worked
+ * around — caching is still skipped (fail-closed) whenever `tenantId` is
+ * unresolved (no session, or a session with no active organization yet).
  */
-function resolveTenantId(req: RequestWithId): string | undefined {
-	const header = req.headers["x-tenant-id"];
-
-	return Array.isArray(header) ? header[0] : header;
+function resolveTenantId(res: ResponseWithCacheContext): string | undefined {
+	return res.locals.tenantId;
 }
 
 const cache = async (
 	req: RequestWithId,
-	res: ResponseWithContext,
+	res: ResponseWithCacheContext,
 	next: NextFunction,
 ) => {
-	const tenantId = resolveTenantId(req);
+	const tenantId = resolveTenantId(res);
 
 	if (
 		req.method !== "GET" ||
