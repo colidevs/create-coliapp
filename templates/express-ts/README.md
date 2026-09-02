@@ -8,34 +8,30 @@ repo) and mirrored in `.claude/rules/backend-template-stack.md`.
 
 ```bash
 pnpm install
+infisical login   # once per machine, against the COLIDEVS org
 pnpm dev
 ```
 
-### Secrets via Infisical (recommended over a local `.env`)
+### Secrets via Infisical
 
-Once this project is deployed via `infra` (`apps/<INFRA_APP_PATH>/deploy.config`, see
-`infra`'s `build-api.template.yml`), the SAME Infisical project/secret-path also backs local
-development — one source of truth for secrets in both places, not a separately-maintained `.env`.
+`pnpm dev` **is** the Infisical-wrapped command — there is no separate `.env`-only variant:
 
 ```bash
-pnpm dev:infisical
+"dev": "infisical run --env=dev --path=/api -- tsup --watch --onSuccess \"node --env-file=.env dist/index.cjs\""
 ```
 
-This runs:
+Requires `infisical init` to have run once for this project, with the resulting `.infisical.json`
+committed (verified safe — it holds only the Project ID, no secret values). `--path=/api` scopes to
+this app's own secrets when its Infisical project hosts more than one sub-app; never assume a
+project's internal path or environment-slug layout from the repo's own name or its database's naming
+convention — verify interactively via `infisical init`/the Infisical dashboard. The self-hosted domain
+is configured once at `infisical login` time, not per command.
 
-```bash
-infisical run --projectId $INFISICAL_PROJECT_ID --env prod --silent --domain https://infisical.coli.com.ar -- pnpm dev
-```
-
-Set `INFISICAL_PROJECT_ID` to the UUID of THIS project's Infisical project — the same one referenced
-by `INFISICAL_PROJECT_SLUG`/`INFISICAL_SECRET_PATH` in this app's `apps/<INFRA_APP_PATH>/deploy.config`
-entry in `colidevs/infra`, once this app has one. Requires an active Infisical CLI session
-(`infisical login`) — see `infra/docs/setup/workstation-scripts.md`'s "ephemeral credential wrapper"
-pattern, which this follows: secrets are injected as env vars for the duration of the command only,
-never written to disk.
-
-Falling back to a plain `.env` (`pnpm dev`, `.env.example` as a starting point) remains supported for
-local-only work with no shared secrets.
+Once this project is deployed via `infra` (`apps/<INFRA_APP_PATH>/deploy.config`, see `infra`'s
+`build-api.template.yml`), the SAME Infisical project/secret-path also backs production — one source
+of truth for secrets in both places. See `infra/docs/setup/workstation-scripts.md`'s "ephemeral
+credential wrapper" pattern, which this follows: secrets are injected as env vars for the duration of
+the command only, never written to disk.
 
 ## Data access
 
