@@ -30,7 +30,9 @@ export type CatalogSubject =
 	| "Product"
 	| "ProductImage"
 	| "Stock"
-	| "Order";
+	| "Order"
+	| "Variant"
+	| "VariantOptionType";
 export type CatalogAbility = MongoAbility<[CatalogAction, CatalogSubject]>;
 export type CatalogRole = "admin" | "viewer";
 
@@ -50,11 +52,15 @@ export function defineAbilityFor(role: CatalogRole): CatalogAbility {
 		allow("manage", "ProductImage");
 		allow("manage", "Stock");
 		allow("read", "Order");
+		allow("manage", "Variant");
+		allow("manage", "VariantOptionType");
 	} else {
 		allow("read", "Category");
 		allow("read", "Product");
 		allow("read", "ProductImage");
 		allow("read", "Stock");
+		allow("read", "Variant");
+		allow("read", "VariantOptionType");
 	}
 
 	return build();

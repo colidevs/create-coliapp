@@ -12,6 +12,8 @@ describe("defineAbilityFor", () => {
 		expect(ability.can("manage", "Stock")).toBe(true);
 		expect(ability.can("read", "Order")).toBe(true);
 		expect(ability.can("update", "Order")).toBe(false);
+		expect(ability.can("manage", "Variant")).toBe(true);
+		expect(ability.can("manage", "VariantOptionType")).toBe(true);
 	});
 
 	it("grants read-only catalog access and no Order access for viewer", () => {
@@ -22,6 +24,9 @@ describe("defineAbilityFor", () => {
 		expect(ability.can("read", "ProductImage")).toBe(true);
 		expect(ability.can("read", "Stock")).toBe(true);
 		expect(ability.can("update", "Category")).toBe(false);
+		expect(ability.can("read", "Variant")).toBe(true);
+		expect(ability.can("read", "VariantOptionType")).toBe(true);
+		expect(ability.can("manage", "Variant")).toBe(false);
 		// Order carries buyer PII — deliberately not granted to viewer at all,
 		// mirroring apps/api's own asymmetric grant (src/lib/ability.ts).
 		expect(ability.can("read", "Order")).toBe(false);
