@@ -1,6 +1,13 @@
 "use client";
 
-import { Boxes, ChevronLeft, Image as ImageIcon, Shapes } from "lucide-react";
+import {
+	Boxes,
+	ChevronLeft,
+	ClipboardList,
+	Image as ImageIcon,
+	Package,
+	Shapes,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
@@ -23,8 +30,8 @@ import { cn } from "@/lib/utils";
  * `SidebarProvider`/`SidebarInset` primitive system (`ui/sidebar.tsx`, a
  * ~700-line component this template does not ship), plus a collapsible
  * "CMS" sub-group (`nav-items.ts`) sized for munod's own ~10-entity admin.
- * This template's admin surface has 3 entities so far (Products,
- * Categories, Product Images — PR7b adds Stock/Orders); a plain flex nav
+ * This template's admin surface has 5 entities (Products, Categories,
+ * Product Images, Stock, Orders — PR7b adds the last two); a plain flex nav
  * list covers that without importing the full Sidebar primitive. Same
  * adaptation posture as the storefront port's own `header.tsx`/`shell.tsx`
  * (task 6.1/6.5) — simplified to what this template's actual scope needs.
@@ -33,6 +40,8 @@ const NAV_ITEMS = [
 	{ title: "Products", url: "/admin/products", icon: Boxes },
 	{ title: "Categories", url: "/admin/categories", icon: Shapes },
 	{ title: "Product Images", url: "/admin/product-images", icon: ImageIcon },
+	{ title: "Stock", url: "/admin/stock", icon: Package },
+	{ title: "Orders", url: "/admin/orders", icon: ClipboardList },
 ] as const;
 
 export function AppSidebar() {

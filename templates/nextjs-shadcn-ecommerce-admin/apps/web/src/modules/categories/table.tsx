@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Eye, PenIcon } from "lucide-react";
-import { RedirectType, redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useAbility } from "@/components/can";
 import {
 	DataTable,
@@ -16,17 +16,27 @@ import { deleteCategoryAction, paginationQuery } from "./actions";
 import { useCategoriesContext } from "./context";
 import type { Category } from "./types";
 
-/** Ported (structurally) from `munod/www/src/modules/categories/table.tsx`. */
+/**
+ * Ported (structurally) from `munod/www/src/modules/categories/table.tsx`.
+ *
+ * **Corrected (PR7b): `router.push()`, not `next/navigation`'s `redirect()`.**
+ * `redirect()` throws a special digest React only intercepts during a render
+ * pass or inside a Server Action — called from a plain client `onClick`
+ * handler it is just an uncaught exception (React error boundaries don't
+ * catch event-handler errors), so these row actions silently did nothing.
+ * Found and fixed across every `table.tsx` in one pass, see
+ * `components/data-table.tsx`'s own `add()` for the full writeup.
+ */
 export function CategoriesTable() {
 	const { queryKey } = useCategoriesContext();
 	const ability = useAbility();
+	const router = useRouter();
 
 	const actions: DropdownMenuActionsProps<Category>["actions"] = [
 		{
 			title: "View details",
 			icon: <Eye />,
-			onClick: ({ original: { id } }) =>
-				redirect(`/admin/categories/${id}`, RedirectType.push),
+			onClick: ({ original: { id } }) => router.push(`/admin/categories/${id}`),
 		},
 	];
 
@@ -35,7 +45,7 @@ export function CategoriesTable() {
 			title: "Edit",
 			icon: <PenIcon />,
 			onClick: ({ original: { id } }) =>
-				redirect(`/admin/categories/${id}/update`, RedirectType.push),
+				router.push(`/admin/categories/${id}/update`),
 		});
 	}
 

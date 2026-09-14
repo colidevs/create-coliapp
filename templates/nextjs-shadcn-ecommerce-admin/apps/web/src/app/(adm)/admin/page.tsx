@@ -1,4 +1,10 @@
-import { Boxes, Image as ImageIcon, Shapes } from "lucide-react";
+import {
+	Boxes,
+	ClipboardList,
+	Image as ImageIcon,
+	Package,
+	Shapes,
+} from "lucide-react";
 import Link from "next/link";
 
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
@@ -8,12 +14,15 @@ import { Card, CardContent, CardTitle } from "@/components/ui/card";
  * reads live stock/newsletter-subscription metrics this template's schema
  * doesn't have (design decision A4). This is a minimal index page linking
  * to each admin entity, matching the design's own directory tree
- * (`(adm)/admin/page.tsx`).
+ * (`(adm)/admin/page.tsx`). PR7b adds Stock/Orders alongside the PR7a
+ * catalog entities.
  */
 const ENTITIES = [
 	{ title: "Products", href: "/admin/products", icon: Boxes },
 	{ title: "Categories", href: "/admin/categories", icon: Shapes },
 	{ title: "Product Images", href: "/admin/product-images", icon: ImageIcon },
+	{ title: "Stock", href: "/admin/stock", icon: Package },
+	{ title: "Orders", href: "/admin/orders", icon: ClipboardList },
 ] as const;
 
 export default function AdminPage() {
@@ -22,7 +31,8 @@ export default function AdminPage() {
 			<header className="space-y-1">
 				<h1 className="text-2xl font-semibold">Admin</h1>
 				<p className="text-muted-foreground text-sm">
-					Manage your catalog — products, categories, and product images.
+					Manage your catalog — products, categories, product images, stock, and
+					orders.
 				</p>
 			</header>
 			<div className="flex flex-wrap gap-4">

@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { Category } from "@/generated/model";
+import { getQueryClient } from "@/lib/query";
 import { createProductAction, updateProductAction } from "./actions";
 import {
 	type Product,
@@ -111,6 +112,14 @@ export function ProductForm({
 		}
 
 		toast.success(product ? "Product updated." : "Product created.");
+		// `getQueryClient()`'s browser singleton (`lib/query.ts`) has a global
+		// `staleTime: 60_000` (tuned for the storefront's SSR-hydration pairing,
+		// not for this admin list) — without an explicit invalidation, the
+		// products list keeps serving its pre-write cached page for up to a
+		// minute after a client-side `router.push()` back to it. Real bug
+		// found live (PR7b) via `e2e/admin-flow.spec.ts`'s own create flow: the
+		// created row was silently invisible until a full page reload.
+		getQueryClient().invalidateQueries({ queryKey: ["admin-products"] });
 		router.push("/admin/products");
 	}
 

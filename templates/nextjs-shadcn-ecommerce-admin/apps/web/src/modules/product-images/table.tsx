@@ -1,7 +1,7 @@
 "use client";
 
 import { Eye, PenIcon } from "lucide-react";
-import { RedirectType, redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 import { useAbility } from "@/components/can";
 import {
@@ -16,6 +16,11 @@ import { deleteProductImageAction, paginationQuery } from "./actions";
 import { useProductImagesContext } from "./context";
 import type { ListProductImagesParams, ProductImage } from "./types";
 
+/**
+ * **Corrected (PR7b): `router.push()`, not `redirect()`** — see
+ * `modules/categories/table.tsx`'s identical fix and
+ * `components/data-table.tsx`'s `add()` for the full writeup.
+ */
 export function ProductImagesTable({
 	filters,
 }: {
@@ -23,13 +28,14 @@ export function ProductImagesTable({
 }) {
 	const { queryKey } = useProductImagesContext();
 	const ability = useAbility();
+	const router = useRouter();
 
 	const actions: DropdownMenuActionsProps<ProductImage>["actions"] = [
 		{
 			title: "View details",
 			icon: <Eye />,
 			onClick: ({ original: { id } }) =>
-				redirect(`/admin/product-images/${id}`, RedirectType.push),
+				router.push(`/admin/product-images/${id}`),
 		},
 	];
 
@@ -38,7 +44,7 @@ export function ProductImagesTable({
 			title: "Edit",
 			icon: <PenIcon />,
 			onClick: ({ original: { id } }) =>
-				redirect(`/admin/product-images/${id}/update`, RedirectType.push),
+				router.push(`/admin/product-images/${id}/update`),
 		});
 	}
 

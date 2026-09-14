@@ -1,6 +1,7 @@
 import { setupServer } from "msw/node";
 
 import { handlers } from "@/mocks/handlers";
+import { adminHandlers } from "@/mocks/handlers/admin";
 import { storefrontHandlers } from "@/mocks/handlers/storefront";
 
 /**
@@ -39,5 +40,15 @@ import { storefrontHandlers } from "@/mocks/handlers/storefront";
  * endpoints — `storefrontHandlers` (`src/mocks/handlers/storefront.ts`) is
  * exactly that hand-written, per-module fixture set, composed here
  * alongside the (still empty) base `handlers`.
+ *
+ * Phase 7b adds `adminHandlers` (`src/mocks/handlers/admin.ts`) — the same
+ * per-module, hand-written posture, covering the admin CRUD surface
+ * (`categories`/`products`/`product-images`/`stock`/`orders`) plus the
+ * server-to-server `GET /api/auth/get-session` call `getServerSession()`
+ * depends on.
  */
-export const server = setupServer(...handlers, ...storefrontHandlers);
+export const server = setupServer(
+	...handlers,
+	...storefrontHandlers,
+	...adminHandlers,
+);

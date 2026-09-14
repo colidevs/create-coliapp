@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { getQueryClient } from "@/lib/query";
 import { createProductImageAction, updateProductImageAction } from "./actions";
 import {
 	type ProductImage,
@@ -87,6 +88,11 @@ export function ProductImageForm({
 		}
 
 		toast.success(image ? "Image updated." : "Image created.");
+		// See `modules/products/form.tsx`'s identical comment — the browser
+		// `QueryClient` singleton's global `staleTime: 60_000` (`lib/query.ts`)
+		// otherwise serves this list's pre-write cached page for up to a
+		// minute after this `router.push()`.
+		getQueryClient().invalidateQueries({ queryKey: ["product-images"] });
 		router.push("/admin/product-images");
 	}
 
