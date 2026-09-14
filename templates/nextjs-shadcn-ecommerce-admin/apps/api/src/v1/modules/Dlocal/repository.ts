@@ -256,7 +256,20 @@ function dlocalRepo(): Repository {
 			throw new PaymentProviderHttpError();
 		}
 
-		const result = await response.json();
+		// A 2xx status does not guarantee a JSON body — found live during the
+		// pilot build (misconfigured DLOCAL_API_URL pointed at a plain HTML
+		// page that still returned 200), which crashed here with an uncaught
+		// `SyntaxError: Unexpected token '<'` before this template ever wraps
+		// it into a clean Problem response. Any dLocal-side outage or
+		// misconfiguration deserves the same graceful `PaymentProviderHttpError`
+		// as a network error or a bad status, never a raw parser exception.
+		let result: unknown;
+		try {
+			result = await response.json();
+		} catch (e) {
+			err("dLocal createCheckout returned a non-JSON body:", e);
+			throw new PaymentProviderHttpError();
+		}
 		const parsed = DlocalCheckoutApiResponseSchema.safeParse(result);
 
 		if (!parsed.success) {
@@ -290,7 +303,15 @@ function dlocalRepo(): Repository {
 			throw new PaymentProviderHttpError();
 		}
 
-		const result = await response.json();
+		// See `createCheckout`'s own comment above — a 2xx status alone does
+		// not guarantee a JSON body.
+		let result: unknown;
+		try {
+			result = await response.json();
+		} catch (e) {
+			err("dLocal getPayment returned a non-JSON body:", e);
+			throw new PaymentProviderHttpError();
+		}
 		const parsed = DlocalPaymentApiResponseSchema.safeParse(result);
 
 		if (!parsed.success) {

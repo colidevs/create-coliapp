@@ -85,18 +85,38 @@ export async function apiRequest<T>(
 		.then((store) => store.get(SESSION_COOKIE_NAME)?.value)
 		.catch(() => undefined);
 
+	// Built via a real `Headers` object, never a plain object spread. Found
+	// live, directly by Thomas clicking through the pilot's checkout
+	// ("Unsupported Media Type application/json, application/json"): every
+	// Orval-generated endpoint (`src/generated/endpoints/**`) sets its own
+	// `"Content-Type"` (capital) in `init.headers`, while this mutator's base
+	// object used lowercase `"content-type"` — two distinct JS object keys
+	// for the same HTTP header, both surviving a naive `{...a, ...b}` spread.
+	// `fetch`'s underlying `Headers` construction then treats them as
+	// duplicate (case-insensitively) names and joins the values with ", ",
+	// producing the literal broken header. `Headers.set()` normalizes header
+	// names case-insensitively, so building the merged set this way makes any
+	// future header collision (regardless of casing, from this mutator's own
+	// base or any generated caller) structurally impossible, not just this
+	// one instance of it.
+	const headers = new Headers();
+	headers.set("content-type", "application/json");
+	headers.set(SERVICE_KEY_HEADER, env.SERVICE_KEY);
+	if (sessionToken) {
+		headers.set(
+			"cookie",
+			`${BETTER_AUTH_SESSION_COOKIE_NAME}=${encodeURIComponent(sessionToken)}`,
+		);
+	}
+	if (init.headers) {
+		for (const [key, value] of new Headers(init.headers).entries()) {
+			headers.set(key, value);
+		}
+	}
+
 	const response = await fetch(`${env.API_BASE_URL}${url}`, {
 		...init,
-		headers: {
-			"content-type": "application/json",
-			[SERVICE_KEY_HEADER]: env.SERVICE_KEY,
-			...(sessionToken
-				? {
-						cookie: `${BETTER_AUTH_SESSION_COOKIE_NAME}=${encodeURIComponent(sessionToken)}`,
-					}
-				: {}),
-			...init.headers,
-		},
+		headers,
 		cache: "no-store",
 	});
 
