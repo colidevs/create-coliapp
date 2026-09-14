@@ -12,7 +12,10 @@ import {
 	listPublicProducts,
 	updateProduct,
 } from "@/generated/endpoints";
-import type { ListPublicProductsParams, ProductList } from "@/generated/model";
+import type {
+	ListPublicProductsParams,
+	PublicProductList,
+} from "@/generated/model";
 import { toActionState } from "@/lib/problem";
 import type {
 	ListProductsParams,
@@ -37,7 +40,7 @@ import type {
  */
 export async function listPublicProductsQuery(
 	params?: ListPublicProductsParams,
-): Promise<ProductList> {
+): Promise<PublicProductList> {
 	const result = await listPublicProducts(params);
 
 	if (result.status !== 200) {

@@ -1,9 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import type { ProductOutput } from "@/generated/model";
 import { Price } from "@/lib/currency";
+import type { PublicProduct } from "@/modules/products/types";
 import { ProductCard } from "./product-card";
+import { resolveDefaultVariant } from "./variant-selection";
 
 /**
  * Adapted, not a byte-for-byte port, of munod's real
@@ -17,13 +18,18 @@ import { ProductCard } from "./product-card";
  * products" section computed from the real public API (same category,
  * excluding the current product) rather than munod's own curated
  * `relatedProducts` prop.
+ *
+ * RETARGETED (`sdd/ecommerce-product-variants/design`, Phase 7): typed
+ * against `PublicProduct`; the related-products strip shows each related
+ * product's "from $X" price off its own `isDefault` variant (design D4 —
+ * no stored parent rollup price).
  */
 export function ProductView({
 	product,
 	relatedProducts,
 }: {
-	product: ProductOutput;
-	relatedProducts: ProductOutput[];
+	product: PublicProduct;
+	relatedProducts: PublicProduct[];
 }) {
 	return (
 		<div className="mx-auto max-w-6xl px-4 py-12">
@@ -51,29 +57,36 @@ export function ProductView({
 				<section className="mt-16">
 					<h2 className="mb-6 font-semibold text-lg">Related products</h2>
 					<div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4">
-						{relatedProducts.map((related) => (
-							<Link
-								key={related.id}
-								href={`/products/${related.slug}`}
-								className="group block"
-							>
-								<div className="relative aspect-square bg-muted">
-									{related.coverImage ? (
-										<Image
-											src={related.coverImage}
-											alt={related.name}
-											fill
-											sizes="224px"
-											className="object-contain"
-										/>
-									) : null}
-								</div>
-								<div className="mt-2 flex items-center justify-between text-sm">
-									<span className="group-hover:underline">{related.name}</span>
-									<Price price={related.price} />
-								</div>
-							</Link>
-						))}
+						{relatedProducts.map((related) => {
+							const relatedDefaultVariant = resolveDefaultVariant(related);
+							return (
+								<Link
+									key={related.id}
+									href={`/products/${related.slug}`}
+									className="group block"
+								>
+									<div className="relative aspect-square bg-muted">
+										{related.coverImage ? (
+											<Image
+												src={related.coverImage}
+												alt={related.name}
+												fill
+												sizes="224px"
+												className="object-contain"
+											/>
+										) : null}
+									</div>
+									<div className="mt-2 flex items-center justify-between text-sm">
+										<span className="group-hover:underline">
+											{related.name}
+										</span>
+										{relatedDefaultVariant ? (
+											<Price price={relatedDefaultVariant.price} />
+										) : null}
+									</div>
+								</Link>
+							);
+						})}
 					</div>
 				</section>
 			) : null}

@@ -5,11 +5,22 @@ import type {
 	ProductCreate,
 	ProductOutput,
 	ProductUpdate,
+	PublicProductOutput,
+	PublicVariantOutput,
 } from "@/generated/model";
 
 export type { ListProductsParams, ProductCreate, ProductUpdate };
 /** `ProductOutput` (the response shape) aliased as `Product` — the module's own conventional name, matching `categories`/`product-images`. */
 export type Product = ProductOutput;
+
+/**
+ * `PublicProductOutput`/`PublicVariantOutput` (the storefront read shapes,
+ * `web/products` domain — `sdd/ecommerce-product-variants/design`, Phase 7)
+ * aliased the same way, for the same reason: the module's own conventional
+ * name over Orval's generated response-type name.
+ */
+export type PublicProduct = PublicProductOutput;
+export type PublicVariant = PublicVariantOutput;
 
 /**
  * Client-side validation schema for `form.tsx` (React Hook Form +

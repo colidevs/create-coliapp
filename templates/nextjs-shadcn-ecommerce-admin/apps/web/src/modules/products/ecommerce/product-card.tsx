@@ -1,5 +1,3 @@
-import { AddToCartButton } from "@/components/cart-button";
-import { Badge } from "@/components/ui/badge";
 import {
 	Card,
 	CardContent,
@@ -8,8 +6,8 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import type { ProductOutput } from "@/generated/model";
-import { Price } from "@/lib/currency";
+import type { PublicProduct } from "@/modules/products/types";
+import { VariantSelector } from "./variant-selector";
 
 /**
  * Adapted, not a byte-for-byte port, of munod's real
@@ -19,26 +17,22 @@ import { Price } from "@/lib/currency";
  * (furniture dimensions), a multi-image/video carousel with prev/next
  * controls, an accordion of furniture care/purchase-policy copy, and a
  * measurement-guide popover. None of that has a counterpart in
- * `ProductOutput` (`name`/`slug`/`description`/`price`/`stock`/
- * `coverImage` only). Kept the same export name and role (the info card
- * shown alongside the product image on the detail page,
- * `product-view.tsx`), simplified to what this template's schema actually
- * supports.
+ * `PublicProduct` (`name`/`slug`/`description`/`coverImage`/`variants[]`
+ * only). Kept the same export name and role (the info card shown alongside
+ * the product image on the detail page, `product-view.tsx`), simplified to
+ * what this template's schema actually supports.
+ *
+ * RETARGETED (`sdd/ecommerce-product-variants/design`, Phase 7): price,
+ * stock, and "Add to cart" all now live one level down inside
+ * `<VariantSelector>` — a product has no single price/stock of its own
+ * anymore, only its variants do.
  */
-export function ProductCard({ product }: { product: ProductOutput }) {
+export function ProductCard({ product }: { product: PublicProduct }) {
 	return (
 		<Card className="gap-6 rounded-none border-none bg-transparent shadow-none">
 			<CardHeader>
-				{product.stock === 0 ? (
-					<Badge variant="outline" className="w-fit rounded-none uppercase">
-						Out of stock
-					</Badge>
-				) : null}
-				<CardTitle className="flex items-end justify-between gap-4 text-3xl">
+				<CardTitle className="text-3xl">
 					<h1 className="capitalize">{product.name}</h1>
-					<span className="shrink-0 font-bold text-lg">
-						<Price price={product.price} />
-					</span>
 				</CardTitle>
 			</CardHeader>
 			<CardContent className="space-y-6">
@@ -49,7 +43,7 @@ export function ProductCard({ product }: { product: ProductOutput }) {
 				) : null}
 			</CardContent>
 			<CardFooter>
-				<AddToCartButton product={product} />
+				<VariantSelector product={product} />
 			</CardFooter>
 		</Card>
 	);
