@@ -536,6 +536,11 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: variantId
+          in: query
+          schema:
+            type: string
+            format: uuid
       responses:
         "200":
           description: Product images
@@ -565,10 +570,15 @@ paths:
               type: object
               properties:
                 productId:
+                  example: 1b2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e
                   type: string
                   format: uuid
                   pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
-                  example: 1b2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e
+                variantId:
+                  example: c1a2b3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+                  type: string
+                  format: uuid
+                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
                 url:
                   type: string
                   format: uri
@@ -579,7 +589,6 @@ paths:
                   minimum: -9007199254740991
                   maximum: 9007199254740991
               required:
-                - productId
                 - url
       responses:
         "201":
@@ -962,7 +971,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ProductList"
+                $ref: "#/components/schemas/PublicProductList"
         default:
           description: Unexpected error
           content:
@@ -987,9 +996,551 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ProductOutput"
+                $ref: "#/components/schemas/PublicProductOutput"
         "404":
           description: Product not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        default:
+          description: Unexpected error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /admin/variant-option-types:
+    get:
+      operationId: listVariantOptionTypes
+      summary: List variant option types
+      security:
+        - sessionCookie: []
+          apiKeyAuth: []
+      responses:
+        "200":
+          description: Variant option types
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VariantOptionType"
+        default:
+          description: Unexpected error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    post:
+      operationId: createVariantOptionType
+      summary: Create a variant option type
+      security:
+        - sessionCookie: []
+          apiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VariantOptionTypeCreate"
+      responses:
+        "201":
+          description: The created variant option type
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VariantOptionType"
+        "403":
+          description: Not allowed to create a variant option type
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "409":
+          description: A variant option type with this slug already exists
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        default:
+          description: Unexpected error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /admin/variant-option-types/{id}:
+    get:
+      operationId: getVariantOptionTypeById
+      summary: Get a variant option type by id
+      security:
+        - sessionCookie: []
+          apiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The variant option type
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VariantOptionType"
+        "404":
+          description: Variant option type not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        default:
+          description: Unexpected error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    patch:
+      operationId: updateVariantOptionType
+      summary: Update a variant option type
+      security:
+        - sessionCookie: []
+          apiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VariantOptionTypeUpdate"
+      responses:
+        "200":
+          description: The updated variant option type
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VariantOptionType"
+        "403":
+          description: Not allowed to update a variant option type
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: Variant option type not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "409":
+          description: A variant option type with this slug already exists
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        default:
+          description: Unexpected error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    delete:
+      operationId: deleteVariantOptionType
+      summary: Deactivate a variant option type (soft delete)
+      security:
+        - sessionCookie: []
+          apiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Variant option type deactivated
+        "403":
+          description: Not allowed to delete a variant option type
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: Variant option type not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        default:
+          description: Unexpected error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /admin/variant-option-values:
+    get:
+      operationId: listVariantOptionValues
+      summary: List variant option values
+      security:
+        - sessionCookie: []
+          apiKeyAuth: []
+      parameters:
+        - name: optionTypeId
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Variant option values
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VariantOptionValue"
+        default:
+          description: Unexpected error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    post:
+      operationId: createVariantOptionValue
+      summary: Create a variant option value
+      security:
+        - sessionCookie: []
+          apiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VariantOptionValueCreate"
+      responses:
+        "201":
+          description: The created variant option value
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VariantOptionValue"
+        "403":
+          description: Not allowed to create a variant option value
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "409":
+          description: A variant option value with this slug already exists for this
+            option type
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        default:
+          description: Unexpected error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /admin/variant-option-values/{id}:
+    get:
+      operationId: getVariantOptionValueById
+      summary: Get a variant option value by id
+      security:
+        - sessionCookie: []
+          apiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The variant option value
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VariantOptionValue"
+        "404":
+          description: Variant option value not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        default:
+          description: Unexpected error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    patch:
+      operationId: updateVariantOptionValue
+      summary: Update a variant option value
+      security:
+        - sessionCookie: []
+          apiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VariantOptionValueUpdate"
+      responses:
+        "200":
+          description: The updated variant option value
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VariantOptionValue"
+        "403":
+          description: Not allowed to update a variant option value
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: Variant option value not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "409":
+          description: A variant option value with this slug already exists for this
+            option type
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        default:
+          description: Unexpected error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    delete:
+      operationId: deleteVariantOptionValue
+      summary: Deactivate a variant option value (soft delete)
+      security:
+        - sessionCookie: []
+          apiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Variant option value deactivated
+        "403":
+          description: Not allowed to delete a variant option value
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: Variant option value not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        default:
+          description: Unexpected error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /admin/variants:
+    get:
+      operationId: listVariants
+      summary: List variants
+      security:
+        - sessionCookie: []
+          apiKeyAuth: []
+      parameters:
+        - name: productId
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Variants
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Variant"
+        default:
+          description: Unexpected error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    post:
+      operationId: createVariant
+      summary: Create a variant
+      security:
+        - sessionCookie: []
+          apiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VariantCreate"
+      responses:
+        "201":
+          description: The created variant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Variant"
+        "403":
+          description: Not allowed to create a variant
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        default:
+          description: Unexpected error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /admin/variants/{id}:
+    get:
+      operationId: getVariantById
+      summary: Get a variant by id
+      security:
+        - sessionCookie: []
+          apiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The variant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Variant"
+        "404":
+          description: Variant not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        default:
+          description: Unexpected error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    patch:
+      operationId: updateVariant
+      summary: Update a variant
+      security:
+        - sessionCookie: []
+          apiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VariantUpdate"
+      responses:
+        "200":
+          description: The updated variant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Variant"
+        "403":
+          description: Not allowed to update a variant
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: Variant not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "422":
+          description: Update would leave an active product with zero active variants
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        default:
+          description: Unexpected error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    delete:
+      operationId: deleteVariant
+      summary: Delete a variant
+      security:
+        - sessionCookie: []
+          apiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Variant deleted
+        "403":
+          description: Not allowed to delete a variant
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: Variant not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "422":
+          description: Deletion would leave an active product with zero active variants
           content:
             application/problem+json:
               schema:
@@ -1108,34 +1659,11 @@ components:
         slug:
           type: string
           example: wireless-mouse
-        code:
-          anyOf:
-            - type: string
-            - type: "null"
-          example: WM-100
-        altCode:
-          anyOf:
-            - type: string
-            - type: "null"
-          example: ALT-WM-100
         description:
           anyOf:
             - type: string
             - type: "null"
           example: Ergonomic wireless mouse.
-        price:
-          type: number
-          example: 29.99
-        stock:
-          type: integer
-          minimum: -9007199254740991
-          maximum: 9007199254740991
-          example: 42
-        stockMin:
-          type: integer
-          minimum: -9007199254740991
-          maximum: 9007199254740991
-          example: 5
         coverImage:
           anyOf:
             - type: string
@@ -1152,6 +1680,16 @@ components:
         isActive:
           type: boolean
           example: true
+        defaultPrice:
+          anyOf:
+            - type: number
+            - type: "null"
+          example: 29.99
+        variantCount:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+          example: 2
         createdAt:
           type: string
           format: date-time
@@ -1166,18 +1704,16 @@ components:
         - id
         - name
         - slug
-        - code
-        - altCode
         - description
-        - price
-        - stock
-        - stockMin
         - coverImage
         - categoryId
         - isActive
+        - defaultPrice
+        - variantCount
         - createdAt
         - updatedAt
-      description: A catalog product.
+      description: A catalog product, with its derived default-variant price and
+        variant count.
     ProductCreate:
       type: object
       properties:
@@ -1185,29 +1721,9 @@ components:
           type: string
           minLength: 1
           example: Wireless Mouse
-        code:
-          example: WM-100
-          type: string
-        altCode:
-          example: ALT-WM-100
-          type: string
         description:
           example: Ergonomic wireless mouse.
           type: string
-        price:
-          type: number
-          exclusiveMinimum: 0
-          example: 29.99
-        stock:
-          example: 42
-          type: integer
-          minimum: -9007199254740991
-          maximum: 9007199254740991
-        stockMin:
-          example: 5
-          type: integer
-          minimum: -9007199254740991
-          maximum: 9007199254740991
         coverImage:
           example: https://images.example.com/wireless-mouse.jpg
           type: string
@@ -1219,8 +1735,8 @@ components:
           pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
       required:
         - name
-        - price
-      description: Creates a product. `slug` is derived from `name`.
+      description: "Creates a product as a draft (`isActive: false`). `slug` is
+        derived from `name`."
     ProductUpdate:
       type: object
       properties:
@@ -1228,35 +1744,11 @@ components:
           example: Wireless Mouse
           type: string
           minLength: 1
-        code:
-          example: WM-100
-          anyOf:
-            - type: string
-            - type: "null"
-        altCode:
-          example: ALT-WM-100
-          anyOf:
-            - type: string
-            - type: "null"
         description:
           example: Ergonomic wireless mouse.
           anyOf:
             - type: string
             - type: "null"
-        price:
-          example: 29.99
-          type: number
-          exclusiveMinimum: 0
-        stock:
-          example: 42
-          type: integer
-          minimum: -9007199254740991
-          maximum: 9007199254740991
-        stockMin:
-          example: 5
-          type: integer
-          minimum: -9007199254740991
-          maximum: 9007199254740991
         coverImage:
           example: https://images.example.com/wireless-mouse.jpg
           anyOf:
@@ -1393,6 +1885,299 @@ components:
       description: An order created via the dLocal checkout flow. Read-only here —
         status transitions exclusively through the dLocal payment-notification
         webhook.
+    VariantOptionTypeCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          example: Color
+        displayOrder:
+          example: 0
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+      required:
+        - name
+      description: Creates a variant option type. `slug` is derived from `name`.
+    VariantOptionTypeUpdate:
+      type: object
+      properties:
+        name:
+          example: Color
+          type: string
+          minLength: 1
+        displayOrder:
+          example: 0
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        isActive:
+          example: true
+          type: boolean
+      description: Updates a variant option type. Renaming re-derives `slug` from the
+        new `name`.
+    VariantOptionValueCreate:
+      type: object
+      properties:
+        optionTypeId:
+          type: string
+          format: uuid
+          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          example: 9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c
+        value:
+          type: string
+          minLength: 1
+          example: Red
+        imageUrl:
+          example: https://images.example.com/red-swatch.jpg
+          type: string
+          format: uri
+        description:
+          example: Fire-engine red.
+          type: string
+        displayOrder:
+          example: 0
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+      required:
+        - optionTypeId
+        - value
+      description: Creates a variant option value. `slug` is derived from `value`.
+    VariantOptionValueUpdate:
+      type: object
+      properties:
+        value:
+          example: Red
+          type: string
+          minLength: 1
+        imageUrl:
+          example: https://images.example.com/red-swatch.jpg
+          anyOf:
+            - type: string
+              format: uri
+            - type: "null"
+        description:
+          example: Fire-engine red.
+          anyOf:
+            - type: string
+            - type: "null"
+        displayOrder:
+          example: 0
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        isActive:
+          example: true
+          type: boolean
+      description: Updates a variant option value. Renaming `value` re-derives `slug`.
+    VariantCreate:
+      type: object
+      properties:
+        productId:
+          type: string
+          format: uuid
+          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          example: 1b2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e
+        code:
+          example: WM-100-RED-M
+          type: string
+        altCode:
+          example: ALT-WM-100-RED-M
+          type: string
+        price:
+          type: number
+          exclusiveMinimum: 0
+          example: 29.99
+        stock:
+          example: 42
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        stockMin:
+          example: 5
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        isDefault:
+          example: true
+          type: boolean
+        displayOrder:
+          example: 0
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        optionValueIds:
+          example:
+            - c1a2b3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+          type: array
+          items:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+      required:
+        - productId
+        - price
+      description: Creates a variant under a product, with its option-value selections.
+    VariantUpdate:
+      type: object
+      properties:
+        code:
+          example: WM-100-RED-M
+          anyOf:
+            - type: string
+            - type: "null"
+        altCode:
+          example: ALT-WM-100-RED-M
+          anyOf:
+            - type: string
+            - type: "null"
+        price:
+          example: 29.99
+          type: number
+          exclusiveMinimum: 0
+        stock:
+          example: 42
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        stockMin:
+          example: 5
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        isDefault:
+          example: true
+          type: boolean
+        isActive:
+          example: true
+          type: boolean
+        displayOrder:
+          example: 0
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        optionValueIds:
+          example:
+            - c1a2b3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+          type: array
+          items:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+      description: Updates a variant. Providing `optionValueIds` replaces its entire
+        selection set.
+    PublicProduct:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          example: 9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c
+        name:
+          type: string
+          example: Wireless Mouse
+        slug:
+          type: string
+          example: wireless-mouse
+        description:
+          anyOf:
+            - type: string
+            - type: "null"
+          example: Ergonomic wireless mouse.
+        coverImage:
+          anyOf:
+            - type: string
+              format: uri
+            - type: "null"
+          example: https://images.example.com/wireless-mouse.jpg
+        categoryId:
+          anyOf:
+            - type: string
+              format: uuid
+              pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+            - type: "null"
+          example: 9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c
+        variants:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicVariant"
+      required:
+        - id
+        - name
+        - slug
+        - description
+        - coverImage
+        - categoryId
+        - variants
+      description: A storefront-facing product, with its active variants and their
+        option-value selections.
+    PublicVariant:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          example: 9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c
+        price:
+          type: number
+          example: 29.99
+        stock:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+          example: 42
+        isDefault:
+          type: boolean
+          example: true
+        options:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicVariantOption"
+      required:
+        - id
+        - price
+        - stock
+        - isDefault
+        - options
+      description: An active, sellable variant, with its resolved option-value selections.
+    PublicVariantOption:
+      type: object
+      properties:
+        optionTypeSlug:
+          type: string
+          example: color
+        optionTypeName:
+          type: string
+          example: Color
+        valueSlug:
+          type: string
+          example: red
+        value:
+          type: string
+          example: Red
+        imageUrl:
+          anyOf:
+            - type: string
+              format: uri
+            - type: "null"
+          example: https://images.example.com/red-swatch.jpg
+        description:
+          anyOf:
+            - type: string
+            - type: "null"
+          example: Fire-engine red.
+      required:
+        - optionTypeSlug
+        - optionTypeName
+        - valueSlug
+        - value
+        - imageUrl
+        - description
+      description: A resolved option-value selection on a storefront variant.
     HealthcheckStatusResponse:
       type: object
       properties:
@@ -1564,10 +2349,19 @@ components:
           pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
           example: 9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c
         productId:
-          type: string
-          format: uuid
-          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          anyOf:
+            - type: string
+              format: uuid
+              pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+            - type: "null"
           example: 1b2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e
+        variantId:
+          anyOf:
+            - type: string
+              format: uuid
+              pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+            - type: "null"
+          example: c1a2b3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
         url:
           type: string
           format: uri
@@ -1585,11 +2379,12 @@ components:
       required:
         - id
         - productId
+        - variantId
         - url
         - position
         - createdAt
       additionalProperties: false
-      description: A gallery image belonging to a product.
+      description: A gallery image belonging to a product or one of its variants.
     StockItem:
       type: object
       properties:
@@ -1598,12 +2393,22 @@ components:
           format: uuid
           pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
           example: 9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c
+        productId:
+          type: string
+          format: uuid
+          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          example: 1b2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e
         name:
           type: string
           example: Wireless Mouse
         slug:
           type: string
           example: wireless-mouse
+        variantLabel:
+          anyOf:
+            - type: string
+            - type: "null"
+          example: Red / M
         stock:
           type: integer
           minimum: -9007199254740991
@@ -1618,12 +2423,12 @@ components:
           anyOf:
             - type: string
             - type: "null"
-          example: WM-100
+          example: WM-100-RED-M
         altCode:
           anyOf:
             - type: string
             - type: "null"
-          example: ALT-WM-100
+          example: ALT-WM-100-RED-M
         coverImage:
           anyOf:
             - type: string
@@ -1632,15 +2437,18 @@ components:
           example: https://images.example.com/wireless-mouse.jpg
       required:
         - id
+        - productId
         - name
         - slug
+        - variantLabel
         - stock
         - stockMin
         - code
         - altCode
         - coverImage
       additionalProperties: false
-      description: A product's stock projection.
+      description: A variant's stock projection, with its parent product's name/slug
+        and its resolved option-value label.
     OrderList:
       type: object
       properties:
@@ -1676,7 +2484,7 @@ components:
         - pagination
       additionalProperties: false
       description: A page of orders.
-    ProductOutput:
+    VariantOptionType:
       type: object
       properties:
         id:
@@ -1686,51 +2494,15 @@ components:
           example: 9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c
         name:
           type: string
-          example: Wireless Mouse
+          example: Color
         slug:
           type: string
-          example: wireless-mouse
-        code:
-          anyOf:
-            - type: string
-            - type: "null"
-          example: WM-100
-        altCode:
-          anyOf:
-            - type: string
-            - type: "null"
-          example: ALT-WM-100
-        description:
-          anyOf:
-            - type: string
-            - type: "null"
-          example: Ergonomic wireless mouse.
-        price:
-          type: number
-          example: 29.99
-        stock:
+          example: color
+        displayOrder:
           type: integer
           minimum: -9007199254740991
           maximum: 9007199254740991
-          example: 42
-        stockMin:
-          type: integer
-          minimum: -9007199254740991
-          maximum: 9007199254740991
-          example: 5
-        coverImage:
-          anyOf:
-            - type: string
-              format: uri
-            - type: "null"
-          example: https://images.example.com/wireless-mouse.jpg
-        categoryId:
-          anyOf:
-            - type: string
-              format: uuid
-              pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
-            - type: "null"
-          example: 9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c
+          example: 0
         isActive:
           type: boolean
           example: true
@@ -1748,19 +2520,259 @@ components:
         - id
         - name
         - slug
-        - code
-        - altCode
-        - description
-        - price
-        - stock
-        - stockMin
-        - coverImage
-        - categoryId
+        - displayOrder
         - isActive
         - createdAt
         - updatedAt
       additionalProperties: false
-      description: A catalog product.
+      description: An admin-managed variant option type (e.g. color, size).
+    VariantOptionValue:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          example: 1b2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e
+        optionTypeId:
+          type: string
+          format: uuid
+          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          example: 9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c
+        value:
+          type: string
+          example: Red
+        slug:
+          type: string
+          example: red
+        imageUrl:
+          anyOf:
+            - type: string
+              format: uri
+            - type: "null"
+          example: https://images.example.com/red-swatch.jpg
+        description:
+          anyOf:
+            - type: string
+            - type: "null"
+          example: Fire-engine red.
+        displayOrder:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+          example: 0
+        isActive:
+          type: boolean
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+          example: 2026-01-01T00:00:00Z
+        updatedAt:
+          type: string
+          format: date-time
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+          example: 2026-01-01T00:00:00Z
+      required:
+        - id
+        - optionTypeId
+        - value
+        - slug
+        - imageUrl
+        - description
+        - displayOrder
+        - isActive
+        - createdAt
+        - updatedAt
+      additionalProperties: false
+      description: An admin-managed value of a variant option type.
+    Variant:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          example: 9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c
+        productId:
+          type: string
+          format: uuid
+          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          example: 1b2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e
+        code:
+          anyOf:
+            - type: string
+            - type: "null"
+          example: WM-100-RED-M
+        altCode:
+          anyOf:
+            - type: string
+            - type: "null"
+          example: ALT-WM-100-RED-M
+        price:
+          type: number
+          example: 29.99
+        stock:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+          example: 42
+        stockMin:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+          example: 5
+        isDefault:
+          type: boolean
+          example: true
+        isActive:
+          type: boolean
+          example: true
+        displayOrder:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+          example: 0
+        optionValueIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          example:
+            - c1a2b3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+        createdAt:
+          type: string
+          format: date-time
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+          example: 2026-01-01T00:00:00Z
+        updatedAt:
+          type: string
+          format: date-time
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+          example: 2026-01-01T00:00:00Z
+      required:
+        - id
+        - productId
+        - code
+        - altCode
+        - price
+        - stock
+        - stockMin
+        - isDefault
+        - isActive
+        - displayOrder
+        - optionValueIds
+        - createdAt
+        - updatedAt
+      additionalProperties: false
+      description: A sellable variant of a product, with its option-value selections.
+    PublicProductList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicProductOutput"
+        pagination:
+          type: object
+          properties:
+            count:
+              type: number
+            next:
+              type: number
+            page:
+              type: number
+            previous:
+              type: number
+            size:
+              type: number
+            total:
+              type: number
+          required:
+            - count
+            - next
+            - page
+            - previous
+            - size
+            - total
+          additionalProperties: false
+      required:
+        - items
+        - pagination
+      additionalProperties: false
+      description: A page of active storefront products.
+    ProductOutput:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          example: 9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c
+        name:
+          type: string
+          example: Wireless Mouse
+        slug:
+          type: string
+          example: wireless-mouse
+        description:
+          anyOf:
+            - type: string
+            - type: "null"
+          example: Ergonomic wireless mouse.
+        coverImage:
+          anyOf:
+            - type: string
+              format: uri
+            - type: "null"
+          example: https://images.example.com/wireless-mouse.jpg
+        categoryId:
+          anyOf:
+            - type: string
+              format: uuid
+              pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+            - type: "null"
+          example: 9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c
+        isActive:
+          type: boolean
+          example: true
+        defaultPrice:
+          anyOf:
+            - type: number
+            - type: "null"
+          example: 29.99
+        variantCount:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+          example: 2
+        createdAt:
+          type: string
+          format: date-time
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+          example: 2026-01-01T00:00:00Z
+        updatedAt:
+          type: string
+          format: date-time
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+          example: 2026-01-01T00:00:00Z
+      required:
+        - id
+        - name
+        - slug
+        - description
+        - coverImage
+        - categoryId
+        - isActive
+        - defaultPrice
+        - variantCount
+        - createdAt
+        - updatedAt
+      additionalProperties: false
+      description: A catalog product, with its derived default-variant price and
+        variant count.
     OrderOutput:
       type: object
       properties:
@@ -1866,6 +2878,119 @@ components:
       description: An order created via the dLocal checkout flow. Read-only here —
         status transitions exclusively through the dLocal payment-notification
         webhook.
+    PublicProductOutput:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          example: 9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c
+        name:
+          type: string
+          example: Wireless Mouse
+        slug:
+          type: string
+          example: wireless-mouse
+        description:
+          anyOf:
+            - type: string
+            - type: "null"
+          example: Ergonomic wireless mouse.
+        coverImage:
+          anyOf:
+            - type: string
+              format: uri
+            - type: "null"
+          example: https://images.example.com/wireless-mouse.jpg
+        categoryId:
+          anyOf:
+            - type: string
+              format: uuid
+              pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+            - type: "null"
+          example: 9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c
+        variants:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicVariantOutput"
+      required:
+        - id
+        - name
+        - slug
+        - description
+        - coverImage
+        - categoryId
+        - variants
+      additionalProperties: false
+      description: A storefront-facing product, with its active variants and their
+        option-value selections.
+    PublicVariantOutput:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          example: 9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c
+        price:
+          type: number
+          example: 29.99
+        stock:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+          example: 42
+        isDefault:
+          type: boolean
+          example: true
+        options:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicVariantOptionOutput"
+      required:
+        - id
+        - price
+        - stock
+        - isDefault
+        - options
+      additionalProperties: false
+      description: An active, sellable variant, with its resolved option-value selections.
+    PublicVariantOptionOutput:
+      type: object
+      properties:
+        optionTypeSlug:
+          type: string
+          example: color
+        optionTypeName:
+          type: string
+          example: Color
+        valueSlug:
+          type: string
+          example: red
+        value:
+          type: string
+          example: Red
+        imageUrl:
+          anyOf:
+            - type: string
+              format: uri
+            - type: "null"
+          example: https://images.example.com/red-swatch.jpg
+        description:
+          anyOf:
+            - type: string
+            - type: "null"
+          example: Fire-engine red.
+      required:
+        - optionTypeSlug
+        - optionTypeName
+        - valueSlug
+        - value
+        - imageUrl
+        - description
+      additionalProperties: false
+      description: A resolved option-value selection on a storefront variant.
   securitySchemes:
     sessionCookie:
       type: apiKey
