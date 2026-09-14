@@ -1,0 +1,25 @@
+{
+	"name": "{{name}}",
+	"private": true,
+	"engines": {
+		"node": "22.x",
+		"pnpm": "10.x"
+	},
+	"packageManager": "pnpm@10.4.1",
+	"scripts": {
+		"build": "turbo run build",
+		"dev": "turbo run dev",
+		"lint": "turbo run lint",
+		"check-types": "turbo run check-types",
+		"test": "turbo run test",
+		"db:generate:check": "turbo run db:generate:check",
+		"generate:openapi:check": "turbo run generate:openapi:check",
+		"format": "biome format --write .",
+		"prepare": "node .husky/install.mjs"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.5.9",
+		"husky": "^9.1.7",
+		"turbo": "^2.9.6"
+	}
+}
