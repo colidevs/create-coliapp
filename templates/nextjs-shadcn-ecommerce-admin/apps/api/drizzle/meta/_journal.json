@@ -29,6 +29,20 @@
       "when": 1789352145676,
       "tag": "0003_better_auth_organization_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789424778532,
+      "tag": "0004_chubby_nico_minoru",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789424828453,
+      "tag": "0005_variant_rls_and_invariants",
+      "breakpoints": true
     }
   ]
 }

@@ -15,6 +15,24 @@ database") describes the state of this template's own scaffolding process,
 which still never runs migrations itself — it does not mean the migrations
 were never smoke-tested by anyone; PR10 is that smoke test.
 
+**Update (`ecommerce-product-variants` PR1):** `0004_*.sql` and
+`0005_variant_rls_and_invariants.sql` were also independently verified
+end to end against a fresh, throwaway Postgres 17 container as part of
+authoring this PR — `bootstrap-roles.sql`, then the full `0000`-`0005`
+sequence via `DATABASE_OWNER_URL`, applied cleanly with no manual
+intervention. That same session also confirmed
+`trg_product_requires_active_variant`/`trg_variant_keeps_product_publishable`
+(below) genuinely reject an active product with zero active variants at
+COMMIT, and genuinely allow one when its default variant is inserted in the
+same transaction (the deferred check passing). The container was torn down
+afterward — same as PR10, this is a one-time authoring-time smoke test, not
+a standing fixture. This template's own scaffolding process still never
+runs any migration itself (unchanged from the description above); CI does
+not apply these migrations either — `db:generate:check` only re-diffs
+`schema.ts` against the committed `drizzle/` directory (DB-less), it never
+connects to a database. Real application only happens at deploy time, per
+"Deploy-time application, exclusively" below.
+
 ## Role bootstrap (mandatory, one-time, run as the Postgres superuser)
 
 **Before running `pnpm db:migrate` for the first time against a database,
@@ -57,6 +75,23 @@ This step is idempotent and safe to re-run.
   `organization`/`member`/`invitation`) through its built-in Kysely/`pg`
   adapter (`src/lib/auth.ts`), independent of `schema.ts`, so `drizzle-kit
   generate`'s normal schema-diffing cannot produce them.
+- `0004_chubby_nico_minoru.sql` (`sdd/ecommerce-product-variants/design`) IS
+  a normal schema-diffed migration — `drizzle-kit generate`'s own randomly
+  assigned name, kept verbatim rather than hand-renamed (the design's own
+  `drizzle/0004_product_variants.sql` filename was illustrative only; task
+  1.2 requires generating the real migration via `drizzle-kit generate`,
+  not hand-authoring or hand-renaming its output). It creates
+  `product_variants`, `variant_option_types`, `variant_option_values`,
+  `variant_option_selections`, and ALTERs `products`/`product_images`
+  (drops `products.code`/`alt_code`/`price`/`stock`/`stock_min`, widens
+  `product_images.product_id` to nullable, adds `product_images.variant_id`
+  and its `chk_image_owner` CHECK). `0005_variant_rls_and_invariants.sql`
+  is a `--custom` migration, same convention as `0001`-`0003`: RLS/GRANTs
+  for the 4 new tables (extending `0001_rls_roles.sql`'s own block
+  unchanged), plus the `DEFERRABLE INITIALLY DEFERRED` constraint trigger
+  enforcing "an active product needs ≥1 active variant" (spec requirement,
+  design D3, munod 0029 precedent) — see that file's own header comment for
+  the full mechanism.
 - `db:generate:check` (`scripts/db-generate-check.mjs`, wired into CI) only
   verifies that `schema.ts` and the committed `drizzle/` directory are in
   sync — it re-runs `drizzle-kit generate` and fails the build if that
@@ -84,12 +119,17 @@ beyond the documented bootstrap step. Better Auth's own schema (`0002`/
 `0003`) was exercised as part of that same run — it is also reproduced
 verbatim from `templates/express-ts`'s own migrations, which were
 separately, independently smoke-tested there (see that template's own
-migration file header comments).
+migration file header comments). `ecommerce-product-variants` PR1
+extended this same live verification to `0004`/`0005` — see the update note
+at the top of this file.
 
 ## No `tenant_id`, deliberately
 
 Unlike `templates/express-ts`'s own sample `orders` table, none of this
-template's four domain tables carry a `tenant_id` column or a
+template's domain tables — the original four (`categories`, `products`,
+`product_images`, `orders`) or the four `sdd/ecommerce-product-variants`
+added (`product_variants`, `variant_option_types`, `variant_option_values`,
+`variant_option_selections`) — carry a `tenant_id` column or a
 tenant-scoping RLS predicate — this template targets a
 single-tenant-per-deployment client project (an explicit, orchestrator-
 recorded deviation from ADR 0014's multi-tenant-by-default posture; see

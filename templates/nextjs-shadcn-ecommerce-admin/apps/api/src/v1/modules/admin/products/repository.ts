@@ -1,7 +1,10 @@
 import { and, count, desc, eq, ilike } from "drizzle-orm";
 import { schema, withPlatformSession } from "@/lib/db";
 import { toSlug } from "@/lib/utils";
-import { DuplicateSlugHttpError } from "@/v1/res/errors";
+import {
+	DuplicateSlugHttpError,
+	ProductRequiresActiveVariantHttpError,
+} from "@/v1/res/errors";
 import type { Pagination } from "@/v1/types";
 import type {
 	GetProductsParams,
@@ -43,6 +46,23 @@ function isUniqueViolation(e: unknown): boolean {
 		e !== null &&
 		"code" in e &&
 		(e as { code?: unknown }).code === "23505"
+	);
+}
+
+/**
+ * @description `variant-options` domain (`sdd/ecommerce-product-variants/
+ * design`). Postgres `23514` (`check_violation`) is raised by the deferrable
+ * constraint trigger `trg_product_requires_active_variant`
+ * (`drizzle/0005_variant_rls_and_invariants.sql`) at COMMIT, when a product
+ * is set/left active with zero active variants. Same `.code` detection
+ * shape as `isUniqueViolation` above.
+ */
+function isCheckViolation(e: unknown): boolean {
+	return (
+		typeof e === "object" &&
+		e !== null &&
+		"code" in e &&
+		(e as { code?: unknown }).code === "23514"
 	);
 }
 
@@ -104,39 +124,57 @@ function productRepo(): Repository {
 		});
 	}
 
+	/**
+	 * @description The `try`/`catch` here wraps the ENTIRE
+	 * `withPlatformSession` call, not just the `tx.insert()` inside it —
+	 * `trg_product_requires_active_variant`/
+	 * `trg_variant_keeps_product_publishable`
+	 * (`drizzle/0005_variant_rls_and_invariants.sql`) are `DEFERRABLE
+	 * INITIALLY DEFERRED`, so a `23514` from either raises at COMMIT time,
+	 * i.e. from `withPlatformSession`'s own returned promise — AFTER the
+	 * transaction callback below has already returned normally. A `catch`
+	 * placed only inside that callback would never observe it.
+	 */
 	async function create(
 		input: ProductCreate,
 	): ReturnType<Repository["create"]> {
 		const slug = toSlug(input.name);
 
-		return withPlatformSession(async (tx) => {
-			try {
-				const [inserted] = await tx
-					.insert(products)
-					.values({
-						name: input.name,
-						slug,
-						code: input.code ?? null,
-						altCode: input.altCode ?? null,
-						description: input.description ?? null,
-						price: input.price.toFixed(2),
-						...(input.stock !== undefined ? { stock: input.stock } : {}),
-						...(input.stockMin !== undefined
-							? { stockMin: input.stockMin }
-							: {}),
-						coverImage: input.coverImage ?? null,
-						categoryId: input.categoryId ?? null,
-					})
-					.returning();
+		try {
+			return await withPlatformSession(async (tx) => {
+				try {
+					const [inserted] = await tx
+						.insert(products)
+						.values({
+							name: input.name,
+							slug,
+							code: input.code ?? null,
+							altCode: input.altCode ?? null,
+							description: input.description ?? null,
+							price: input.price.toFixed(2),
+							...(input.stock !== undefined ? { stock: input.stock } : {}),
+							...(input.stockMin !== undefined
+								? { stockMin: input.stockMin }
+								: {}),
+							coverImage: input.coverImage ?? null,
+							categoryId: input.categoryId ?? null,
+						})
+						.returning();
 
-				return toProduct(inserted);
-			} catch (e) {
-				if (isUniqueViolation(e)) {
-					throw new DuplicateSlugHttpError(slug);
+					return toProduct(inserted);
+				} catch (e) {
+					if (isUniqueViolation(e)) {
+						throw new DuplicateSlugHttpError(slug);
+					}
+					throw e;
 				}
-				throw e;
+			});
+		} catch (e) {
+			if (isCheckViolation(e)) {
+				throw new ProductRequiresActiveVariantHttpError();
 			}
-		});
+			throw e;
+		}
 	}
 
 	async function update(
@@ -163,22 +201,36 @@ function productRepo(): Repository {
 		if (input.categoryId !== undefined) values.categoryId = input.categoryId;
 		if (input.isActive !== undefined) values.isActive = input.isActive;
 
-		return withPlatformSession(async (tx) => {
-			try {
-				const [row] = await tx
-					.update(products)
-					.set(values)
-					.where(eq(products.id, id))
-					.returning();
+		/**
+		 * @description See `create()`'s own comment above — the outer
+		 * `try`/`catch` is required (not the inner one alone) to observe a
+		 * deferred `23514` raised at COMMIT time, which is exactly the case
+		 * this function exercises when `input.isActive` is set to `true`
+		 * with zero active variants.
+		 */
+		try {
+			return await withPlatformSession(async (tx) => {
+				try {
+					const [row] = await tx
+						.update(products)
+						.set(values)
+						.where(eq(products.id, id))
+						.returning();
 
-				return row ? toProduct(row) : null;
-			} catch (e) {
-				if (isUniqueViolation(e) && slug) {
-					throw new DuplicateSlugHttpError(slug);
+					return row ? toProduct(row) : null;
+				} catch (e) {
+					if (isUniqueViolation(e) && slug) {
+						throw new DuplicateSlugHttpError(slug);
+					}
+					throw e;
 				}
-				throw e;
+			});
+		} catch (e) {
+			if (isCheckViolation(e)) {
+				throw new ProductRequiresActiveVariantHttpError();
 			}
-		});
+			throw e;
+		}
 	}
 
 	/**
