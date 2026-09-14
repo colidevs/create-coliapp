@@ -49,6 +49,11 @@ var TEMPLATES = [
     value: "nextjs-kumo-console"
   },
   {
+    title: "nextjs 16 > biome > shadcn/ui > express > ecommerce admin",
+    description: "Monorepo single-tenant: panel admin (shadcn) + storefront + API Express con pagos dLocal Go, gesti\xF3n de stock y \xF3rdenes ya wireados. Distinto de la consola Kumo (multitenant, sin storefront) y del shadcn b\xE1sico (sin backend).",
+    value: "nextjs-shadcn-ecommerce-admin"
+  },
+  {
     title: "nextjs > eslint > typescript > shadcn/ui",
     description: "Basico, usado principalmente para practicar.",
     value: "nextjs-eslint-ts-shadcn"
@@ -128,7 +133,7 @@ async function main() {
   cpyTemplate(templateDir, destination);
   await restoreNpmrcFiles(destination);
   await replaceName(destination, answer.name);
-  projectCreatedSuccessfully(answer.name);
+  projectCreatedSuccessfully(answer.name, answer.template);
 }
 main().catch(console.error);
 var BINARY_EXTENSIONS = /* @__PURE__ */ new Set([
@@ -174,7 +179,19 @@ async function restoreNpmrcFiles(destination) {
     await (0, import_promises.rename)(file, file.replace(/\.template$/, ""));
   }
 }
-function projectCreatedSuccessfully(projectName) {
+function standardPluginHint(template) {
+  if (template === "express-ts") {
+    return "Building an API? Check colidevs' `api-standard` plugin (coli-marketplace) for design-time guidance against colidevs' API standard.";
+  }
+  if (template === "nextjs-kumo-console") {
+    return "Building a console? Check colidevs' `frontend-standard` plugin (coli-marketplace) for design-time guidance against colidevs' frontend standard.";
+  }
+  if (template === "nextjs-shadcn-ecommerce-admin") {
+    return "Building an API + admin console? Check colidevs' `api-standard` and `frontend-standard` plugins (coli-marketplace) for design-time guidance against colidevs' standards.";
+  }
+  return void 0;
+}
+function projectCreatedSuccessfully(projectName, template) {
   $("\nProject created successfully \u{1F680}\u{1F680}");
   $("--------------------------------------------------");
   $("\u{1F449}", "cd", projectName);
@@ -184,5 +201,10 @@ function projectCreatedSuccessfully(projectName) {
   $("--------------------------------------------------");
   $("Run dev server:");
   $("\u{1F449}", "pnpm dev\n");
+  const hint = standardPluginHint(template);
+  if (hint) {
+    $("--------------------------------------------------");
+    $("\u{1F4A1}", hint, "\n");
+  }
 }
 //# sourceMappingURL=index.js.map

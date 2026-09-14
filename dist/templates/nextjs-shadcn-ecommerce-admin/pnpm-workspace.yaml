@@ -1,0 +1,6 @@
+# ADR 0029 monorepo layout (hefesto, `.claude/rules/monorepo-structure.md`):
+# top-level `apps/*` only. No speculative `packages/*` entry — this template
+# ships no shared package today, and one is not scaffolded ahead of a real
+# need (hefesto's own no-speculation rule).
+packages:
+  - "apps/*"

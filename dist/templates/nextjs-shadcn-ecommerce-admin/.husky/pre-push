@@ -1,0 +1,25 @@
+# Layer 1 (local, fast feedback) of the `api-standard-gate.mjs` attestation
+# gate — hefesto's `.claude/rules/api-enforcement.md`, Layer 1 of its
+# 3-layer enforcement model, and this template's own design
+# (`sdd/ecommerce-admin-template/design`, "Root Workspace Wiring").
+#
+# Runs at pre-push, deliberately never pre-commit: the gate resolves HEAD and
+# reads committed blobs via `git show <commit>:<path>` — at pre-commit time
+# the candidate bytes live in the index, not any commit, so the digest can
+# never match. Same reasoning, same pre-commit/pre-push split as
+# `templates/express-ts`'s own `.husky/pre-push`.
+#
+# Path is `apps/api/scripts/api-standard-gate.mjs` (not the flat
+# `scripts/api-standard-gate.mjs` express-ts itself uses) because this
+# template nests the API app under `apps/api` per ADR 0029.
+#
+# Existence guard: deliberate, not in the design's literal one-line command.
+# This template's root workspace scaffold (PR1 of this series) does not yet
+# copy `templates/express-ts`'s skeleton into `apps/api` — that lands in
+# PR2, task 2.1 (which brings `scripts/api-standard-gate.mjs` with it). Until
+# then this file does not exist, and an unconditional `node` invocation would
+# make every push from this scaffold fail before any real API code exists.
+# The guard is a no-op once PR2 lands.
+if [ -f apps/api/scripts/api-standard-gate.mjs ]; then
+	node apps/api/scripts/api-standard-gate.mjs || exit 1
+fi

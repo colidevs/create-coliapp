@@ -1,0 +1,25 @@
+# Layer 1 (local, fast feedback) of the CI/Husky mandate for this monorepo
+# template — hefesto's ADR 0014/ADR 0026 (backend/frontend template CI/Husky
+# mandates) and ADR 0029 (`.claude/rules/monorepo-structure.md`: "Git hooks
+# and CI live at the root, not per-app").
+#
+# Root-level equivalent of `templates/express-ts/.husky/pre-commit` +
+# `templates/nextjs-kumo-console/.husky/pre-commit`, adapted to run through
+# Turborepo's task graph instead of a single app's own scripts. Same
+# reasoning both source hooks already document: fast, working-tree-safe
+# checks only (Biome, type check, unit tests, OpenAPI/Drizzle generate-and-
+# diff freshness) — no attestation gate here (see `.husky/pre-push`), no
+# E2E/Lighthouse (too slow for pre-commit, belongs in CI).
+#
+# `--if-present` on the two apps/api-filtered generate-and-diff checks:
+# deliberate, not in the design's literal command list. This template's root
+# workspace scaffold (PR1 of this series) ships `apps/api` as a placeholder
+# package with no `generate:openapi:check`/`db:generate:check` scripts yet —
+# those land in PR2. Without `--if-present`, `pnpm --filter` errors on a
+# missing script and this very hook would block PR1's own first commit.
+# `--if-present` keeps the hook correct both before and after PR2 lands.
+pnpm exec biome check . || exit 1
+pnpm turbo run check-types || exit 1
+pnpm turbo run test || exit 1
+pnpm --filter ./apps/api generate:openapi:check --if-present || exit 1
+pnpm --filter ./apps/api db:generate:check --if-present || exit 1

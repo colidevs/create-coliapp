@@ -1,0 +1,127 @@
+name: API Standard (schema-shape)
+
+# Copied into every app scaffolded from this template (create-coliapp's
+# `cpyTemplate` uses `fs.copySync` with no dotfile filter). Ordinary
+# `pull_request` trigger — no `pull_request_target`, no dynamic `gh pr`
+# composition, per the api-enforcement-mechanism design's Threat Matrix.
+#
+# Adapted from `templates/express-ts/.github/workflows/api-standard.yml` for
+# this template's ADR 0029 monorepo layout (`.claude/rules/
+# monorepo-structure.md`): `working-directory: apps/api` on every step, and
+# `cache-dependency-path: pnpm-lock.yaml` pointing at the WORKSPACE ROOT
+# lockfile (there is exactly one, per ADR 0029 — never a per-app lockfile).
+#
+# This is Layer 2 (PR-time CI) of the 3-layer enforcement model documented in
+# hefesto's `.claude/rules/api-enforcement.md`: loud (a visible ✗ on the PR),
+# not a technical merge block — GitHub Free has no branch protection/rulesets
+# on private repos. The real gate is deploy-time CI (Layer 3, `infra`'s
+# `build-api.template.yml`, pending that team's acceptance).
+#
+# Schema-shape (ADR 0009 + ADR 0011): Spectral (this template's own
+# `apps/api/.spectral.yaml`), oasdiff (additive-only diff), license-checker.
+#
+# Plus the generate-and-diff freshness check (ADR 0040's 2026-08-31
+# addendum, superseding ADR 0005): `scripts/generate-openapi.ts --check`
+# re-runs this template's Zod→OpenAPI generation and fails the job if
+# `openapi/openapi.yaml` has drifted from its own generation source.
+#
+# **Deliberately dropped vs. `templates/express-ts`'s own workflow**: the
+# `scripts/api-standard-gate.mjs` attestation step. That gate unconditionally
+# requires a committed `api-standard/findings.json` at HEAD (it treats an
+# absent attestation as an automatic fail, never a pass — see the gate
+# script's own `readFindingsDocument`) — no such file is authored by ANY
+# task in this template's own build-out (`sdd/ecommerce-admin-template/
+# tasks`, hefesto). Wiring the step now would fail every real PR opened
+# against this template by construction, exactly the outcome this
+# template's own design explicitly calls out avoiding for the frontend
+# equivalent (`frontend-standard-gate.mjs`/Lighthouse). Re-add this step
+# only once a human has actually run the `api-standard-check` skill against
+# `apps/api` and committed its `api-standard/findings.json` output.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: api-standard-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  schema-shape:
+    name: Spectral, oasdiff, license-checker
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.4.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+
+      # Generate-and-diff freshness check (ADR 0040's 2026-08-31 addendum,
+      # "generate-and-diff verification is mandatory, not implied"):
+      # re-runs the Zod→OpenAPI generation step (`scripts/generate-
+      # openapi.ts`) and fails if the committed `openapi/openapi.yaml`
+      # differs byte-for-byte from what the current Zod schemas produce.
+      # Distinct from, and runs before, the Spectral shape check below —
+      # this proves the file is CURRENT, Spectral proves it is well-formed;
+      # neither implies the other.
+      - name: OpenAPI spec freshness (ADR 0040 generate-and-diff)
+        run: pnpm run generate:openapi:check
+
+      # Same generate-and-diff discipline, applied to Drizzle migrations
+      # (`scripts/db-generate-check.mjs`, `drizzle/MIGRATIONS.md`): re-runs
+      # the DB-less `drizzle-kit generate` and fails if the committed
+      # `drizzle/` directory differs from what `src/lib/db/schema.ts`
+      # currently produces.
+      - name: Drizzle migration freshness (db-generate-check)
+        run: pnpm run db:generate:check
+
+      - name: Lint OpenAPI spec (ADR 0009 shape rules)
+        run: pnpm run api-standard:lint
+
+      - name: License compliance (ADR 0011 — no GPL/LGPL/AGPL/SSPL)
+        run: pnpm run api-standard:license
+
+      # oasdiff needs two FILE paths, not git refs — extract the base
+      # branch's copy of the spec first. Skips cleanly (no diff step) when
+      # the base ref has no such file yet (e.g. this PR introduces it).
+      # Written INSIDE the workspace (an ephemeral, never-committed
+      # dotfile), not the runner's `/tmp` — oasdiff's docker action only
+      # mounts GITHUB_WORKSPACE.
+      - name: Extract base OpenAPI spec
+        id: base-spec
+        run: |
+          if git show "origin/${{ github.event.pull_request.base.ref }}:apps/api/openapi/openapi.yaml" > "${{ github.workspace }}/.oasdiff-base-openapi.yaml" 2>/dev/null; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check for breaking OpenAPI changes (additive-only, ADR 0009)
+        if: steps.base-spec.outputs.found == 'true'
+        uses: oasdiff/oasdiff-action/breaking@v0.1.13
+        with:
+          base: .oasdiff-base-openapi.yaml
+          revision: apps/api/openapi/openapi.yaml
+          fail-on: ERR
