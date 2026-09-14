@@ -127,9 +127,26 @@ place that can't silently drift out of sync with what's actually required:
 
 If you scaffold this template and immediately run `pnpm build` with no `.env`
 in place at all (the real state of a brand-new project before any secrets are
-wired up), expect both apps' boot-time validation to fail loudly and name
-every missing variable — this is the intended behavior (ADR 0041), not a
-template defect. Set up local secrets per
+wired up), expect the build to fail on `apps/web`, not `apps/api` — and for a
+reason worth understanding, not a template defect:
+
+- `apps/api`'s `tsup` build only **bundles** `config.ts`; it never executes
+  it, so `apps/api`'s own build succeeds with zero env vars set. Its
+  `envSchema.safeParse()` only actually runs — and only then fails loudly,
+  naming every missing/invalid variable at once — the moment the built
+  `dist/index.cjs` is executed at runtime.
+- `apps/web`'s Next.js build **does** execute `env.ts` at build time, because
+  static generation (e.g. `/sitemap.xml`, `/robots.txt`) imports it
+  transitively. With a genuinely empty environment this fails the build
+  itself, not just runtime start — but only for `SERVICE_KEY` (the one field
+  in that schema with no `.default(...)`; every other field in
+  `apps/web/src/env.ts` falls back to a default and never blocks a build on
+  its own).
+
+Both behaviors are ADR 0041 working as intended (fail fast, name every
+invalid/missing var) — they just fire at different points (build-time vs.
+run-time) depending on whether the app's bundler actually executes the
+schema module during its own build. Set up local secrets per
 `.claude/rules/secrets-management.md`'s Infisical convention if you have
 hefesto's conventions available, or hand-seed a `.env` per app for a quick
 local spike.

@@ -32,7 +32,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { stringify } from "yaml";
+import { Document, Scalar } from "yaml";
 import { z } from "zod";
 import { createDocument } from "zod-openapi";
 import {
@@ -1134,9 +1134,33 @@ function buildDocument() {
 	});
 }
 
+// `pnpm create coliapp`'s `replaceName` (create-coliapp/index.ts) substitutes
+// `{{name}}` via a raw text replace across every scaffolded file — it never
+// re-runs a YAML serializer. `info.title` above is `"{{name}}"`, a *quoted*
+// YAML scalar only because `{` is a flow-mapping indicator that forces
+// quoting. Once `replaceName` swaps in a plain client name (e.g. `acme`),
+// the surrounding quote characters survive untouched (`title: "acme"`), but
+// a fresh regeneration serializes that same plain string unquoted
+// (`title: acme` — the `yaml` package never quotes a plain-safe scalar).
+// That mismatch fails `--check` on every single scaffold, unconditionally,
+// regardless of which client name was substituted.
+//
+// Fixing the plain-scalar/quoted-scalar disagreement requires the emitted
+// bytes to be quoted the SAME way both before and after `replaceName` runs —
+// which the placeholder text itself already is (`"{{name}}"` is quoted only
+// because of its braces). Forcing `info.title` to always serialize as a
+// double-quoted scalar, regardless of its actual string content, keeps the
+// committed file's quoting form stable under `replaceName`'s substitution
+// for any client name: quoted before substitution (braces), quoted after
+// (this override), so the two never diverge.
 function render(): string {
-	const document = buildDocument();
-	const yaml = stringify(document, { aliasDuplicateObjects: false });
+	const stringifyOptions = { aliasDuplicateObjects: false } as const;
+	const doc = new Document(buildDocument(), null, stringifyOptions);
+	const titleNode = doc.getIn(["info", "title"], true);
+	if (titleNode instanceof Scalar) {
+		titleNode.type = Scalar.QUOTE_DOUBLE;
+	}
+	const yaml = doc.toString(stringifyOptions);
 	return `${GENERATED_FILE_HEADER}\n${yaml}`;
 }
 
