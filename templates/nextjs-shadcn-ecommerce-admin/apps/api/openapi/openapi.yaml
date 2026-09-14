@@ -829,6 +829,88 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /admin/orders:
+    get:
+      operationId: listOrders
+      summary: List orders
+      description: Read-only — orders are created exclusively by the dLocal checkout
+        flow (`/dlocal/checkout`) and their `status` transitions exclusively via
+        the dLocal payment-notification webhook. Restricted to the `admin` role
+        only (orders carry buyer PII) — a `viewer` session receives `403`.
+      security:
+        - sessionCookie: []
+          apiKeyAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: size
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: A page of orders
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderList"
+        "403":
+          description: Not allowed to read orders
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        default:
+          description: Unexpected error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /admin/orders/{id}:
+    get:
+      operationId: getOrderById
+      summary: Get an order by id
+      security:
+        - sessionCookie: []
+          apiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The order, including its current status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderOutput"
+        "403":
+          description: Not allowed to read orders
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: Order not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        default:
+          description: Unexpected error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
   /web/categories:
     get:
       operationId: listPublicCategories
@@ -1209,6 +1291,108 @@ components:
         - stock
         - stockMin
       description: Sets a product's stock and low-stock threshold.
+    Order:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          example: 9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c
+        orderId:
+          type: string
+          example: order-2026-000123
+        mail:
+          anyOf:
+            - type: string
+              format: email
+              pattern: ^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$
+            - type: "null"
+          example: jane@example.com
+        buyerInfo:
+          anyOf:
+            - type: object
+              properties:
+                name:
+                  type: string
+                  example: Jane Doe
+                email:
+                  type: string
+                  format: email
+                  pattern: ^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$
+                  example: jane@example.com
+                document:
+                  type: string
+                  example: "12345678"
+                phone:
+                  example: +1 555 0100
+                  type: string
+              required:
+                - name
+                - email
+                - document
+            - type: "null"
+        dlocalId:
+          anyOf:
+            - type: string
+            - type: "null"
+          example: D-4-e836ba0b-1f9b-4a3e
+        buyerProducts:
+          type: array
+          items:
+            type: object
+            properties:
+              productId:
+                type: string
+                format: uuid
+                pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                example: 9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c
+              slug:
+                type: string
+                example: wireless-mouse
+              quantity:
+                type: integer
+                minimum: -9007199254740991
+                maximum: 9007199254740991
+                example: 2
+              unitPrice:
+                type: number
+                example: 29.99
+              lineTotal:
+                type: number
+                example: 59.98
+            required:
+              - productId
+              - slug
+              - quantity
+              - unitPrice
+              - lineTotal
+        status:
+          type: string
+          example: PAID
+        createdAt:
+          type: string
+          format: date-time
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+          example: 2026-01-01T00:00:00Z
+        updatedAt:
+          type: string
+          format: date-time
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+          example: 2026-01-01T00:05:00Z
+      required:
+        - id
+        - orderId
+        - mail
+        - buyerInfo
+        - dlocalId
+        - buyerProducts
+        - status
+        - createdAt
+        - updatedAt
+      description: An order created via the dLocal checkout flow. Read-only here —
+        status transitions exclusively through the dLocal payment-notification
+        webhook.
     HealthcheckStatusResponse:
       type: object
       properties:
@@ -1457,6 +1641,41 @@ components:
         - coverImage
       additionalProperties: false
       description: A product's stock projection.
+    OrderList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderOutput"
+        pagination:
+          type: object
+          properties:
+            count:
+              type: number
+            next:
+              type: number
+            page:
+              type: number
+            previous:
+              type: number
+            size:
+              type: number
+            total:
+              type: number
+          required:
+            - count
+            - next
+            - page
+            - previous
+            - size
+            - total
+          additionalProperties: false
+      required:
+        - items
+        - pagination
+      additionalProperties: false
+      description: A page of orders.
     ProductOutput:
       type: object
       properties:
@@ -1542,6 +1761,111 @@ components:
         - updatedAt
       additionalProperties: false
       description: A catalog product.
+    OrderOutput:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          example: 9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c
+        orderId:
+          type: string
+          example: order-2026-000123
+        mail:
+          anyOf:
+            - type: string
+              format: email
+              pattern: ^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$
+            - type: "null"
+          example: jane@example.com
+        buyerInfo:
+          anyOf:
+            - type: object
+              properties:
+                name:
+                  type: string
+                  example: Jane Doe
+                email:
+                  type: string
+                  format: email
+                  pattern: ^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$
+                  example: jane@example.com
+                document:
+                  type: string
+                  example: "12345678"
+                phone:
+                  example: +1 555 0100
+                  type: string
+              required:
+                - name
+                - email
+                - document
+              additionalProperties: false
+            - type: "null"
+        dlocalId:
+          anyOf:
+            - type: string
+            - type: "null"
+          example: D-4-e836ba0b-1f9b-4a3e
+        buyerProducts:
+          type: array
+          items:
+            type: object
+            properties:
+              productId:
+                type: string
+                format: uuid
+                pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                example: 9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c
+              slug:
+                type: string
+                example: wireless-mouse
+              quantity:
+                type: integer
+                minimum: -9007199254740991
+                maximum: 9007199254740991
+                example: 2
+              unitPrice:
+                type: number
+                example: 29.99
+              lineTotal:
+                type: number
+                example: 59.98
+            required:
+              - productId
+              - slug
+              - quantity
+              - unitPrice
+              - lineTotal
+            additionalProperties: false
+        status:
+          type: string
+          example: PAID
+        createdAt:
+          type: string
+          format: date-time
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+          example: 2026-01-01T00:00:00Z
+        updatedAt:
+          type: string
+          format: date-time
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+          example: 2026-01-01T00:05:00Z
+      required:
+        - id
+        - orderId
+        - mail
+        - buyerInfo
+        - dlocalId
+        - buyerProducts
+        - status
+        - createdAt
+        - updatedAt
+      additionalProperties: false
+      description: An order created via the dLocal checkout flow. Read-only here —
+        status transitions exclusively through the dLocal payment-notification
+        webhook.
   securitySchemes:
     sessionCookie:
       type: apiKey

@@ -20,6 +20,14 @@ describe("defineAbilityFor", () => {
 		expect(ability.can("update", "Category")).toBe(false);
 		expect(ability.can("delete", "ProductImage")).toBe(false);
 	});
+
+	it("grants admin read over Order, but never viewer (buyer PII)", () => {
+		const admin = defineAbilityFor("admin");
+		const viewer = defineAbilityFor("viewer");
+
+		expect(admin.can("read", "Order")).toBe(true);
+		expect(viewer.can("read", "Order")).toBe(false);
+	});
 });
 
 describe("assertCan", () => {
