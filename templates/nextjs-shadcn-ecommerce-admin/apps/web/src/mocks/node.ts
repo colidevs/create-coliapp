@@ -1,6 +1,7 @@
 import { setupServer } from "msw/node";
 
 import { handlers } from "@/mocks/handlers";
+import { storefrontHandlers } from "@/mocks/handlers/storefront";
 
 /**
  * The Node.js MSW server — server-side fetches (`src/lib/api.ts`,
@@ -33,5 +34,10 @@ import { handlers } from "@/mocks/handlers";
  *    `exclude` entry) until a future phase either hand-writes real fixtures
  *    per module (closing reason 1) or Orval's own mock generator stops
  *    producing this shape (closing reason 2).
+ *
+ * Phase 6 is the first phase to close reason 1 for the storefront's own
+ * endpoints — `storefrontHandlers` (`src/mocks/handlers/storefront.ts`) is
+ * exactly that hand-written, per-module fixture set, composed here
+ * alongside the (still empty) base `handlers`.
  */
-export const server = setupServer(...handlers);
+export const server = setupServer(...handlers, ...storefrontHandlers);

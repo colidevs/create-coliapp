@@ -14,11 +14,19 @@ out/
 build
 
 # testing
+#
+# Deliberately NOT root-anchored (no leading `/`) — unlike this file's own
+# `dist`/`.next/`/`out`/`build` patterns above, `/test-results` etc. were
+# originally anchored to the repo root, which never matches
+# `apps/web/test-results/` in this ADR 0029 monorepo (Playwright runs with
+# `apps/web` as its cwd). Found live: a real `pnpm exec playwright test` run
+# left `apps/web/test-results/.last-run.json` untracked and visible to
+# `biome check .` (Phase 6, `sdd/ecommerce-admin-template`).
 coverage
-/test-results
-/playwright-report
-/blob-report
-/playwright/.cache
+test-results
+playwright-report
+blob-report
+playwright/.cache
 
 # env files (opt-in for committing if needed)
 .env
