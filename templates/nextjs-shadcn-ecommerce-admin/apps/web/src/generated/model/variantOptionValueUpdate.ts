@@ -6,12 +6,18 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export type CheckoutRequestItemsItem = {
-	/** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
-	variantId: string;
+/**
+ * Updates a variant option value. Renaming `value` re-derives `slug`.
+ */
+export interface VariantOptionValueUpdate {
+	/** @minLength 1 */
+	value?: string;
+	imageUrl?: string | null;
+	description?: string | null;
 	/**
+	 * @minimum -9007199254740991
 	 * @maximum 9007199254740991
-	 * @exclusiveMinimum 0
 	 */
-	quantity: number;
-};
+	displayOrder?: number;
+	isActive?: boolean;
+}

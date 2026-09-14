@@ -6,7 +6,14 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export type ListProductImagesParams = {
-	productId?: string;
-	variantId?: string;
-};
+/**
+ * A resolved option-value selection on a storefront variant.
+ */
+export interface PublicVariantOption {
+	optionTypeSlug: string;
+	optionTypeName: string;
+	valueSlug: string;
+	value: string;
+	imageUrl: string | null;
+	description: string | null;
+}

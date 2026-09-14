@@ -7,23 +7,35 @@
  */
 
 /**
- * A catalog product, with its derived default-variant price and variant count.
+ * A sellable variant of a product, with its option-value selections.
  */
-export interface ProductOutput {
+export interface Variant {
 	/** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
 	id: string;
-	name: string;
-	slug: string;
-	description: string | null;
-	coverImage: string | null;
-	categoryId: string | null;
-	isActive: boolean;
-	defaultPrice: number | null;
+	/** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+	productId: string;
+	code: string | null;
+	altCode: string | null;
+	price: number;
 	/**
 	 * @minimum -9007199254740991
 	 * @maximum 9007199254740991
 	 */
-	variantCount: number;
+	stock: number;
+	/**
+	 * @minimum -9007199254740991
+	 * @maximum 9007199254740991
+	 */
+	stockMin: number;
+	isDefault: boolean;
+	isActive: boolean;
+	/**
+	 * @minimum -9007199254740991
+	 * @maximum 9007199254740991
+	 */
+	displayOrder: number;
+	/** @items.pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+	optionValueIds: string[];
 	/** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$ */
 	createdAt: string;
 	/** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$ */

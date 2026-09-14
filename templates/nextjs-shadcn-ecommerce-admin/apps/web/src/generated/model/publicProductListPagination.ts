@@ -6,7 +6,11 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export type ListProductImagesParams = {
-	productId?: string;
-	variantId?: string;
+export type PublicProductListPagination = {
+	count: number;
+	next: number;
+	page: number;
+	previous: number;
+	size: number;
+	total: number;
 };

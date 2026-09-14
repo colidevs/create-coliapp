@@ -64,7 +64,10 @@ export default function CheckoutPage() {
 		const { phone, ...requiredFields } = payer;
 		const result = await submitCheckout(
 			{ ...requiredFields, ...(phone ? { phone } : {}) },
-			items.map((item) => ({ productId: item.id, quantity: item.quantity })),
+			items.map((item) => ({
+				variantId: item.variantId,
+				quantity: item.quantity,
+			})),
 		);
 
 		// A successful call redirects server-side (`actions.ts`'s `redirect()`)

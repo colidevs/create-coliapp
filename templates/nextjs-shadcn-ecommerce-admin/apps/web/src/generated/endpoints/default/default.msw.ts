@@ -20,7 +20,12 @@ import type {
 	ProductImage,
 	ProductList,
 	ProductOutput,
+	PublicProductList,
+	PublicProductOutput,
 	StockItem,
+	Variant,
+	VariantOptionType,
+	VariantOptionValue,
 } from "../../model";
 
 export const getGetHealthcheckStatusResponseMock = (
@@ -114,27 +119,21 @@ export const getListProductsResponseMock = (
 		id: faker.string.uuid(),
 		name: faker.string.alpha({ length: { min: 10, max: 20 } }),
 		slug: faker.string.alpha({ length: { min: 10, max: 20 } }),
-		code: faker.helpers.arrayElement([
-			faker.string.alpha({ length: { min: 10, max: 20 } }),
-			null,
-		]),
-		altCode: faker.helpers.arrayElement([
-			faker.string.alpha({ length: { min: 10, max: 20 } }),
-			null,
-		]),
 		description: faker.helpers.arrayElement([
 			faker.string.alpha({ length: { min: 10, max: 20 } }),
 			null,
 		]),
-		price: faker.number.float({ fractionDigits: 2 }),
-		stock: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
-		stockMin: faker.number.int({
-			min: -9007199254740991,
-			max: 9007199254740991,
-		}),
 		coverImage: faker.helpers.arrayElement([faker.internet.url(), null]),
 		categoryId: faker.helpers.arrayElement([faker.string.uuid(), null]),
 		isActive: faker.datatype.boolean(),
+		defaultPrice: faker.helpers.arrayElement([
+			faker.number.float({ fractionDigits: 2 }),
+			null,
+		]),
+		variantCount: faker.number.int({
+			min: -9007199254740991,
+			max: 9007199254740991,
+		}),
 		createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
 		updatedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
 	})),
@@ -155,24 +154,21 @@ export const getCreateProductResponseMock = (
 	id: faker.string.uuid(),
 	name: faker.string.alpha({ length: { min: 10, max: 20 } }),
 	slug: faker.string.alpha({ length: { min: 10, max: 20 } }),
-	code: faker.helpers.arrayElement([
-		faker.string.alpha({ length: { min: 10, max: 20 } }),
-		null,
-	]),
-	altCode: faker.helpers.arrayElement([
-		faker.string.alpha({ length: { min: 10, max: 20 } }),
-		null,
-	]),
 	description: faker.helpers.arrayElement([
 		faker.string.alpha({ length: { min: 10, max: 20 } }),
 		null,
 	]),
-	price: faker.number.float({ fractionDigits: 2 }),
-	stock: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
-	stockMin: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
 	coverImage: faker.helpers.arrayElement([faker.internet.url(), null]),
 	categoryId: faker.helpers.arrayElement([faker.string.uuid(), null]),
 	isActive: faker.datatype.boolean(),
+	defaultPrice: faker.helpers.arrayElement([
+		faker.number.float({ fractionDigits: 2 }),
+		null,
+	]),
+	variantCount: faker.number.int({
+		min: -9007199254740991,
+		max: 9007199254740991,
+	}),
 	createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
 	updatedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
 	...overrideResponse,
@@ -184,24 +180,21 @@ export const getGetProductByIdResponseMock = (
 	id: faker.string.uuid(),
 	name: faker.string.alpha({ length: { min: 10, max: 20 } }),
 	slug: faker.string.alpha({ length: { min: 10, max: 20 } }),
-	code: faker.helpers.arrayElement([
-		faker.string.alpha({ length: { min: 10, max: 20 } }),
-		null,
-	]),
-	altCode: faker.helpers.arrayElement([
-		faker.string.alpha({ length: { min: 10, max: 20 } }),
-		null,
-	]),
 	description: faker.helpers.arrayElement([
 		faker.string.alpha({ length: { min: 10, max: 20 } }),
 		null,
 	]),
-	price: faker.number.float({ fractionDigits: 2 }),
-	stock: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
-	stockMin: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
 	coverImage: faker.helpers.arrayElement([faker.internet.url(), null]),
 	categoryId: faker.helpers.arrayElement([faker.string.uuid(), null]),
 	isActive: faker.datatype.boolean(),
+	defaultPrice: faker.helpers.arrayElement([
+		faker.number.float({ fractionDigits: 2 }),
+		null,
+	]),
+	variantCount: faker.number.int({
+		min: -9007199254740991,
+		max: 9007199254740991,
+	}),
 	createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
 	updatedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
 	...overrideResponse,
@@ -213,24 +206,21 @@ export const getUpdateProductResponseMock = (
 	id: faker.string.uuid(),
 	name: faker.string.alpha({ length: { min: 10, max: 20 } }),
 	slug: faker.string.alpha({ length: { min: 10, max: 20 } }),
-	code: faker.helpers.arrayElement([
-		faker.string.alpha({ length: { min: 10, max: 20 } }),
-		null,
-	]),
-	altCode: faker.helpers.arrayElement([
-		faker.string.alpha({ length: { min: 10, max: 20 } }),
-		null,
-	]),
 	description: faker.helpers.arrayElement([
 		faker.string.alpha({ length: { min: 10, max: 20 } }),
 		null,
 	]),
-	price: faker.number.float({ fractionDigits: 2 }),
-	stock: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
-	stockMin: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
 	coverImage: faker.helpers.arrayElement([faker.internet.url(), null]),
 	categoryId: faker.helpers.arrayElement([faker.string.uuid(), null]),
 	isActive: faker.datatype.boolean(),
+	defaultPrice: faker.helpers.arrayElement([
+		faker.number.float({ fractionDigits: 2 }),
+		null,
+	]),
+	variantCount: faker.number.int({
+		min: -9007199254740991,
+		max: 9007199254740991,
+	}),
 	createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
 	updatedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
 	...overrideResponse,
@@ -242,7 +232,8 @@ export const getListProductImagesResponseMock = (): ProductImage[] =>
 		(_, i) => i + 1,
 	).map(() => ({
 		id: faker.string.uuid(),
-		productId: faker.string.uuid(),
+		productId: faker.helpers.arrayElement([faker.string.uuid(), null]),
+		variantId: faker.helpers.arrayElement([faker.string.uuid(), null]),
 		url: faker.internet.url(),
 		position: faker.number.int({
 			min: -9007199254740991,
@@ -255,7 +246,8 @@ export const getCreateProductImageResponseMock = (
 	overrideResponse: Partial<Extract<ProductImage, object>> = {},
 ): ProductImage => ({
 	id: faker.string.uuid(),
-	productId: faker.string.uuid(),
+	productId: faker.helpers.arrayElement([faker.string.uuid(), null]),
+	variantId: faker.helpers.arrayElement([faker.string.uuid(), null]),
 	url: faker.internet.url(),
 	position: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
 	createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
@@ -266,7 +258,8 @@ export const getGetProductImageByIdResponseMock = (
 	overrideResponse: Partial<Extract<ProductImage, object>> = {},
 ): ProductImage => ({
 	id: faker.string.uuid(),
-	productId: faker.string.uuid(),
+	productId: faker.helpers.arrayElement([faker.string.uuid(), null]),
+	variantId: faker.helpers.arrayElement([faker.string.uuid(), null]),
 	url: faker.internet.url(),
 	position: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
 	createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
@@ -277,7 +270,8 @@ export const getUpdateProductImageResponseMock = (
 	overrideResponse: Partial<Extract<ProductImage, object>> = {},
 ): ProductImage => ({
 	id: faker.string.uuid(),
-	productId: faker.string.uuid(),
+	productId: faker.helpers.arrayElement([faker.string.uuid(), null]),
+	variantId: faker.helpers.arrayElement([faker.string.uuid(), null]),
 	url: faker.internet.url(),
 	position: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
 	createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
@@ -290,8 +284,13 @@ export const getListStockResponseMock = (): StockItem[] =>
 		(_, i) => i + 1,
 	).map(() => ({
 		id: faker.string.uuid(),
+		productId: faker.string.uuid(),
 		name: faker.string.alpha({ length: { min: 10, max: 20 } }),
 		slug: faker.string.alpha({ length: { min: 10, max: 20 } }),
+		variantLabel: faker.helpers.arrayElement([
+			faker.string.alpha({ length: { min: 10, max: 20 } }),
+			null,
+		]),
 		stock: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
 		stockMin: faker.number.int({
 			min: -9007199254740991,
@@ -312,8 +311,13 @@ export const getGetStockByIdResponseMock = (
 	overrideResponse: Partial<Extract<StockItem, object>> = {},
 ): StockItem => ({
 	id: faker.string.uuid(),
+	productId: faker.string.uuid(),
 	name: faker.string.alpha({ length: { min: 10, max: 20 } }),
 	slug: faker.string.alpha({ length: { min: 10, max: 20 } }),
+	variantLabel: faker.helpers.arrayElement([
+		faker.string.alpha({ length: { min: 10, max: 20 } }),
+		null,
+	]),
 	stock: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
 	stockMin: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
 	code: faker.helpers.arrayElement([
@@ -332,8 +336,13 @@ export const getUpdateStockByIdResponseMock = (
 	overrideResponse: Partial<Extract<StockItem, object>> = {},
 ): StockItem => ({
 	id: faker.string.uuid(),
+	productId: faker.string.uuid(),
 	name: faker.string.alpha({ length: { min: 10, max: 20 } }),
 	slug: faker.string.alpha({ length: { min: 10, max: 20 } }),
+	variantLabel: faker.helpers.arrayElement([
+		faker.string.alpha({ length: { min: 10, max: 20 } }),
+		null,
+	]),
 	stock: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
 	stockMin: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
 	code: faker.helpers.arrayElement([
@@ -457,8 +466,8 @@ export const getListPublicCategoriesResponseMock = (): Category[] =>
 	}));
 
 export const getListPublicProductsResponseMock = (
-	overrideResponse: Partial<Extract<ProductList, object>> = {},
-): ProductList => ({
+	overrideResponse: Partial<Extract<PublicProductList, object>> = {},
+): PublicProductList => ({
 	items: Array.from(
 		{ length: faker.number.int({ min: 1, max: 10 }) },
 		(_, i) => i + 1,
@@ -466,29 +475,38 @@ export const getListPublicProductsResponseMock = (
 		id: faker.string.uuid(),
 		name: faker.string.alpha({ length: { min: 10, max: 20 } }),
 		slug: faker.string.alpha({ length: { min: 10, max: 20 } }),
-		code: faker.helpers.arrayElement([
-			faker.string.alpha({ length: { min: 10, max: 20 } }),
-			null,
-		]),
-		altCode: faker.helpers.arrayElement([
-			faker.string.alpha({ length: { min: 10, max: 20 } }),
-			null,
-		]),
 		description: faker.helpers.arrayElement([
 			faker.string.alpha({ length: { min: 10, max: 20 } }),
 			null,
 		]),
-		price: faker.number.float({ fractionDigits: 2 }),
-		stock: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
-		stockMin: faker.number.int({
-			min: -9007199254740991,
-			max: 9007199254740991,
-		}),
 		coverImage: faker.helpers.arrayElement([faker.internet.url(), null]),
 		categoryId: faker.helpers.arrayElement([faker.string.uuid(), null]),
-		isActive: faker.datatype.boolean(),
-		createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
-		updatedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+		variants: Array.from(
+			{ length: faker.number.int({ min: 1, max: 10 }) },
+			(_, i) => i + 1,
+		).map(() => ({
+			id: faker.string.uuid(),
+			price: faker.number.float({ fractionDigits: 2 }),
+			stock: faker.number.int({
+				min: -9007199254740991,
+				max: 9007199254740991,
+			}),
+			isDefault: faker.datatype.boolean(),
+			options: Array.from(
+				{ length: faker.number.int({ min: 1, max: 10 }) },
+				(_, i) => i + 1,
+			).map(() => ({
+				optionTypeSlug: faker.string.alpha({ length: { min: 10, max: 20 } }),
+				optionTypeName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+				valueSlug: faker.string.alpha({ length: { min: 10, max: 20 } }),
+				value: faker.string.alpha({ length: { min: 10, max: 20 } }),
+				imageUrl: faker.helpers.arrayElement([faker.internet.url(), null]),
+				description: faker.helpers.arrayElement([
+					faker.string.alpha({ length: { min: 10, max: 20 } }),
+					null,
+				]),
+			})),
+		})),
 	})),
 	pagination: {
 		count: faker.number.float({ fractionDigits: 2 }),
@@ -502,11 +520,238 @@ export const getListPublicProductsResponseMock = (
 });
 
 export const getGetPublicProductBySlugResponseMock = (
-	overrideResponse: Partial<Extract<ProductOutput, object>> = {},
-): ProductOutput => ({
+	overrideResponse: Partial<Extract<PublicProductOutput, object>> = {},
+): PublicProductOutput => ({
 	id: faker.string.uuid(),
 	name: faker.string.alpha({ length: { min: 10, max: 20 } }),
 	slug: faker.string.alpha({ length: { min: 10, max: 20 } }),
+	description: faker.helpers.arrayElement([
+		faker.string.alpha({ length: { min: 10, max: 20 } }),
+		null,
+	]),
+	coverImage: faker.helpers.arrayElement([faker.internet.url(), null]),
+	categoryId: faker.helpers.arrayElement([faker.string.uuid(), null]),
+	variants: Array.from(
+		{ length: faker.number.int({ min: 1, max: 10 }) },
+		(_, i) => i + 1,
+	).map(() => ({
+		id: faker.string.uuid(),
+		price: faker.number.float({ fractionDigits: 2 }),
+		stock: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+		isDefault: faker.datatype.boolean(),
+		options: Array.from(
+			{ length: faker.number.int({ min: 1, max: 10 }) },
+			(_, i) => i + 1,
+		).map(() => ({
+			optionTypeSlug: faker.string.alpha({ length: { min: 10, max: 20 } }),
+			optionTypeName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+			valueSlug: faker.string.alpha({ length: { min: 10, max: 20 } }),
+			value: faker.string.alpha({ length: { min: 10, max: 20 } }),
+			imageUrl: faker.helpers.arrayElement([faker.internet.url(), null]),
+			description: faker.helpers.arrayElement([
+				faker.string.alpha({ length: { min: 10, max: 20 } }),
+				null,
+			]),
+		})),
+	})),
+	...overrideResponse,
+});
+
+export const getListVariantOptionTypesResponseMock = (): VariantOptionType[] =>
+	Array.from(
+		{ length: faker.number.int({ min: 1, max: 10 }) },
+		(_, i) => i + 1,
+	).map(() => ({
+		id: faker.string.uuid(),
+		name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+		slug: faker.string.alpha({ length: { min: 10, max: 20 } }),
+		displayOrder: faker.number.int({
+			min: -9007199254740991,
+			max: 9007199254740991,
+		}),
+		isActive: faker.datatype.boolean(),
+		createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+		updatedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+	}));
+
+export const getCreateVariantOptionTypeResponseMock = (
+	overrideResponse: Partial<Extract<VariantOptionType, object>> = {},
+): VariantOptionType => ({
+	id: faker.string.uuid(),
+	name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+	slug: faker.string.alpha({ length: { min: 10, max: 20 } }),
+	displayOrder: faker.number.int({
+		min: -9007199254740991,
+		max: 9007199254740991,
+	}),
+	isActive: faker.datatype.boolean(),
+	createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+	updatedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+	...overrideResponse,
+});
+
+export const getGetVariantOptionTypeByIdResponseMock = (
+	overrideResponse: Partial<Extract<VariantOptionType, object>> = {},
+): VariantOptionType => ({
+	id: faker.string.uuid(),
+	name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+	slug: faker.string.alpha({ length: { min: 10, max: 20 } }),
+	displayOrder: faker.number.int({
+		min: -9007199254740991,
+		max: 9007199254740991,
+	}),
+	isActive: faker.datatype.boolean(),
+	createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+	updatedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+	...overrideResponse,
+});
+
+export const getUpdateVariantOptionTypeResponseMock = (
+	overrideResponse: Partial<Extract<VariantOptionType, object>> = {},
+): VariantOptionType => ({
+	id: faker.string.uuid(),
+	name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+	slug: faker.string.alpha({ length: { min: 10, max: 20 } }),
+	displayOrder: faker.number.int({
+		min: -9007199254740991,
+		max: 9007199254740991,
+	}),
+	isActive: faker.datatype.boolean(),
+	createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+	updatedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+	...overrideResponse,
+});
+
+export const getListVariantOptionValuesResponseMock =
+	(): VariantOptionValue[] =>
+		Array.from(
+			{ length: faker.number.int({ min: 1, max: 10 }) },
+			(_, i) => i + 1,
+		).map(() => ({
+			id: faker.string.uuid(),
+			optionTypeId: faker.string.uuid(),
+			value: faker.string.alpha({ length: { min: 10, max: 20 } }),
+			slug: faker.string.alpha({ length: { min: 10, max: 20 } }),
+			imageUrl: faker.helpers.arrayElement([faker.internet.url(), null]),
+			description: faker.helpers.arrayElement([
+				faker.string.alpha({ length: { min: 10, max: 20 } }),
+				null,
+			]),
+			displayOrder: faker.number.int({
+				min: -9007199254740991,
+				max: 9007199254740991,
+			}),
+			isActive: faker.datatype.boolean(),
+			createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+			updatedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+		}));
+
+export const getCreateVariantOptionValueResponseMock = (
+	overrideResponse: Partial<Extract<VariantOptionValue, object>> = {},
+): VariantOptionValue => ({
+	id: faker.string.uuid(),
+	optionTypeId: faker.string.uuid(),
+	value: faker.string.alpha({ length: { min: 10, max: 20 } }),
+	slug: faker.string.alpha({ length: { min: 10, max: 20 } }),
+	imageUrl: faker.helpers.arrayElement([faker.internet.url(), null]),
+	description: faker.helpers.arrayElement([
+		faker.string.alpha({ length: { min: 10, max: 20 } }),
+		null,
+	]),
+	displayOrder: faker.number.int({
+		min: -9007199254740991,
+		max: 9007199254740991,
+	}),
+	isActive: faker.datatype.boolean(),
+	createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+	updatedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+	...overrideResponse,
+});
+
+export const getGetVariantOptionValueByIdResponseMock = (
+	overrideResponse: Partial<Extract<VariantOptionValue, object>> = {},
+): VariantOptionValue => ({
+	id: faker.string.uuid(),
+	optionTypeId: faker.string.uuid(),
+	value: faker.string.alpha({ length: { min: 10, max: 20 } }),
+	slug: faker.string.alpha({ length: { min: 10, max: 20 } }),
+	imageUrl: faker.helpers.arrayElement([faker.internet.url(), null]),
+	description: faker.helpers.arrayElement([
+		faker.string.alpha({ length: { min: 10, max: 20 } }),
+		null,
+	]),
+	displayOrder: faker.number.int({
+		min: -9007199254740991,
+		max: 9007199254740991,
+	}),
+	isActive: faker.datatype.boolean(),
+	createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+	updatedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+	...overrideResponse,
+});
+
+export const getUpdateVariantOptionValueResponseMock = (
+	overrideResponse: Partial<Extract<VariantOptionValue, object>> = {},
+): VariantOptionValue => ({
+	id: faker.string.uuid(),
+	optionTypeId: faker.string.uuid(),
+	value: faker.string.alpha({ length: { min: 10, max: 20 } }),
+	slug: faker.string.alpha({ length: { min: 10, max: 20 } }),
+	imageUrl: faker.helpers.arrayElement([faker.internet.url(), null]),
+	description: faker.helpers.arrayElement([
+		faker.string.alpha({ length: { min: 10, max: 20 } }),
+		null,
+	]),
+	displayOrder: faker.number.int({
+		min: -9007199254740991,
+		max: 9007199254740991,
+	}),
+	isActive: faker.datatype.boolean(),
+	createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+	updatedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+	...overrideResponse,
+});
+
+export const getListVariantsResponseMock = (): Variant[] =>
+	Array.from(
+		{ length: faker.number.int({ min: 1, max: 10 }) },
+		(_, i) => i + 1,
+	).map(() => ({
+		id: faker.string.uuid(),
+		productId: faker.string.uuid(),
+		code: faker.helpers.arrayElement([
+			faker.string.alpha({ length: { min: 10, max: 20 } }),
+			null,
+		]),
+		altCode: faker.helpers.arrayElement([
+			faker.string.alpha({ length: { min: 10, max: 20 } }),
+			null,
+		]),
+		price: faker.number.float({ fractionDigits: 2 }),
+		stock: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+		stockMin: faker.number.int({
+			min: -9007199254740991,
+			max: 9007199254740991,
+		}),
+		isDefault: faker.datatype.boolean(),
+		isActive: faker.datatype.boolean(),
+		displayOrder: faker.number.int({
+			min: -9007199254740991,
+			max: 9007199254740991,
+		}),
+		optionValueIds: Array.from(
+			{ length: faker.number.int({ min: 1, max: 10 }) },
+			(_, i) => i + 1,
+		).map(() => faker.string.uuid()),
+		createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+		updatedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+	}));
+
+export const getCreateVariantResponseMock = (
+	overrideResponse: Partial<Extract<Variant, object>> = {},
+): Variant => ({
+	id: faker.string.uuid(),
+	productId: faker.string.uuid(),
 	code: faker.helpers.arrayElement([
 		faker.string.alpha({ length: { min: 10, max: 20 } }),
 		null,
@@ -515,16 +760,81 @@ export const getGetPublicProductBySlugResponseMock = (
 		faker.string.alpha({ length: { min: 10, max: 20 } }),
 		null,
 	]),
-	description: faker.helpers.arrayElement([
+	price: faker.number.float({ fractionDigits: 2 }),
+	stock: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+	stockMin: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+	isDefault: faker.datatype.boolean(),
+	isActive: faker.datatype.boolean(),
+	displayOrder: faker.number.int({
+		min: -9007199254740991,
+		max: 9007199254740991,
+	}),
+	optionValueIds: Array.from(
+		{ length: faker.number.int({ min: 1, max: 10 }) },
+		(_, i) => i + 1,
+	).map(() => faker.string.uuid()),
+	createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+	updatedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+	...overrideResponse,
+});
+
+export const getGetVariantByIdResponseMock = (
+	overrideResponse: Partial<Extract<Variant, object>> = {},
+): Variant => ({
+	id: faker.string.uuid(),
+	productId: faker.string.uuid(),
+	code: faker.helpers.arrayElement([
+		faker.string.alpha({ length: { min: 10, max: 20 } }),
+		null,
+	]),
+	altCode: faker.helpers.arrayElement([
 		faker.string.alpha({ length: { min: 10, max: 20 } }),
 		null,
 	]),
 	price: faker.number.float({ fractionDigits: 2 }),
 	stock: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
 	stockMin: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
-	coverImage: faker.helpers.arrayElement([faker.internet.url(), null]),
-	categoryId: faker.helpers.arrayElement([faker.string.uuid(), null]),
+	isDefault: faker.datatype.boolean(),
 	isActive: faker.datatype.boolean(),
+	displayOrder: faker.number.int({
+		min: -9007199254740991,
+		max: 9007199254740991,
+	}),
+	optionValueIds: Array.from(
+		{ length: faker.number.int({ min: 1, max: 10 }) },
+		(_, i) => i + 1,
+	).map(() => faker.string.uuid()),
+	createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+	updatedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+	...overrideResponse,
+});
+
+export const getUpdateVariantResponseMock = (
+	overrideResponse: Partial<Extract<Variant, object>> = {},
+): Variant => ({
+	id: faker.string.uuid(),
+	productId: faker.string.uuid(),
+	code: faker.helpers.arrayElement([
+		faker.string.alpha({ length: { min: 10, max: 20 } }),
+		null,
+	]),
+	altCode: faker.helpers.arrayElement([
+		faker.string.alpha({ length: { min: 10, max: 20 } }),
+		null,
+	]),
+	price: faker.number.float({ fractionDigits: 2 }),
+	stock: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+	stockMin: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+	isDefault: faker.datatype.boolean(),
+	isActive: faker.datatype.boolean(),
+	displayOrder: faker.number.int({
+		min: -9007199254740991,
+		max: 9007199254740991,
+	}),
+	optionValueIds: Array.from(
+		{ length: faker.number.int({ min: 1, max: 10 }) },
+		(_, i) => i + 1,
+	).map(() => faker.string.uuid()),
 	createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
 	updatedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
 	...overrideResponse,
@@ -1123,10 +1433,10 @@ export const getListPublicCategoriesMockHandler = (
 
 export const getListPublicProductsMockHandler = (
 	overrideResponse?:
-		| ProductList
+		| PublicProductList
 		| ((
 				info: Parameters<Parameters<typeof http.get>[1]>[0],
-		  ) => Promise<ProductList> | ProductList),
+		  ) => Promise<PublicProductList> | PublicProductList),
 	options?: RequestHandlerOptions,
 ) => {
 	return http.get(
@@ -1147,10 +1457,10 @@ export const getListPublicProductsMockHandler = (
 
 export const getGetPublicProductBySlugMockHandler = (
 	overrideResponse?:
-		| ProductOutput
+		| PublicProductOutput
 		| ((
 				info: Parameters<Parameters<typeof http.get>[1]>[0],
-		  ) => Promise<ProductOutput> | ProductOutput),
+		  ) => Promise<PublicProductOutput> | PublicProductOutput),
 	options?: RequestHandlerOptions,
 ) => {
 	return http.get(
@@ -1164,6 +1474,357 @@ export const getGetPublicProductBySlugMockHandler = (
 					: getGetPublicProductBySlugResponseMock(),
 				{ status: 200 },
 			);
+		},
+		options,
+	);
+};
+
+export const getListVariantOptionTypesMockHandler = (
+	overrideResponse?:
+		| VariantOptionType[]
+		| ((
+				info: Parameters<Parameters<typeof http.get>[1]>[0],
+		  ) => Promise<VariantOptionType[]> | VariantOptionType[]),
+	options?: RequestHandlerOptions,
+) => {
+	return http.get(
+		"*/admin/variant-option-types",
+		async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+			return HttpResponse.json(
+				overrideResponse !== undefined
+					? typeof overrideResponse === "function"
+						? await overrideResponse(info)
+						: overrideResponse
+					: getListVariantOptionTypesResponseMock(),
+				{ status: 200 },
+			);
+		},
+		options,
+	);
+};
+
+export const getCreateVariantOptionTypeMockHandler = (
+	overrideResponse?:
+		| VariantOptionType
+		| ((
+				info: Parameters<Parameters<typeof http.post>[1]>[0],
+		  ) => Promise<VariantOptionType> | VariantOptionType),
+	options?: RequestHandlerOptions,
+) => {
+	return http.post(
+		"*/admin/variant-option-types",
+		async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+			return HttpResponse.json(
+				overrideResponse !== undefined
+					? typeof overrideResponse === "function"
+						? await overrideResponse(info)
+						: overrideResponse
+					: getCreateVariantOptionTypeResponseMock(),
+				{ status: 201 },
+			);
+		},
+		options,
+	);
+};
+
+export const getGetVariantOptionTypeByIdMockHandler = (
+	overrideResponse?:
+		| VariantOptionType
+		| ((
+				info: Parameters<Parameters<typeof http.get>[1]>[0],
+		  ) => Promise<VariantOptionType> | VariantOptionType),
+	options?: RequestHandlerOptions,
+) => {
+	return http.get(
+		"*/admin/variant-option-types/:id",
+		async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+			return HttpResponse.json(
+				overrideResponse !== undefined
+					? typeof overrideResponse === "function"
+						? await overrideResponse(info)
+						: overrideResponse
+					: getGetVariantOptionTypeByIdResponseMock(),
+				{ status: 200 },
+			);
+		},
+		options,
+	);
+};
+
+export const getUpdateVariantOptionTypeMockHandler = (
+	overrideResponse?:
+		| VariantOptionType
+		| ((
+				info: Parameters<Parameters<typeof http.patch>[1]>[0],
+		  ) => Promise<VariantOptionType> | VariantOptionType),
+	options?: RequestHandlerOptions,
+) => {
+	return http.patch(
+		"*/admin/variant-option-types/:id",
+		async (info: Parameters<Parameters<typeof http.patch>[1]>[0]) => {
+			return HttpResponse.json(
+				overrideResponse !== undefined
+					? typeof overrideResponse === "function"
+						? await overrideResponse(info)
+						: overrideResponse
+					: getUpdateVariantOptionTypeResponseMock(),
+				{ status: 200 },
+			);
+		},
+		options,
+	);
+};
+
+export const getDeleteVariantOptionTypeMockHandler = (
+	overrideResponse?:
+		| void
+		| ((
+				info: Parameters<Parameters<typeof http.delete>[1]>[0],
+		  ) => Promise<void> | void),
+	options?: RequestHandlerOptions,
+) => {
+	return http.delete(
+		"*/admin/variant-option-types/:id",
+		async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
+			if (typeof overrideResponse === "function") {
+				await overrideResponse(info);
+			}
+
+			return new HttpResponse(null, { status: 204 });
+		},
+		options,
+	);
+};
+
+export const getListVariantOptionValuesMockHandler = (
+	overrideResponse?:
+		| VariantOptionValue[]
+		| ((
+				info: Parameters<Parameters<typeof http.get>[1]>[0],
+		  ) => Promise<VariantOptionValue[]> | VariantOptionValue[]),
+	options?: RequestHandlerOptions,
+) => {
+	return http.get(
+		"*/admin/variant-option-values",
+		async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+			return HttpResponse.json(
+				overrideResponse !== undefined
+					? typeof overrideResponse === "function"
+						? await overrideResponse(info)
+						: overrideResponse
+					: getListVariantOptionValuesResponseMock(),
+				{ status: 200 },
+			);
+		},
+		options,
+	);
+};
+
+export const getCreateVariantOptionValueMockHandler = (
+	overrideResponse?:
+		| VariantOptionValue
+		| ((
+				info: Parameters<Parameters<typeof http.post>[1]>[0],
+		  ) => Promise<VariantOptionValue> | VariantOptionValue),
+	options?: RequestHandlerOptions,
+) => {
+	return http.post(
+		"*/admin/variant-option-values",
+		async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+			return HttpResponse.json(
+				overrideResponse !== undefined
+					? typeof overrideResponse === "function"
+						? await overrideResponse(info)
+						: overrideResponse
+					: getCreateVariantOptionValueResponseMock(),
+				{ status: 201 },
+			);
+		},
+		options,
+	);
+};
+
+export const getGetVariantOptionValueByIdMockHandler = (
+	overrideResponse?:
+		| VariantOptionValue
+		| ((
+				info: Parameters<Parameters<typeof http.get>[1]>[0],
+		  ) => Promise<VariantOptionValue> | VariantOptionValue),
+	options?: RequestHandlerOptions,
+) => {
+	return http.get(
+		"*/admin/variant-option-values/:id",
+		async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+			return HttpResponse.json(
+				overrideResponse !== undefined
+					? typeof overrideResponse === "function"
+						? await overrideResponse(info)
+						: overrideResponse
+					: getGetVariantOptionValueByIdResponseMock(),
+				{ status: 200 },
+			);
+		},
+		options,
+	);
+};
+
+export const getUpdateVariantOptionValueMockHandler = (
+	overrideResponse?:
+		| VariantOptionValue
+		| ((
+				info: Parameters<Parameters<typeof http.patch>[1]>[0],
+		  ) => Promise<VariantOptionValue> | VariantOptionValue),
+	options?: RequestHandlerOptions,
+) => {
+	return http.patch(
+		"*/admin/variant-option-values/:id",
+		async (info: Parameters<Parameters<typeof http.patch>[1]>[0]) => {
+			return HttpResponse.json(
+				overrideResponse !== undefined
+					? typeof overrideResponse === "function"
+						? await overrideResponse(info)
+						: overrideResponse
+					: getUpdateVariantOptionValueResponseMock(),
+				{ status: 200 },
+			);
+		},
+		options,
+	);
+};
+
+export const getDeleteVariantOptionValueMockHandler = (
+	overrideResponse?:
+		| void
+		| ((
+				info: Parameters<Parameters<typeof http.delete>[1]>[0],
+		  ) => Promise<void> | void),
+	options?: RequestHandlerOptions,
+) => {
+	return http.delete(
+		"*/admin/variant-option-values/:id",
+		async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
+			if (typeof overrideResponse === "function") {
+				await overrideResponse(info);
+			}
+
+			return new HttpResponse(null, { status: 204 });
+		},
+		options,
+	);
+};
+
+export const getListVariantsMockHandler = (
+	overrideResponse?:
+		| Variant[]
+		| ((
+				info: Parameters<Parameters<typeof http.get>[1]>[0],
+		  ) => Promise<Variant[]> | Variant[]),
+	options?: RequestHandlerOptions,
+) => {
+	return http.get(
+		"*/admin/variants",
+		async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+			return HttpResponse.json(
+				overrideResponse !== undefined
+					? typeof overrideResponse === "function"
+						? await overrideResponse(info)
+						: overrideResponse
+					: getListVariantsResponseMock(),
+				{ status: 200 },
+			);
+		},
+		options,
+	);
+};
+
+export const getCreateVariantMockHandler = (
+	overrideResponse?:
+		| Variant
+		| ((
+				info: Parameters<Parameters<typeof http.post>[1]>[0],
+		  ) => Promise<Variant> | Variant),
+	options?: RequestHandlerOptions,
+) => {
+	return http.post(
+		"*/admin/variants",
+		async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+			return HttpResponse.json(
+				overrideResponse !== undefined
+					? typeof overrideResponse === "function"
+						? await overrideResponse(info)
+						: overrideResponse
+					: getCreateVariantResponseMock(),
+				{ status: 201 },
+			);
+		},
+		options,
+	);
+};
+
+export const getGetVariantByIdMockHandler = (
+	overrideResponse?:
+		| Variant
+		| ((
+				info: Parameters<Parameters<typeof http.get>[1]>[0],
+		  ) => Promise<Variant> | Variant),
+	options?: RequestHandlerOptions,
+) => {
+	return http.get(
+		"*/admin/variants/:id",
+		async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+			return HttpResponse.json(
+				overrideResponse !== undefined
+					? typeof overrideResponse === "function"
+						? await overrideResponse(info)
+						: overrideResponse
+					: getGetVariantByIdResponseMock(),
+				{ status: 200 },
+			);
+		},
+		options,
+	);
+};
+
+export const getUpdateVariantMockHandler = (
+	overrideResponse?:
+		| Variant
+		| ((
+				info: Parameters<Parameters<typeof http.patch>[1]>[0],
+		  ) => Promise<Variant> | Variant),
+	options?: RequestHandlerOptions,
+) => {
+	return http.patch(
+		"*/admin/variants/:id",
+		async (info: Parameters<Parameters<typeof http.patch>[1]>[0]) => {
+			return HttpResponse.json(
+				overrideResponse !== undefined
+					? typeof overrideResponse === "function"
+						? await overrideResponse(info)
+						: overrideResponse
+					: getUpdateVariantResponseMock(),
+				{ status: 200 },
+			);
+		},
+		options,
+	);
+};
+
+export const getDeleteVariantMockHandler = (
+	overrideResponse?:
+		| void
+		| ((
+				info: Parameters<Parameters<typeof http.delete>[1]>[0],
+		  ) => Promise<void> | void),
+	options?: RequestHandlerOptions,
+) => {
+	return http.delete(
+		"*/admin/variants/:id",
+		async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
+			if (typeof overrideResponse === "function") {
+				await overrideResponse(info);
+			}
+
+			return new HttpResponse(null, { status: 204 });
 		},
 		options,
 	);
@@ -1196,4 +1857,19 @@ export const getDefaultMock = () => [
 	getListPublicCategoriesMockHandler(),
 	getListPublicProductsMockHandler(),
 	getGetPublicProductBySlugMockHandler(),
+	getListVariantOptionTypesMockHandler(),
+	getCreateVariantOptionTypeMockHandler(),
+	getGetVariantOptionTypeByIdMockHandler(),
+	getUpdateVariantOptionTypeMockHandler(),
+	getDeleteVariantOptionTypeMockHandler(),
+	getListVariantOptionValuesMockHandler(),
+	getCreateVariantOptionValueMockHandler(),
+	getGetVariantOptionValueByIdMockHandler(),
+	getUpdateVariantOptionValueMockHandler(),
+	getDeleteVariantOptionValueMockHandler(),
+	getListVariantsMockHandler(),
+	getCreateVariantMockHandler(),
+	getGetVariantByIdMockHandler(),
+	getUpdateVariantMockHandler(),
+	getDeleteVariantMockHandler(),
 ];

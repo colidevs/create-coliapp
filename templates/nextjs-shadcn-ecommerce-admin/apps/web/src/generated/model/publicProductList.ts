@@ -5,8 +5,13 @@
  * Minimal starter spec for this template's existing endpoints, generated from its Zod schemas (ADR 0040). Extend the schema/route modules this script imports as the project's real API contract grows — never hand-edit this file.
  * OpenAPI spec version: 1.0.0
  */
+import type { PublicProductListPagination } from "./publicProductListPagination";
+import type { PublicProductOutput } from "./publicProductOutput";
 
-export type ListProductImagesParams = {
-	productId?: string;
-	variantId?: string;
-};
+/**
+ * A page of active storefront products.
+ */
+export interface PublicProductList {
+	items: PublicProductOutput[];
+	pagination: PublicProductListPagination;
+}

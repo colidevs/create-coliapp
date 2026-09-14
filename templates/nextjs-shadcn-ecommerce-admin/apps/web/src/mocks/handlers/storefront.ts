@@ -1,7 +1,7 @@
 import { HttpResponse, http } from "msw";
 
 import { categoriesFixture } from "@/mocks/data/categories";
-import { productsFixture } from "@/mocks/data/products";
+import { type ProductRecord, productsFixture } from "@/mocks/data/products";
 
 /**
  * Phase 6's own MSW handler set for the storefront's public read endpoints
@@ -26,6 +26,84 @@ function problem(status: number, title: string, detail?: string) {
 	);
 }
 
+/**
+ * `sdd/ecommerce-product-variants/design`, Phase 7 — a minimal, LOCAL
+ * `variants[]` fixture for the storefront's own `PublicProduct` response
+ * shape. Deliberately NOT a new shared `mocks/data/variants.ts` module: that
+ * file is Phase 9's own task (9.3, full admin+storefront fixture/handler
+ * overhaul across `admin.ts`/`storefront.ts` alike) — this stays scoped to
+ * exactly what the storefront read endpoints and `e2e/checkout-flow.spec.ts`
+ * need today, without pre-empting that later, broader fixture design.
+ * `admin.ts`'s own `productsFixture`/`ProductRecord` (flat `price`/`stock`)
+ * is untouched — this only PROJECTS it into the variants shape, locally,
+ * for the two `web/products` read handlers below.
+ *
+ * "Oak Dining Chair" gets two real variants (a `Finish` option with two
+ * values, one of them out of stock) so the storefront's
+ * `<VariantSelector>`/`resolveVariant` matching logic is genuinely exercised
+ * end to end, not just rendered with an empty option list.
+ */
+function toPublicVariants(product: ProductRecord) {
+	if (product.slug === "oak-dining-chair") {
+		return [
+			{
+				id: `${product.id}-natural`,
+				price: product.price,
+				stock: product.stock,
+				isDefault: true,
+				options: [
+					{
+						optionTypeSlug: "finish",
+						optionTypeName: "Finish",
+						valueSlug: "natural",
+						value: "Natural",
+						imageUrl: null,
+						description: null,
+					},
+				],
+			},
+			{
+				id: `${product.id}-walnut`,
+				price: product.price + 20,
+				stock: 0,
+				isDefault: false,
+				options: [
+					{
+						optionTypeSlug: "finish",
+						optionTypeName: "Finish",
+						valueSlug: "walnut",
+						value: "Walnut",
+						imageUrl: null,
+						description: null,
+					},
+				],
+			},
+		];
+	}
+
+	return [
+		{
+			id: `${product.id}-default`,
+			price: product.price,
+			stock: product.stock,
+			isDefault: true,
+			options: [],
+		},
+	];
+}
+
+function toPublicProduct(product: ProductRecord) {
+	return {
+		id: product.id,
+		name: product.name,
+		slug: product.slug,
+		description: product.description,
+		coverImage: product.coverImage,
+		categoryId: product.categoryId,
+		variants: toPublicVariants(product),
+	};
+}
+
 export const storefrontHandlers = [
 	http.get("*/api/v1/web/categories", () => {
 		return HttpResponse.json(categoriesFixture, { status: 200 });
@@ -46,7 +124,7 @@ export const storefrontHandlers = [
 		});
 
 		const start = (page - 1) * size;
-		const items = filtered.slice(start, start + size);
+		const items = filtered.slice(start, start + size).map(toPublicProduct);
 
 		return HttpResponse.json(
 			{
@@ -73,7 +151,7 @@ export const storefrontHandlers = [
 			return problem(404, "Not Found", "Product not found.");
 		}
 
-		return HttpResponse.json(product, { status: 200 });
+		return HttpResponse.json(toPublicProduct(product), { status: 200 });
 	}),
 
 	http.post("*/api/v1/dlocal/checkout", async ({ request }) => {

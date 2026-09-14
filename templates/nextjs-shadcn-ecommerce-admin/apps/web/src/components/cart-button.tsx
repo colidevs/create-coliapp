@@ -3,27 +3,40 @@
 import { Check } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import type { Product } from "@/generated/model";
 import { useCartDrawer } from "@/modules/cart/context";
 import { useCartStore } from "@/modules/cart/store";
+import type { PublicProduct, PublicVariant } from "@/modules/products/types";
 
 /**
  * Ported from munod's real `components/cart-button.tsx` (`AddToCartButton`)
- * — adapted to this template's actual generated `Product` shape (no
- * `EcomProduct`) and to `useCartStore`/`useCartDrawer` (this template's own
- * cart module, `src/modules/cart/`) rather than munod's `hooks/use-cart` +
- * `context/cart-sidebar-context`.
+ * — RETARGETED (`sdd/ecommerce-product-variants/design`, Phase 7) from the
+ * old flat `Product` shape to a specific, already-RESOLVED `PublicVariant` —
+ * a cart line item is a specific variant, not a product
+ * (`modules/cart/types.ts`). `variant` is `undefined` only when
+ * `variant-selector.tsx`'s `resolveVariant` found no match for the current
+ * selection (or the product has zero variants); the button stays disabled
+ * in that case, same as the zero-stock case.
  */
-export function AddToCartButton({ product }: { product: Product }) {
+export function AddToCartButton({
+	product,
+	variant,
+}: {
+	product: PublicProduct;
+	variant: PublicVariant | undefined;
+}) {
 	const { addItem, items } = useCartStore();
 	const { setOpen } = useCartDrawer();
 
-	const isSelected = items.some((item) => item.slug === product.slug);
+	const isSelected = variant
+		? items.some((item) => item.variantId === variant.id)
+		: false;
+	const unavailable = !variant || variant.stock === 0;
 
 	const handleAdd = (e: React.MouseEvent) => {
 		e.preventDefault();
 		e.stopPropagation();
-		addItem(product);
+		if (!variant) return;
+		addItem(product, variant);
 		setOpen(true);
 	};
 
@@ -31,12 +44,12 @@ export function AddToCartButton({ product }: { product: Product }) {
 		<Button
 			onClick={handleAdd}
 			type="button"
-			disabled={product.stock === 0}
+			disabled={unavailable}
 			className="w-full"
 		>
 			{isSelected ? (
 				<Check className="size-4" />
-			) : product.stock === 0 ? (
+			) : unavailable ? (
 				"Out of stock"
 			) : (
 				"Add to cart"

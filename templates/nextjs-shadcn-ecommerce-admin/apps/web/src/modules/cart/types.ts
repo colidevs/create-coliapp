@@ -1,16 +1,21 @@
-import type { Product } from "@/generated/model";
-
 /**
- * `cart` domain (`sdd/ecommerce-admin-template`, Phase 6 storefront port).
- * Ported concept from munod's `hooks/use-cart.ts` (`CartItem = EcomProduct &
- * { quantity: number }`), adapted to this template's ACTUAL generated public
- * product shape (`Product`/`ProductOutput` — a single `coverImage`, no
- * `images[]`/`tags`/`videos`/`size`/`product_type` fields munod's own
- * `EcomProduct` carries) rather than munod's domain-specific one.
+ * `cart` domain (`sdd/ecommerce-product-variants/design`, Phase 7) —
+ * RETARGETED from `Pick<Product, ...>` to a plain shape keyed by
+ * `variantId`: a cart line item is a specific variant, not a product. Kept
+ * as an inline shape (not `Pick<PublicVariant, ...> & ...`) because the item
+ * needs fields from BOTH the parent product (`name`, `productSlug`,
+ * `coverImage`) and the resolved variant (`price`, `stock`, and the derived
+ * `variantLabel`) — no single generated type covers this shape.
  */
-export type CartItem = Pick<
-	Product,
-	"id" | "name" | "slug" | "price" | "coverImage" | "stock"
-> & {
+export type CartItem = {
+	variantId: string;
+	productId: string;
+	name: string;
+	productSlug: string;
+	/** `null` for a single-variant product with zero option selections. */
+	variantLabel: string | null;
+	price: number;
+	coverImage: string | null;
+	stock: number;
 	quantity: number;
 };

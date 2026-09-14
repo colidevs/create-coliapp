@@ -5,29 +5,20 @@
  * Minimal starter spec for this template's existing endpoints, generated from its Zod schemas (ADR 0040). Extend the schema/route modules this script imports as the project's real API contract grows — never hand-edit this file.
  * OpenAPI spec version: 1.0.0
  */
+import type { PublicVariantOption } from "./publicVariantOption";
 
 /**
- * A variant's stock projection, with its parent product's name/slug and its resolved option-value label.
+ * An active, sellable variant, with its resolved option-value selections.
  */
-export interface StockItem {
+export interface PublicVariant {
 	/** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
 	id: string;
-	/** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
-	productId: string;
-	name: string;
-	slug: string;
-	variantLabel: string | null;
+	price: number;
 	/**
 	 * @minimum -9007199254740991
 	 * @maximum 9007199254740991
 	 */
 	stock: number;
-	/**
-	 * @minimum -9007199254740991
-	 * @maximum 9007199254740991
-	 */
-	stockMin: number;
-	code: string | null;
-	altCode: string | null;
-	coverImage: string | null;
+	isDefault: boolean;
+	options: PublicVariantOption[];
 }

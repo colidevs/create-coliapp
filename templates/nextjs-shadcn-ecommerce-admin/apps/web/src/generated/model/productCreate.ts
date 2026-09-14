@@ -7,26 +7,12 @@
  */
 
 /**
- * Creates a product. `slug` is derived from `name`.
+ * Creates a product as a draft (`isActive: false`). `slug` is derived from `name`.
  */
 export interface ProductCreate {
 	/** @minLength 1 */
 	name: string;
-	code?: string;
-	altCode?: string;
 	description?: string;
-	/** @exclusiveMinimum 0 */
-	price: number;
-	/**
-	 * @minimum -9007199254740991
-	 * @maximum 9007199254740991
-	 */
-	stock?: number;
-	/**
-	 * @minimum -9007199254740991
-	 * @maximum 9007199254740991
-	 */
-	stockMin?: number;
 	coverImage?: string;
 	/** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
 	categoryId?: string;

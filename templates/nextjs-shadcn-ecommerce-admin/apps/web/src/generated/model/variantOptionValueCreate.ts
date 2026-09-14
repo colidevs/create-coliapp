@@ -7,27 +7,18 @@
  */
 
 /**
- * A variant's stock projection, with its parent product's name/slug and its resolved option-value label.
+ * Creates a variant option value. `slug` is derived from `value`.
  */
-export interface StockItem {
+export interface VariantOptionValueCreate {
 	/** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
-	id: string;
-	/** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
-	productId: string;
-	name: string;
-	slug: string;
-	variantLabel: string | null;
+	optionTypeId: string;
+	/** @minLength 1 */
+	value: string;
+	imageUrl?: string;
+	description?: string;
 	/**
 	 * @minimum -9007199254740991
 	 * @maximum 9007199254740991
 	 */
-	stock: number;
-	/**
-	 * @minimum -9007199254740991
-	 * @maximum 9007199254740991
-	 */
-	stockMin: number;
-	code: string | null;
-	altCode: string | null;
-	coverImage: string | null;
+	displayOrder?: number;
 }

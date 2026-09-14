@@ -33,7 +33,7 @@ export const GetMeResponse = zod.object({
 
 export const createDlocalCheckoutBodyPayerEmailRegExp =
 	/^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9-]*\.)+[A-Za-z]{2,}$/;
-export const createDlocalCheckoutBodyItemsItemProductIdRegExp =
+export const createDlocalCheckoutBodyItemsItemVariantIdRegExp =
 	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
 export const createDlocalCheckoutBodyItemsItemQuantityExclusiveMin = 0;
 export const createDlocalCheckoutBodyItemsItemQuantityMax = 9007199254740991;
@@ -52,9 +52,9 @@ export const CreateDlocalCheckoutBody = zod
 		items: zod
 			.array(
 				zod.object({
-					productId: zod
+					variantId: zod
 						.uuid()
-						.regex(createDlocalCheckoutBodyItemsItemProductIdRegExp),
+						.regex(createDlocalCheckoutBodyItemsItemVariantIdRegExp),
 					quantity: zod
 						.int()
 						.gt(createDlocalCheckoutBodyItemsItemQuantityExclusiveMin)
@@ -238,14 +238,11 @@ export const ListProductsQueryParams = zod.object({
 
 export const listProductsResponseItemsItemIdRegExp =
 	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
-export const listProductsResponseItemsItemStockMin = -9007199254740991;
-export const listProductsResponseItemsItemStockMax = 9007199254740991;
-
-export const listProductsResponseItemsItemStockMinMin = -9007199254740991;
-export const listProductsResponseItemsItemStockMinMax = 9007199254740991;
-
 export const listProductsResponseItemsItemCategoryIdOneRegExp =
 	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const listProductsResponseItemsItemVariantCountMin = -9007199254740991;
+export const listProductsResponseItemsItemVariantCountMax = 9007199254740991;
+
 export const listProductsResponseItemsItemCreatedAtRegExp =
 	/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$/;
 export const listProductsResponseItemsItemUpdatedAtRegExp =
@@ -259,24 +256,18 @@ export const ListProductsResponse = zod
 					id: zod.uuid().regex(listProductsResponseItemsItemIdRegExp),
 					name: zod.string(),
 					slug: zod.string(),
-					code: zod.union([zod.string(), zod.null()]),
-					altCode: zod.union([zod.string(), zod.null()]),
 					description: zod.union([zod.string(), zod.null()]),
-					price: zod.number(),
-					stock: zod
-						.int()
-						.min(listProductsResponseItemsItemStockMin)
-						.max(listProductsResponseItemsItemStockMax),
-					stockMin: zod
-						.int()
-						.min(listProductsResponseItemsItemStockMinMin)
-						.max(listProductsResponseItemsItemStockMinMax),
 					coverImage: zod.union([zod.url(), zod.null()]),
 					categoryId: zod.union([
 						zod.uuid().regex(listProductsResponseItemsItemCategoryIdOneRegExp),
 						zod.null(),
 					]),
 					isActive: zod.boolean(),
+					defaultPrice: zod.union([zod.number(), zod.null()]),
+					variantCount: zod
+						.int()
+						.min(listProductsResponseItemsItemVariantCountMin)
+						.max(listProductsResponseItemsItemVariantCountMax),
 					createdAt: zod.iso
 						.datetime({ offset: true })
 						.regex(listProductsResponseItemsItemCreatedAtRegExp),
@@ -284,7 +275,9 @@ export const ListProductsResponse = zod
 						.datetime({ offset: true })
 						.regex(listProductsResponseItemsItemUpdatedAtRegExp),
 				})
-				.describe("A catalog product."),
+				.describe(
+					"A catalog product, with its derived default-variant price and variant count.",
+				),
 		),
 		pagination: zod.object({
 			count: zod.number(),
@@ -301,49 +294,27 @@ export const ListProductsResponse = zod
  * @summary Create a product
  */
 
-export const createProductBodyPriceExclusiveMin = 0;
-
-export const createProductBodyStockMin = -9007199254740991;
-export const createProductBodyStockMax = 9007199254740991;
-
-export const createProductBodyStockMinMin = -9007199254740991;
-export const createProductBodyStockMinMax = 9007199254740991;
-
 export const createProductBodyCategoryIdRegExp =
 	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
 
 export const CreateProductBody = zod
 	.object({
 		name: zod.string().min(1),
-		code: zod.string().optional(),
-		altCode: zod.string().optional(),
 		description: zod.string().optional(),
-		price: zod.number().gt(createProductBodyPriceExclusiveMin),
-		stock: zod
-			.int()
-			.min(createProductBodyStockMin)
-			.max(createProductBodyStockMax)
-			.optional(),
-		stockMin: zod
-			.int()
-			.min(createProductBodyStockMinMin)
-			.max(createProductBodyStockMinMax)
-			.optional(),
 		coverImage: zod.url().optional(),
 		categoryId: zod.uuid().regex(createProductBodyCategoryIdRegExp).optional(),
 	})
-	.describe("Creates a product. `slug` is derived from `name`.");
+	.describe(
+		"Creates a product as a draft (`isActive: false`). `slug` is derived from `name`.",
+	);
 
 export const createProductResponseIdRegExp =
 	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
-export const createProductResponseStockMin = -9007199254740991;
-export const createProductResponseStockMax = 9007199254740991;
-
-export const createProductResponseStockMinMin = -9007199254740991;
-export const createProductResponseStockMinMax = 9007199254740991;
-
 export const createProductResponseCategoryIdOneRegExp =
 	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const createProductResponseVariantCountMin = -9007199254740991;
+export const createProductResponseVariantCountMax = 9007199254740991;
+
 export const createProductResponseCreatedAtRegExp =
 	/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$/;
 export const createProductResponseUpdatedAtRegExp =
@@ -354,24 +325,18 @@ export const CreateProductResponse = zod
 		id: zod.uuid().regex(createProductResponseIdRegExp),
 		name: zod.string(),
 		slug: zod.string(),
-		code: zod.union([zod.string(), zod.null()]),
-		altCode: zod.union([zod.string(), zod.null()]),
 		description: zod.union([zod.string(), zod.null()]),
-		price: zod.number(),
-		stock: zod
-			.int()
-			.min(createProductResponseStockMin)
-			.max(createProductResponseStockMax),
-		stockMin: zod
-			.int()
-			.min(createProductResponseStockMinMin)
-			.max(createProductResponseStockMinMax),
 		coverImage: zod.union([zod.url(), zod.null()]),
 		categoryId: zod.union([
 			zod.uuid().regex(createProductResponseCategoryIdOneRegExp),
 			zod.null(),
 		]),
 		isActive: zod.boolean(),
+		defaultPrice: zod.union([zod.number(), zod.null()]),
+		variantCount: zod
+			.int()
+			.min(createProductResponseVariantCountMin)
+			.max(createProductResponseVariantCountMax),
 		createdAt: zod.iso
 			.datetime({ offset: true })
 			.regex(createProductResponseCreatedAtRegExp),
@@ -379,7 +344,9 @@ export const CreateProductResponse = zod
 			.datetime({ offset: true })
 			.regex(createProductResponseUpdatedAtRegExp),
 	})
-	.describe("A catalog product.");
+	.describe(
+		"A catalog product, with its derived default-variant price and variant count.",
+	);
 
 /**
  * @summary Get a product by id
@@ -390,14 +357,11 @@ export const GetProductByIdParams = zod.object({
 
 export const getProductByIdResponseIdRegExp =
 	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
-export const getProductByIdResponseStockMin = -9007199254740991;
-export const getProductByIdResponseStockMax = 9007199254740991;
-
-export const getProductByIdResponseStockMinMin = -9007199254740991;
-export const getProductByIdResponseStockMinMax = 9007199254740991;
-
 export const getProductByIdResponseCategoryIdOneRegExp =
 	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const getProductByIdResponseVariantCountMin = -9007199254740991;
+export const getProductByIdResponseVariantCountMax = 9007199254740991;
+
 export const getProductByIdResponseCreatedAtRegExp =
 	/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$/;
 export const getProductByIdResponseUpdatedAtRegExp =
@@ -408,24 +372,18 @@ export const GetProductByIdResponse = zod
 		id: zod.uuid().regex(getProductByIdResponseIdRegExp),
 		name: zod.string(),
 		slug: zod.string(),
-		code: zod.union([zod.string(), zod.null()]),
-		altCode: zod.union([zod.string(), zod.null()]),
 		description: zod.union([zod.string(), zod.null()]),
-		price: zod.number(),
-		stock: zod
-			.int()
-			.min(getProductByIdResponseStockMin)
-			.max(getProductByIdResponseStockMax),
-		stockMin: zod
-			.int()
-			.min(getProductByIdResponseStockMinMin)
-			.max(getProductByIdResponseStockMinMax),
 		coverImage: zod.union([zod.url(), zod.null()]),
 		categoryId: zod.union([
 			zod.uuid().regex(getProductByIdResponseCategoryIdOneRegExp),
 			zod.null(),
 		]),
 		isActive: zod.boolean(),
+		defaultPrice: zod.union([zod.number(), zod.null()]),
+		variantCount: zod
+			.int()
+			.min(getProductByIdResponseVariantCountMin)
+			.max(getProductByIdResponseVariantCountMax),
 		createdAt: zod.iso
 			.datetime({ offset: true })
 			.regex(getProductByIdResponseCreatedAtRegExp),
@@ -433,7 +391,9 @@ export const GetProductByIdResponse = zod
 			.datetime({ offset: true })
 			.regex(getProductByIdResponseUpdatedAtRegExp),
 	})
-	.describe("A catalog product.");
+	.describe(
+		"A catalog product, with its derived default-variant price and variant count.",
+	);
 
 /**
  * @summary Update a product
@@ -442,34 +402,13 @@ export const UpdateProductParams = zod.object({
 	id: zod.uuid(),
 });
 
-export const updateProductBodyPriceExclusiveMin = 0;
-
-export const updateProductBodyStockMin = -9007199254740991;
-export const updateProductBodyStockMax = 9007199254740991;
-
-export const updateProductBodyStockMinMin = -9007199254740991;
-export const updateProductBodyStockMinMax = 9007199254740991;
-
 export const updateProductBodyCategoryIdOneRegExp =
 	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
 
 export const UpdateProductBody = zod
 	.object({
 		name: zod.string().min(1).optional(),
-		code: zod.union([zod.string(), zod.null()]).optional(),
-		altCode: zod.union([zod.string(), zod.null()]).optional(),
 		description: zod.union([zod.string(), zod.null()]).optional(),
-		price: zod.number().gt(updateProductBodyPriceExclusiveMin).optional(),
-		stock: zod
-			.int()
-			.min(updateProductBodyStockMin)
-			.max(updateProductBodyStockMax)
-			.optional(),
-		stockMin: zod
-			.int()
-			.min(updateProductBodyStockMinMin)
-			.max(updateProductBodyStockMinMax)
-			.optional(),
 		coverImage: zod.union([zod.url(), zod.null()]).optional(),
 		categoryId: zod
 			.union([
@@ -485,14 +424,11 @@ export const UpdateProductBody = zod
 
 export const updateProductResponseIdRegExp =
 	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
-export const updateProductResponseStockMin = -9007199254740991;
-export const updateProductResponseStockMax = 9007199254740991;
-
-export const updateProductResponseStockMinMin = -9007199254740991;
-export const updateProductResponseStockMinMax = 9007199254740991;
-
 export const updateProductResponseCategoryIdOneRegExp =
 	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const updateProductResponseVariantCountMin = -9007199254740991;
+export const updateProductResponseVariantCountMax = 9007199254740991;
+
 export const updateProductResponseCreatedAtRegExp =
 	/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$/;
 export const updateProductResponseUpdatedAtRegExp =
@@ -503,24 +439,18 @@ export const UpdateProductResponse = zod
 		id: zod.uuid().regex(updateProductResponseIdRegExp),
 		name: zod.string(),
 		slug: zod.string(),
-		code: zod.union([zod.string(), zod.null()]),
-		altCode: zod.union([zod.string(), zod.null()]),
 		description: zod.union([zod.string(), zod.null()]),
-		price: zod.number(),
-		stock: zod
-			.int()
-			.min(updateProductResponseStockMin)
-			.max(updateProductResponseStockMax),
-		stockMin: zod
-			.int()
-			.min(updateProductResponseStockMinMin)
-			.max(updateProductResponseStockMinMax),
 		coverImage: zod.union([zod.url(), zod.null()]),
 		categoryId: zod.union([
 			zod.uuid().regex(updateProductResponseCategoryIdOneRegExp),
 			zod.null(),
 		]),
 		isActive: zod.boolean(),
+		defaultPrice: zod.union([zod.number(), zod.null()]),
+		variantCount: zod
+			.int()
+			.min(updateProductResponseVariantCountMin)
+			.max(updateProductResponseVariantCountMax),
 		createdAt: zod.iso
 			.datetime({ offset: true })
 			.regex(updateProductResponseCreatedAtRegExp),
@@ -528,7 +458,9 @@ export const UpdateProductResponse = zod
 			.datetime({ offset: true })
 			.regex(updateProductResponseUpdatedAtRegExp),
 	})
-	.describe("A catalog product.");
+	.describe(
+		"A catalog product, with its derived default-variant price and variant count.",
+	);
 
 /**
  * @summary Delete (deactivate) a product
@@ -544,11 +476,14 @@ export const DeleteProductResponse = zod.void();
  */
 export const ListProductImagesQueryParams = zod.object({
 	productId: zod.uuid().optional(),
+	variantId: zod.uuid().optional(),
 });
 
 export const listProductImagesResponseIdRegExp =
 	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
-export const listProductImagesResponseProductIdRegExp =
+export const listProductImagesResponseProductIdOneRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const listProductImagesResponseVariantIdOneRegExp =
 	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
 export const listProductImagesResponsePositionMin = -9007199254740991;
 export const listProductImagesResponsePositionMax = 9007199254740991;
@@ -559,7 +494,14 @@ export const listProductImagesResponseCreatedAtRegExp =
 export const ListProductImagesResponseItem = zod
 	.object({
 		id: zod.uuid().regex(listProductImagesResponseIdRegExp),
-		productId: zod.uuid().regex(listProductImagesResponseProductIdRegExp),
+		productId: zod.union([
+			zod.uuid().regex(listProductImagesResponseProductIdOneRegExp),
+			zod.null(),
+		]),
+		variantId: zod.union([
+			zod.uuid().regex(listProductImagesResponseVariantIdOneRegExp),
+			zod.null(),
+		]),
 		url: zod.url(),
 		position: zod
 			.int()
@@ -569,7 +511,7 @@ export const ListProductImagesResponseItem = zod
 			.datetime({ offset: true })
 			.regex(listProductImagesResponseCreatedAtRegExp),
 	})
-	.describe("A gallery image belonging to a product.");
+	.describe("A gallery image belonging to a product or one of its variants.");
 export const ListProductImagesResponse = zod.array(
 	ListProductImagesResponseItem,
 );
@@ -579,11 +521,14 @@ export const ListProductImagesResponse = zod.array(
  */
 export const createProductImageBodyProductIdRegExp =
 	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const createProductImageBodyVariantIdRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
 export const createProductImageBodyPositionMin = -9007199254740991;
 export const createProductImageBodyPositionMax = 9007199254740991;
 
 export const CreateProductImageBody = zod.object({
-	productId: zod.uuid().regex(createProductImageBodyProductIdRegExp),
+	productId: zod.uuid().regex(createProductImageBodyProductIdRegExp).optional(),
+	variantId: zod.uuid().regex(createProductImageBodyVariantIdRegExp).optional(),
 	url: zod.url(),
 	position: zod
 		.int()
@@ -594,7 +539,9 @@ export const CreateProductImageBody = zod.object({
 
 export const createProductImageResponseIdRegExp =
 	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
-export const createProductImageResponseProductIdRegExp =
+export const createProductImageResponseProductIdOneRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const createProductImageResponseVariantIdOneRegExp =
 	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
 export const createProductImageResponsePositionMin = -9007199254740991;
 export const createProductImageResponsePositionMax = 9007199254740991;
@@ -605,7 +552,14 @@ export const createProductImageResponseCreatedAtRegExp =
 export const CreateProductImageResponse = zod
 	.object({
 		id: zod.uuid().regex(createProductImageResponseIdRegExp),
-		productId: zod.uuid().regex(createProductImageResponseProductIdRegExp),
+		productId: zod.union([
+			zod.uuid().regex(createProductImageResponseProductIdOneRegExp),
+			zod.null(),
+		]),
+		variantId: zod.union([
+			zod.uuid().regex(createProductImageResponseVariantIdOneRegExp),
+			zod.null(),
+		]),
 		url: zod.url(),
 		position: zod
 			.int()
@@ -615,7 +569,7 @@ export const CreateProductImageResponse = zod
 			.datetime({ offset: true })
 			.regex(createProductImageResponseCreatedAtRegExp),
 	})
-	.describe("A gallery image belonging to a product.");
+	.describe("A gallery image belonging to a product or one of its variants.");
 
 /**
  * @summary Get a product image by id
@@ -626,7 +580,9 @@ export const GetProductImageByIdParams = zod.object({
 
 export const getProductImageByIdResponseIdRegExp =
 	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
-export const getProductImageByIdResponseProductIdRegExp =
+export const getProductImageByIdResponseProductIdOneRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const getProductImageByIdResponseVariantIdOneRegExp =
 	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
 export const getProductImageByIdResponsePositionMin = -9007199254740991;
 export const getProductImageByIdResponsePositionMax = 9007199254740991;
@@ -637,7 +593,14 @@ export const getProductImageByIdResponseCreatedAtRegExp =
 export const GetProductImageByIdResponse = zod
 	.object({
 		id: zod.uuid().regex(getProductImageByIdResponseIdRegExp),
-		productId: zod.uuid().regex(getProductImageByIdResponseProductIdRegExp),
+		productId: zod.union([
+			zod.uuid().regex(getProductImageByIdResponseProductIdOneRegExp),
+			zod.null(),
+		]),
+		variantId: zod.union([
+			zod.uuid().regex(getProductImageByIdResponseVariantIdOneRegExp),
+			zod.null(),
+		]),
 		url: zod.url(),
 		position: zod
 			.int()
@@ -647,7 +610,7 @@ export const GetProductImageByIdResponse = zod
 			.datetime({ offset: true })
 			.regex(getProductImageByIdResponseCreatedAtRegExp),
 	})
-	.describe("A gallery image belonging to a product.");
+	.describe("A gallery image belonging to a product or one of its variants.");
 
 /**
  * @summary Update a product image
@@ -670,7 +633,9 @@ export const UpdateProductImageBody = zod.object({
 
 export const updateProductImageResponseIdRegExp =
 	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
-export const updateProductImageResponseProductIdRegExp =
+export const updateProductImageResponseProductIdOneRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const updateProductImageResponseVariantIdOneRegExp =
 	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
 export const updateProductImageResponsePositionMin = -9007199254740991;
 export const updateProductImageResponsePositionMax = 9007199254740991;
@@ -681,7 +646,14 @@ export const updateProductImageResponseCreatedAtRegExp =
 export const UpdateProductImageResponse = zod
 	.object({
 		id: zod.uuid().regex(updateProductImageResponseIdRegExp),
-		productId: zod.uuid().regex(updateProductImageResponseProductIdRegExp),
+		productId: zod.union([
+			zod.uuid().regex(updateProductImageResponseProductIdOneRegExp),
+			zod.null(),
+		]),
+		variantId: zod.union([
+			zod.uuid().regex(updateProductImageResponseVariantIdOneRegExp),
+			zod.null(),
+		]),
 		url: zod.url(),
 		position: zod
 			.int()
@@ -691,7 +663,7 @@ export const UpdateProductImageResponse = zod
 			.datetime({ offset: true })
 			.regex(updateProductImageResponseCreatedAtRegExp),
 	})
-	.describe("A gallery image belonging to a product.");
+	.describe("A gallery image belonging to a product or one of its variants.");
 
 /**
  * @summary Delete a product image
@@ -712,6 +684,8 @@ export const ListStockQueryParams = zod.object({
 
 export const listStockResponseIdRegExp =
 	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const listStockResponseProductIdRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
 export const listStockResponseStockMin = -9007199254740991;
 export const listStockResponseStockMax = 9007199254740991;
 
@@ -721,8 +695,10 @@ export const listStockResponseStockMinMax = 9007199254740991;
 export const ListStockResponseItem = zod
 	.object({
 		id: zod.uuid().regex(listStockResponseIdRegExp),
+		productId: zod.uuid().regex(listStockResponseProductIdRegExp),
 		name: zod.string(),
 		slug: zod.string(),
+		variantLabel: zod.union([zod.string(), zod.null()]),
 		stock: zod
 			.int()
 			.min(listStockResponseStockMin)
@@ -735,7 +711,9 @@ export const ListStockResponseItem = zod
 		altCode: zod.union([zod.string(), zod.null()]),
 		coverImage: zod.union([zod.url(), zod.null()]),
 	})
-	.describe("A product's stock projection.");
+	.describe(
+		"A variant's stock projection, with its parent product's name/slug and its resolved option-value label.",
+	);
 export const ListStockResponse = zod.array(ListStockResponseItem);
 
 /**
@@ -747,6 +725,8 @@ export const GetStockByIdParams = zod.object({
 
 export const getStockByIdResponseIdRegExp =
 	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const getStockByIdResponseProductIdRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
 export const getStockByIdResponseStockMin = -9007199254740991;
 export const getStockByIdResponseStockMax = 9007199254740991;
 
@@ -756,8 +736,10 @@ export const getStockByIdResponseStockMinMax = 9007199254740991;
 export const GetStockByIdResponse = zod
 	.object({
 		id: zod.uuid().regex(getStockByIdResponseIdRegExp),
+		productId: zod.uuid().regex(getStockByIdResponseProductIdRegExp),
 		name: zod.string(),
 		slug: zod.string(),
+		variantLabel: zod.union([zod.string(), zod.null()]),
 		stock: zod
 			.int()
 			.min(getStockByIdResponseStockMin)
@@ -770,7 +752,9 @@ export const GetStockByIdResponse = zod
 		altCode: zod.union([zod.string(), zod.null()]),
 		coverImage: zod.union([zod.url(), zod.null()]),
 	})
-	.describe("A product's stock projection.");
+	.describe(
+		"A variant's stock projection, with its parent product's name/slug and its resolved option-value label.",
+	);
 
 /**
  * @summary Set a product's stock and low-stock threshold
@@ -800,6 +784,8 @@ export const UpdateStockByIdBody = zod
 
 export const updateStockByIdResponseIdRegExp =
 	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const updateStockByIdResponseProductIdRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
 export const updateStockByIdResponseStockMin = -9007199254740991;
 export const updateStockByIdResponseStockMax = 9007199254740991;
 
@@ -809,8 +795,10 @@ export const updateStockByIdResponseStockMinMax = 9007199254740991;
 export const UpdateStockByIdResponse = zod
 	.object({
 		id: zod.uuid().regex(updateStockByIdResponseIdRegExp),
+		productId: zod.uuid().regex(updateStockByIdResponseProductIdRegExp),
 		name: zod.string(),
 		slug: zod.string(),
+		variantLabel: zod.union([zod.string(), zod.null()]),
 		stock: zod
 			.int()
 			.min(updateStockByIdResponseStockMin)
@@ -823,7 +811,9 @@ export const UpdateStockByIdResponse = zod
 		altCode: zod.union([zod.string(), zod.null()]),
 		coverImage: zod.union([zod.url(), zod.null()]),
 	})
-	.describe("A product's stock projection.");
+	.describe(
+		"A variant's stock projection, with its parent product's name/slug and its resolved option-value label.",
+	);
 
 /**
  * Read-only — orders are created exclusively by the dLocal checkout flow (`/dlocal/checkout`) and their `status` transitions exclusively via the dLocal payment-notification webhook. Restricted to the `admin` role only (orders carry buyer PII) — a `viewer` session receives `403`.
@@ -1022,18 +1012,13 @@ export const ListPublicProductsQueryParams = zod.object({
 
 export const listPublicProductsResponseItemsItemIdRegExp =
 	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
-export const listPublicProductsResponseItemsItemStockMin = -9007199254740991;
-export const listPublicProductsResponseItemsItemStockMax = 9007199254740991;
-
-export const listPublicProductsResponseItemsItemStockMinMin = -9007199254740991;
-export const listPublicProductsResponseItemsItemStockMinMax = 9007199254740991;
-
 export const listPublicProductsResponseItemsItemCategoryIdOneRegExp =
 	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
-export const listPublicProductsResponseItemsItemCreatedAtRegExp =
-	/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$/;
-export const listPublicProductsResponseItemsItemUpdatedAtRegExp =
-	/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$/;
+export const listPublicProductsResponseItemsItemVariantsItemIdRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const listPublicProductsResponseItemsItemVariantsItemStockMin =
+	-9007199254740991;
+export const listPublicProductsResponseItemsItemVariantsItemStockMax = 9007199254740991;
 
 export const ListPublicProductsResponse = zod
 	.object({
@@ -1043,18 +1028,7 @@ export const ListPublicProductsResponse = zod
 					id: zod.uuid().regex(listPublicProductsResponseItemsItemIdRegExp),
 					name: zod.string(),
 					slug: zod.string(),
-					code: zod.union([zod.string(), zod.null()]),
-					altCode: zod.union([zod.string(), zod.null()]),
 					description: zod.union([zod.string(), zod.null()]),
-					price: zod.number(),
-					stock: zod
-						.int()
-						.min(listPublicProductsResponseItemsItemStockMin)
-						.max(listPublicProductsResponseItemsItemStockMax),
-					stockMin: zod
-						.int()
-						.min(listPublicProductsResponseItemsItemStockMinMin)
-						.max(listPublicProductsResponseItemsItemStockMinMax),
 					coverImage: zod.union([zod.url(), zod.null()]),
 					categoryId: zod.union([
 						zod
@@ -1062,15 +1036,43 @@ export const ListPublicProductsResponse = zod
 							.regex(listPublicProductsResponseItemsItemCategoryIdOneRegExp),
 						zod.null(),
 					]),
-					isActive: zod.boolean(),
-					createdAt: zod.iso
-						.datetime({ offset: true })
-						.regex(listPublicProductsResponseItemsItemCreatedAtRegExp),
-					updatedAt: zod.iso
-						.datetime({ offset: true })
-						.regex(listPublicProductsResponseItemsItemUpdatedAtRegExp),
+					variants: zod.array(
+						zod
+							.object({
+								id: zod
+									.uuid()
+									.regex(
+										listPublicProductsResponseItemsItemVariantsItemIdRegExp,
+									),
+								price: zod.number(),
+								stock: zod
+									.int()
+									.min(listPublicProductsResponseItemsItemVariantsItemStockMin)
+									.max(listPublicProductsResponseItemsItemVariantsItemStockMax),
+								isDefault: zod.boolean(),
+								options: zod.array(
+									zod
+										.object({
+											optionTypeSlug: zod.string(),
+											optionTypeName: zod.string(),
+											valueSlug: zod.string(),
+											value: zod.string(),
+											imageUrl: zod.union([zod.url(), zod.null()]),
+											description: zod.union([zod.string(), zod.null()]),
+										})
+										.describe(
+											"A resolved option-value selection on a storefront variant.",
+										),
+								),
+							})
+							.describe(
+								"An active, sellable variant, with its resolved option-value selections.",
+							),
+					),
 				})
-				.describe("A catalog product."),
+				.describe(
+					"A storefront-facing product, with its active variants and their option-value selections.",
+				),
 		),
 		pagination: zod.object({
 			count: zod.number(),
@@ -1081,7 +1083,7 @@ export const ListPublicProductsResponse = zod
 			total: zod.number(),
 		}),
 	})
-	.describe("A page of products.");
+	.describe("A page of active storefront products.");
 
 /**
  * @summary Get an active product by slug (storefront)
@@ -1092,47 +1094,806 @@ export const GetPublicProductBySlugParams = zod.object({
 
 export const getPublicProductBySlugResponseIdRegExp =
 	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
-export const getPublicProductBySlugResponseStockMin = -9007199254740991;
-export const getPublicProductBySlugResponseStockMax = 9007199254740991;
-
-export const getPublicProductBySlugResponseStockMinMin = -9007199254740991;
-export const getPublicProductBySlugResponseStockMinMax = 9007199254740991;
-
 export const getPublicProductBySlugResponseCategoryIdOneRegExp =
 	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
-export const getPublicProductBySlugResponseCreatedAtRegExp =
-	/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$/;
-export const getPublicProductBySlugResponseUpdatedAtRegExp =
-	/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$/;
+export const getPublicProductBySlugResponseVariantsItemIdRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const getPublicProductBySlugResponseVariantsItemStockMin =
+	-9007199254740991;
+export const getPublicProductBySlugResponseVariantsItemStockMax = 9007199254740991;
 
 export const GetPublicProductBySlugResponse = zod
 	.object({
 		id: zod.uuid().regex(getPublicProductBySlugResponseIdRegExp),
 		name: zod.string(),
 		slug: zod.string(),
-		code: zod.union([zod.string(), zod.null()]),
-		altCode: zod.union([zod.string(), zod.null()]),
 		description: zod.union([zod.string(), zod.null()]),
-		price: zod.number(),
-		stock: zod
-			.int()
-			.min(getPublicProductBySlugResponseStockMin)
-			.max(getPublicProductBySlugResponseStockMax),
-		stockMin: zod
-			.int()
-			.min(getPublicProductBySlugResponseStockMinMin)
-			.max(getPublicProductBySlugResponseStockMinMax),
 		coverImage: zod.union([zod.url(), zod.null()]),
 		categoryId: zod.union([
 			zod.uuid().regex(getPublicProductBySlugResponseCategoryIdOneRegExp),
 			zod.null(),
 		]),
+		variants: zod.array(
+			zod
+				.object({
+					id: zod
+						.uuid()
+						.regex(getPublicProductBySlugResponseVariantsItemIdRegExp),
+					price: zod.number(),
+					stock: zod
+						.int()
+						.min(getPublicProductBySlugResponseVariantsItemStockMin)
+						.max(getPublicProductBySlugResponseVariantsItemStockMax),
+					isDefault: zod.boolean(),
+					options: zod.array(
+						zod
+							.object({
+								optionTypeSlug: zod.string(),
+								optionTypeName: zod.string(),
+								valueSlug: zod.string(),
+								value: zod.string(),
+								imageUrl: zod.union([zod.url(), zod.null()]),
+								description: zod.union([zod.string(), zod.null()]),
+							})
+							.describe(
+								"A resolved option-value selection on a storefront variant.",
+							),
+					),
+				})
+				.describe(
+					"An active, sellable variant, with its resolved option-value selections.",
+				),
+		),
+	})
+	.describe(
+		"A storefront-facing product, with its active variants and their option-value selections.",
+	);
+
+/**
+ * @summary List variant option types
+ */
+export const listVariantOptionTypesResponseIdRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const listVariantOptionTypesResponseDisplayOrderMin = -9007199254740991;
+export const listVariantOptionTypesResponseDisplayOrderMax = 9007199254740991;
+
+export const listVariantOptionTypesResponseCreatedAtRegExp =
+	/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$/;
+export const listVariantOptionTypesResponseUpdatedAtRegExp =
+	/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$/;
+
+export const ListVariantOptionTypesResponseItem = zod
+	.object({
+		id: zod.uuid().regex(listVariantOptionTypesResponseIdRegExp),
+		name: zod.string(),
+		slug: zod.string(),
+		displayOrder: zod
+			.int()
+			.min(listVariantOptionTypesResponseDisplayOrderMin)
+			.max(listVariantOptionTypesResponseDisplayOrderMax),
 		isActive: zod.boolean(),
 		createdAt: zod.iso
 			.datetime({ offset: true })
-			.regex(getPublicProductBySlugResponseCreatedAtRegExp),
+			.regex(listVariantOptionTypesResponseCreatedAtRegExp),
 		updatedAt: zod.iso
 			.datetime({ offset: true })
-			.regex(getPublicProductBySlugResponseUpdatedAtRegExp),
+			.regex(listVariantOptionTypesResponseUpdatedAtRegExp),
 	})
-	.describe("A catalog product.");
+	.describe("An admin-managed variant option type (e.g. color, size).");
+export const ListVariantOptionTypesResponse = zod.array(
+	ListVariantOptionTypesResponseItem,
+);
+
+/**
+ * @summary Create a variant option type
+ */
+
+export const createVariantOptionTypeBodyDisplayOrderMin = -9007199254740991;
+export const createVariantOptionTypeBodyDisplayOrderMax = 9007199254740991;
+
+export const CreateVariantOptionTypeBody = zod
+	.object({
+		name: zod.string().min(1),
+		displayOrder: zod
+			.int()
+			.min(createVariantOptionTypeBodyDisplayOrderMin)
+			.max(createVariantOptionTypeBodyDisplayOrderMax)
+			.optional(),
+	})
+	.describe("Creates a variant option type. `slug` is derived from `name`.");
+
+export const createVariantOptionTypeResponseIdRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const createVariantOptionTypeResponseDisplayOrderMin = -9007199254740991;
+export const createVariantOptionTypeResponseDisplayOrderMax = 9007199254740991;
+
+export const createVariantOptionTypeResponseCreatedAtRegExp =
+	/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$/;
+export const createVariantOptionTypeResponseUpdatedAtRegExp =
+	/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$/;
+
+export const CreateVariantOptionTypeResponse = zod
+	.object({
+		id: zod.uuid().regex(createVariantOptionTypeResponseIdRegExp),
+		name: zod.string(),
+		slug: zod.string(),
+		displayOrder: zod
+			.int()
+			.min(createVariantOptionTypeResponseDisplayOrderMin)
+			.max(createVariantOptionTypeResponseDisplayOrderMax),
+		isActive: zod.boolean(),
+		createdAt: zod.iso
+			.datetime({ offset: true })
+			.regex(createVariantOptionTypeResponseCreatedAtRegExp),
+		updatedAt: zod.iso
+			.datetime({ offset: true })
+			.regex(createVariantOptionTypeResponseUpdatedAtRegExp),
+	})
+	.describe("An admin-managed variant option type (e.g. color, size).");
+
+/**
+ * @summary Get a variant option type by id
+ */
+export const GetVariantOptionTypeByIdParams = zod.object({
+	id: zod.uuid(),
+});
+
+export const getVariantOptionTypeByIdResponseIdRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const getVariantOptionTypeByIdResponseDisplayOrderMin =
+	-9007199254740991;
+export const getVariantOptionTypeByIdResponseDisplayOrderMax = 9007199254740991;
+
+export const getVariantOptionTypeByIdResponseCreatedAtRegExp =
+	/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$/;
+export const getVariantOptionTypeByIdResponseUpdatedAtRegExp =
+	/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$/;
+
+export const GetVariantOptionTypeByIdResponse = zod
+	.object({
+		id: zod.uuid().regex(getVariantOptionTypeByIdResponseIdRegExp),
+		name: zod.string(),
+		slug: zod.string(),
+		displayOrder: zod
+			.int()
+			.min(getVariantOptionTypeByIdResponseDisplayOrderMin)
+			.max(getVariantOptionTypeByIdResponseDisplayOrderMax),
+		isActive: zod.boolean(),
+		createdAt: zod.iso
+			.datetime({ offset: true })
+			.regex(getVariantOptionTypeByIdResponseCreatedAtRegExp),
+		updatedAt: zod.iso
+			.datetime({ offset: true })
+			.regex(getVariantOptionTypeByIdResponseUpdatedAtRegExp),
+	})
+	.describe("An admin-managed variant option type (e.g. color, size).");
+
+/**
+ * @summary Update a variant option type
+ */
+export const UpdateVariantOptionTypeParams = zod.object({
+	id: zod.uuid(),
+});
+
+export const updateVariantOptionTypeBodyDisplayOrderMin = -9007199254740991;
+export const updateVariantOptionTypeBodyDisplayOrderMax = 9007199254740991;
+
+export const UpdateVariantOptionTypeBody = zod
+	.object({
+		name: zod.string().min(1).optional(),
+		displayOrder: zod
+			.int()
+			.min(updateVariantOptionTypeBodyDisplayOrderMin)
+			.max(updateVariantOptionTypeBodyDisplayOrderMax)
+			.optional(),
+		isActive: zod.boolean().optional(),
+	})
+	.describe(
+		"Updates a variant option type. Renaming re-derives `slug` from the new `name`.",
+	);
+
+export const updateVariantOptionTypeResponseIdRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const updateVariantOptionTypeResponseDisplayOrderMin = -9007199254740991;
+export const updateVariantOptionTypeResponseDisplayOrderMax = 9007199254740991;
+
+export const updateVariantOptionTypeResponseCreatedAtRegExp =
+	/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$/;
+export const updateVariantOptionTypeResponseUpdatedAtRegExp =
+	/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$/;
+
+export const UpdateVariantOptionTypeResponse = zod
+	.object({
+		id: zod.uuid().regex(updateVariantOptionTypeResponseIdRegExp),
+		name: zod.string(),
+		slug: zod.string(),
+		displayOrder: zod
+			.int()
+			.min(updateVariantOptionTypeResponseDisplayOrderMin)
+			.max(updateVariantOptionTypeResponseDisplayOrderMax),
+		isActive: zod.boolean(),
+		createdAt: zod.iso
+			.datetime({ offset: true })
+			.regex(updateVariantOptionTypeResponseCreatedAtRegExp),
+		updatedAt: zod.iso
+			.datetime({ offset: true })
+			.regex(updateVariantOptionTypeResponseUpdatedAtRegExp),
+	})
+	.describe("An admin-managed variant option type (e.g. color, size).");
+
+/**
+ * @summary Deactivate a variant option type (soft delete)
+ */
+export const DeleteVariantOptionTypeParams = zod.object({
+	id: zod.uuid(),
+});
+
+export const DeleteVariantOptionTypeResponse = zod.void();
+
+/**
+ * @summary List variant option values
+ */
+export const ListVariantOptionValuesQueryParams = zod.object({
+	optionTypeId: zod.uuid().optional(),
+});
+
+export const listVariantOptionValuesResponseIdRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const listVariantOptionValuesResponseOptionTypeIdRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const listVariantOptionValuesResponseDisplayOrderMin = -9007199254740991;
+export const listVariantOptionValuesResponseDisplayOrderMax = 9007199254740991;
+
+export const listVariantOptionValuesResponseCreatedAtRegExp =
+	/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$/;
+export const listVariantOptionValuesResponseUpdatedAtRegExp =
+	/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$/;
+
+export const ListVariantOptionValuesResponseItem = zod
+	.object({
+		id: zod.uuid().regex(listVariantOptionValuesResponseIdRegExp),
+		optionTypeId: zod
+			.uuid()
+			.regex(listVariantOptionValuesResponseOptionTypeIdRegExp),
+		value: zod.string(),
+		slug: zod.string(),
+		imageUrl: zod.union([zod.url(), zod.null()]),
+		description: zod.union([zod.string(), zod.null()]),
+		displayOrder: zod
+			.int()
+			.min(listVariantOptionValuesResponseDisplayOrderMin)
+			.max(listVariantOptionValuesResponseDisplayOrderMax),
+		isActive: zod.boolean(),
+		createdAt: zod.iso
+			.datetime({ offset: true })
+			.regex(listVariantOptionValuesResponseCreatedAtRegExp),
+		updatedAt: zod.iso
+			.datetime({ offset: true })
+			.regex(listVariantOptionValuesResponseUpdatedAtRegExp),
+	})
+	.describe("An admin-managed value of a variant option type.");
+export const ListVariantOptionValuesResponse = zod.array(
+	ListVariantOptionValuesResponseItem,
+);
+
+/**
+ * @summary Create a variant option value
+ */
+export const createVariantOptionValueBodyOptionTypeIdRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+
+export const createVariantOptionValueBodyDisplayOrderMin = -9007199254740991;
+export const createVariantOptionValueBodyDisplayOrderMax = 9007199254740991;
+
+export const CreateVariantOptionValueBody = zod
+	.object({
+		optionTypeId: zod
+			.uuid()
+			.regex(createVariantOptionValueBodyOptionTypeIdRegExp),
+		value: zod.string().min(1),
+		imageUrl: zod.url().optional(),
+		description: zod.string().optional(),
+		displayOrder: zod
+			.int()
+			.min(createVariantOptionValueBodyDisplayOrderMin)
+			.max(createVariantOptionValueBodyDisplayOrderMax)
+			.optional(),
+	})
+	.describe("Creates a variant option value. `slug` is derived from `value`.");
+
+export const createVariantOptionValueResponseIdRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const createVariantOptionValueResponseOptionTypeIdRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const createVariantOptionValueResponseDisplayOrderMin =
+	-9007199254740991;
+export const createVariantOptionValueResponseDisplayOrderMax = 9007199254740991;
+
+export const createVariantOptionValueResponseCreatedAtRegExp =
+	/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$/;
+export const createVariantOptionValueResponseUpdatedAtRegExp =
+	/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$/;
+
+export const CreateVariantOptionValueResponse = zod
+	.object({
+		id: zod.uuid().regex(createVariantOptionValueResponseIdRegExp),
+		optionTypeId: zod
+			.uuid()
+			.regex(createVariantOptionValueResponseOptionTypeIdRegExp),
+		value: zod.string(),
+		slug: zod.string(),
+		imageUrl: zod.union([zod.url(), zod.null()]),
+		description: zod.union([zod.string(), zod.null()]),
+		displayOrder: zod
+			.int()
+			.min(createVariantOptionValueResponseDisplayOrderMin)
+			.max(createVariantOptionValueResponseDisplayOrderMax),
+		isActive: zod.boolean(),
+		createdAt: zod.iso
+			.datetime({ offset: true })
+			.regex(createVariantOptionValueResponseCreatedAtRegExp),
+		updatedAt: zod.iso
+			.datetime({ offset: true })
+			.regex(createVariantOptionValueResponseUpdatedAtRegExp),
+	})
+	.describe("An admin-managed value of a variant option type.");
+
+/**
+ * @summary Get a variant option value by id
+ */
+export const GetVariantOptionValueByIdParams = zod.object({
+	id: zod.uuid(),
+});
+
+export const getVariantOptionValueByIdResponseIdRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const getVariantOptionValueByIdResponseOptionTypeIdRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const getVariantOptionValueByIdResponseDisplayOrderMin =
+	-9007199254740991;
+export const getVariantOptionValueByIdResponseDisplayOrderMax = 9007199254740991;
+
+export const getVariantOptionValueByIdResponseCreatedAtRegExp =
+	/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$/;
+export const getVariantOptionValueByIdResponseUpdatedAtRegExp =
+	/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$/;
+
+export const GetVariantOptionValueByIdResponse = zod
+	.object({
+		id: zod.uuid().regex(getVariantOptionValueByIdResponseIdRegExp),
+		optionTypeId: zod
+			.uuid()
+			.regex(getVariantOptionValueByIdResponseOptionTypeIdRegExp),
+		value: zod.string(),
+		slug: zod.string(),
+		imageUrl: zod.union([zod.url(), zod.null()]),
+		description: zod.union([zod.string(), zod.null()]),
+		displayOrder: zod
+			.int()
+			.min(getVariantOptionValueByIdResponseDisplayOrderMin)
+			.max(getVariantOptionValueByIdResponseDisplayOrderMax),
+		isActive: zod.boolean(),
+		createdAt: zod.iso
+			.datetime({ offset: true })
+			.regex(getVariantOptionValueByIdResponseCreatedAtRegExp),
+		updatedAt: zod.iso
+			.datetime({ offset: true })
+			.regex(getVariantOptionValueByIdResponseUpdatedAtRegExp),
+	})
+	.describe("An admin-managed value of a variant option type.");
+
+/**
+ * @summary Update a variant option value
+ */
+export const UpdateVariantOptionValueParams = zod.object({
+	id: zod.uuid(),
+});
+
+export const updateVariantOptionValueBodyDisplayOrderMin = -9007199254740991;
+export const updateVariantOptionValueBodyDisplayOrderMax = 9007199254740991;
+
+export const UpdateVariantOptionValueBody = zod
+	.object({
+		value: zod.string().min(1).optional(),
+		imageUrl: zod.union([zod.url(), zod.null()]).optional(),
+		description: zod.union([zod.string(), zod.null()]).optional(),
+		displayOrder: zod
+			.int()
+			.min(updateVariantOptionValueBodyDisplayOrderMin)
+			.max(updateVariantOptionValueBodyDisplayOrderMax)
+			.optional(),
+		isActive: zod.boolean().optional(),
+	})
+	.describe(
+		"Updates a variant option value. Renaming `value` re-derives `slug`.",
+	);
+
+export const updateVariantOptionValueResponseIdRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const updateVariantOptionValueResponseOptionTypeIdRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const updateVariantOptionValueResponseDisplayOrderMin =
+	-9007199254740991;
+export const updateVariantOptionValueResponseDisplayOrderMax = 9007199254740991;
+
+export const updateVariantOptionValueResponseCreatedAtRegExp =
+	/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$/;
+export const updateVariantOptionValueResponseUpdatedAtRegExp =
+	/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$/;
+
+export const UpdateVariantOptionValueResponse = zod
+	.object({
+		id: zod.uuid().regex(updateVariantOptionValueResponseIdRegExp),
+		optionTypeId: zod
+			.uuid()
+			.regex(updateVariantOptionValueResponseOptionTypeIdRegExp),
+		value: zod.string(),
+		slug: zod.string(),
+		imageUrl: zod.union([zod.url(), zod.null()]),
+		description: zod.union([zod.string(), zod.null()]),
+		displayOrder: zod
+			.int()
+			.min(updateVariantOptionValueResponseDisplayOrderMin)
+			.max(updateVariantOptionValueResponseDisplayOrderMax),
+		isActive: zod.boolean(),
+		createdAt: zod.iso
+			.datetime({ offset: true })
+			.regex(updateVariantOptionValueResponseCreatedAtRegExp),
+		updatedAt: zod.iso
+			.datetime({ offset: true })
+			.regex(updateVariantOptionValueResponseUpdatedAtRegExp),
+	})
+	.describe("An admin-managed value of a variant option type.");
+
+/**
+ * @summary Deactivate a variant option value (soft delete)
+ */
+export const DeleteVariantOptionValueParams = zod.object({
+	id: zod.uuid(),
+});
+
+export const DeleteVariantOptionValueResponse = zod.void();
+
+/**
+ * @summary List variants
+ */
+export const ListVariantsQueryParams = zod.object({
+	productId: zod.uuid().optional(),
+});
+
+export const listVariantsResponseIdRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const listVariantsResponseProductIdRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const listVariantsResponseStockMin = -9007199254740991;
+export const listVariantsResponseStockMax = 9007199254740991;
+
+export const listVariantsResponseStockMinMin = -9007199254740991;
+export const listVariantsResponseStockMinMax = 9007199254740991;
+
+export const listVariantsResponseDisplayOrderMin = -9007199254740991;
+export const listVariantsResponseDisplayOrderMax = 9007199254740991;
+
+export const listVariantsResponseOptionValueIdsItemRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const listVariantsResponseCreatedAtRegExp =
+	/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$/;
+export const listVariantsResponseUpdatedAtRegExp =
+	/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$/;
+
+export const ListVariantsResponseItem = zod
+	.object({
+		id: zod.uuid().regex(listVariantsResponseIdRegExp),
+		productId: zod.uuid().regex(listVariantsResponseProductIdRegExp),
+		code: zod.union([zod.string(), zod.null()]),
+		altCode: zod.union([zod.string(), zod.null()]),
+		price: zod.number(),
+		stock: zod
+			.int()
+			.min(listVariantsResponseStockMin)
+			.max(listVariantsResponseStockMax),
+		stockMin: zod
+			.int()
+			.min(listVariantsResponseStockMinMin)
+			.max(listVariantsResponseStockMinMax),
+		isDefault: zod.boolean(),
+		isActive: zod.boolean(),
+		displayOrder: zod
+			.int()
+			.min(listVariantsResponseDisplayOrderMin)
+			.max(listVariantsResponseDisplayOrderMax),
+		optionValueIds: zod.array(
+			zod.uuid().regex(listVariantsResponseOptionValueIdsItemRegExp),
+		),
+		createdAt: zod.iso
+			.datetime({ offset: true })
+			.regex(listVariantsResponseCreatedAtRegExp),
+		updatedAt: zod.iso
+			.datetime({ offset: true })
+			.regex(listVariantsResponseUpdatedAtRegExp),
+	})
+	.describe(
+		"A sellable variant of a product, with its option-value selections.",
+	);
+export const ListVariantsResponse = zod.array(ListVariantsResponseItem);
+
+/**
+ * @summary Create a variant
+ */
+export const createVariantBodyProductIdRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const createVariantBodyPriceExclusiveMin = 0;
+
+export const createVariantBodyStockMin = -9007199254740991;
+export const createVariantBodyStockMax = 9007199254740991;
+
+export const createVariantBodyStockMinMin = -9007199254740991;
+export const createVariantBodyStockMinMax = 9007199254740991;
+
+export const createVariantBodyDisplayOrderMin = -9007199254740991;
+export const createVariantBodyDisplayOrderMax = 9007199254740991;
+
+export const createVariantBodyOptionValueIdsItemRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+
+export const CreateVariantBody = zod
+	.object({
+		productId: zod.uuid().regex(createVariantBodyProductIdRegExp),
+		code: zod.string().optional(),
+		altCode: zod.string().optional(),
+		price: zod.number().gt(createVariantBodyPriceExclusiveMin),
+		stock: zod
+			.int()
+			.min(createVariantBodyStockMin)
+			.max(createVariantBodyStockMax)
+			.optional(),
+		stockMin: zod
+			.int()
+			.min(createVariantBodyStockMinMin)
+			.max(createVariantBodyStockMinMax)
+			.optional(),
+		isDefault: zod.boolean().optional(),
+		displayOrder: zod
+			.int()
+			.min(createVariantBodyDisplayOrderMin)
+			.max(createVariantBodyDisplayOrderMax)
+			.optional(),
+		optionValueIds: zod
+			.array(zod.uuid().regex(createVariantBodyOptionValueIdsItemRegExp))
+			.optional(),
+	})
+	.describe(
+		"Creates a variant under a product, with its option-value selections.",
+	);
+
+export const createVariantResponseIdRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const createVariantResponseProductIdRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const createVariantResponseStockMin = -9007199254740991;
+export const createVariantResponseStockMax = 9007199254740991;
+
+export const createVariantResponseStockMinMin = -9007199254740991;
+export const createVariantResponseStockMinMax = 9007199254740991;
+
+export const createVariantResponseDisplayOrderMin = -9007199254740991;
+export const createVariantResponseDisplayOrderMax = 9007199254740991;
+
+export const createVariantResponseOptionValueIdsItemRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const createVariantResponseCreatedAtRegExp =
+	/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$/;
+export const createVariantResponseUpdatedAtRegExp =
+	/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$/;
+
+export const CreateVariantResponse = zod
+	.object({
+		id: zod.uuid().regex(createVariantResponseIdRegExp),
+		productId: zod.uuid().regex(createVariantResponseProductIdRegExp),
+		code: zod.union([zod.string(), zod.null()]),
+		altCode: zod.union([zod.string(), zod.null()]),
+		price: zod.number(),
+		stock: zod
+			.int()
+			.min(createVariantResponseStockMin)
+			.max(createVariantResponseStockMax),
+		stockMin: zod
+			.int()
+			.min(createVariantResponseStockMinMin)
+			.max(createVariantResponseStockMinMax),
+		isDefault: zod.boolean(),
+		isActive: zod.boolean(),
+		displayOrder: zod
+			.int()
+			.min(createVariantResponseDisplayOrderMin)
+			.max(createVariantResponseDisplayOrderMax),
+		optionValueIds: zod.array(
+			zod.uuid().regex(createVariantResponseOptionValueIdsItemRegExp),
+		),
+		createdAt: zod.iso
+			.datetime({ offset: true })
+			.regex(createVariantResponseCreatedAtRegExp),
+		updatedAt: zod.iso
+			.datetime({ offset: true })
+			.regex(createVariantResponseUpdatedAtRegExp),
+	})
+	.describe(
+		"A sellable variant of a product, with its option-value selections.",
+	);
+
+/**
+ * @summary Get a variant by id
+ */
+export const GetVariantByIdParams = zod.object({
+	id: zod.uuid(),
+});
+
+export const getVariantByIdResponseIdRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const getVariantByIdResponseProductIdRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const getVariantByIdResponseStockMin = -9007199254740991;
+export const getVariantByIdResponseStockMax = 9007199254740991;
+
+export const getVariantByIdResponseStockMinMin = -9007199254740991;
+export const getVariantByIdResponseStockMinMax = 9007199254740991;
+
+export const getVariantByIdResponseDisplayOrderMin = -9007199254740991;
+export const getVariantByIdResponseDisplayOrderMax = 9007199254740991;
+
+export const getVariantByIdResponseOptionValueIdsItemRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const getVariantByIdResponseCreatedAtRegExp =
+	/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$/;
+export const getVariantByIdResponseUpdatedAtRegExp =
+	/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$/;
+
+export const GetVariantByIdResponse = zod
+	.object({
+		id: zod.uuid().regex(getVariantByIdResponseIdRegExp),
+		productId: zod.uuid().regex(getVariantByIdResponseProductIdRegExp),
+		code: zod.union([zod.string(), zod.null()]),
+		altCode: zod.union([zod.string(), zod.null()]),
+		price: zod.number(),
+		stock: zod
+			.int()
+			.min(getVariantByIdResponseStockMin)
+			.max(getVariantByIdResponseStockMax),
+		stockMin: zod
+			.int()
+			.min(getVariantByIdResponseStockMinMin)
+			.max(getVariantByIdResponseStockMinMax),
+		isDefault: zod.boolean(),
+		isActive: zod.boolean(),
+		displayOrder: zod
+			.int()
+			.min(getVariantByIdResponseDisplayOrderMin)
+			.max(getVariantByIdResponseDisplayOrderMax),
+		optionValueIds: zod.array(
+			zod.uuid().regex(getVariantByIdResponseOptionValueIdsItemRegExp),
+		),
+		createdAt: zod.iso
+			.datetime({ offset: true })
+			.regex(getVariantByIdResponseCreatedAtRegExp),
+		updatedAt: zod.iso
+			.datetime({ offset: true })
+			.regex(getVariantByIdResponseUpdatedAtRegExp),
+	})
+	.describe(
+		"A sellable variant of a product, with its option-value selections.",
+	);
+
+/**
+ * @summary Update a variant
+ */
+export const UpdateVariantParams = zod.object({
+	id: zod.uuid(),
+});
+
+export const updateVariantBodyPriceExclusiveMin = 0;
+
+export const updateVariantBodyStockMin = -9007199254740991;
+export const updateVariantBodyStockMax = 9007199254740991;
+
+export const updateVariantBodyStockMinMin = -9007199254740991;
+export const updateVariantBodyStockMinMax = 9007199254740991;
+
+export const updateVariantBodyDisplayOrderMin = -9007199254740991;
+export const updateVariantBodyDisplayOrderMax = 9007199254740991;
+
+export const updateVariantBodyOptionValueIdsItemRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+
+export const UpdateVariantBody = zod
+	.object({
+		code: zod.union([zod.string(), zod.null()]).optional(),
+		altCode: zod.union([zod.string(), zod.null()]).optional(),
+		price: zod.number().gt(updateVariantBodyPriceExclusiveMin).optional(),
+		stock: zod
+			.int()
+			.min(updateVariantBodyStockMin)
+			.max(updateVariantBodyStockMax)
+			.optional(),
+		stockMin: zod
+			.int()
+			.min(updateVariantBodyStockMinMin)
+			.max(updateVariantBodyStockMinMax)
+			.optional(),
+		isDefault: zod.boolean().optional(),
+		isActive: zod.boolean().optional(),
+		displayOrder: zod
+			.int()
+			.min(updateVariantBodyDisplayOrderMin)
+			.max(updateVariantBodyDisplayOrderMax)
+			.optional(),
+		optionValueIds: zod
+			.array(zod.uuid().regex(updateVariantBodyOptionValueIdsItemRegExp))
+			.optional(),
+	})
+	.describe(
+		"Updates a variant. Providing `optionValueIds` replaces its entire selection set.",
+	);
+
+export const updateVariantResponseIdRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const updateVariantResponseProductIdRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const updateVariantResponseStockMin = -9007199254740991;
+export const updateVariantResponseStockMax = 9007199254740991;
+
+export const updateVariantResponseStockMinMin = -9007199254740991;
+export const updateVariantResponseStockMinMax = 9007199254740991;
+
+export const updateVariantResponseDisplayOrderMin = -9007199254740991;
+export const updateVariantResponseDisplayOrderMax = 9007199254740991;
+
+export const updateVariantResponseOptionValueIdsItemRegExp =
+	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+export const updateVariantResponseCreatedAtRegExp =
+	/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$/;
+export const updateVariantResponseUpdatedAtRegExp =
+	/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$/;
+
+export const UpdateVariantResponse = zod
+	.object({
+		id: zod.uuid().regex(updateVariantResponseIdRegExp),
+		productId: zod.uuid().regex(updateVariantResponseProductIdRegExp),
+		code: zod.union([zod.string(), zod.null()]),
+		altCode: zod.union([zod.string(), zod.null()]),
+		price: zod.number(),
+		stock: zod
+			.int()
+			.min(updateVariantResponseStockMin)
+			.max(updateVariantResponseStockMax),
+		stockMin: zod
+			.int()
+			.min(updateVariantResponseStockMinMin)
+			.max(updateVariantResponseStockMinMax),
+		isDefault: zod.boolean(),
+		isActive: zod.boolean(),
+		displayOrder: zod
+			.int()
+			.min(updateVariantResponseDisplayOrderMin)
+			.max(updateVariantResponseDisplayOrderMax),
+		optionValueIds: zod.array(
+			zod.uuid().regex(updateVariantResponseOptionValueIdsItemRegExp),
+		),
+		createdAt: zod.iso
+			.datetime({ offset: true })
+			.regex(updateVariantResponseCreatedAtRegExp),
+		updatedAt: zod.iso
+			.datetime({ offset: true })
+			.regex(updateVariantResponseUpdatedAtRegExp),
+	})
+	.describe(
+		"A sellable variant of a product, with its option-value selections.",
+	);
+
+/**
+ * @summary Delete a variant
+ */
+export const DeleteVariantParams = zod.object({
+	id: zod.uuid(),
+});
+
+export const DeleteVariantResponse = zod.void();
