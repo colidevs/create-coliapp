@@ -1,41 +1,145 @@
-import { and, count, desc, eq, ilike } from "drizzle-orm";
-import { schema, withPlatformSession } from "@/lib/db";
-import type { Product } from "@/v1/modules/admin/products/types";
+import { and, asc, count, desc, eq, ilike, inArray } from "drizzle-orm";
+import { schema, type Tx, withPlatformSession } from "@/lib/db";
 import type { Pagination } from "@/v1/types";
-import type { GetPublicProductsParams } from "./types";
+import type {
+	GetPublicProductsParams,
+	PublicProduct,
+	PublicVariant,
+	PublicVariantOption,
+} from "./types";
 
-const { products } = schema;
+const {
+	products,
+	productVariants,
+	variantOptionSelections,
+	variantOptionValues,
+	variantOptionTypes,
+} = schema;
 
-function toProduct(row: typeof products.$inferSelect): Product {
+function toProduct(
+	row: typeof products.$inferSelect,
+	variants: PublicVariant[],
+): PublicProduct {
 	return {
 		id: row.id,
 		name: row.name,
 		slug: row.slug,
-		code: row.code,
-		altCode: row.altCode,
 		description: row.description,
-		price: Number(row.price),
-		stock: row.stock,
-		stockMin: row.stockMin,
 		coverImage: row.coverImage,
 		categoryId: row.categoryId,
-		isActive: row.isActive,
-		createdAt: row.createdAt.toISOString(),
-		updatedAt: row.updatedAt.toISOString(),
+		variants,
 	};
+}
+
+/**
+ * @description Loads every ACTIVE variant for the given products, each with
+ * its resolved option-value selections, in a fixed, bounded number of
+ * queries (never N+1 per product). Options are ordered by
+ * `variant_option_types.display_order` then `variant_option_values.
+ * display_order` — same join-order convention `admin/stock/repository.ts`
+ * uses for `variantLabel`.
+ */
+async function loadActiveVariantsByProductId(
+	tx: Tx,
+	productIds: string[],
+): Promise<Map<string, PublicVariant[]>> {
+	const byProduct = new Map<string, PublicVariant[]>();
+
+	if (productIds.length === 0) {
+		return byProduct;
+	}
+
+	const variantRows = await tx
+		.select()
+		.from(productVariants)
+		.where(
+			and(
+				inArray(productVariants.productId, productIds),
+				eq(productVariants.isActive, true),
+			),
+		)
+		.orderBy(asc(productVariants.displayOrder), asc(productVariants.createdAt));
+
+	const variantIds = variantRows.map((row) => row.id);
+
+	const optionsByVariant = new Map<string, PublicVariantOption[]>();
+	if (variantIds.length > 0) {
+		const optionRows = await tx
+			.select({
+				variantId: variantOptionSelections.variantId,
+				optionTypeSlug: variantOptionTypes.slug,
+				optionTypeName: variantOptionTypes.name,
+				valueSlug: variantOptionValues.slug,
+				value: variantOptionValues.value,
+				imageUrl: variantOptionValues.imageUrl,
+				description: variantOptionValues.description,
+			})
+			.from(variantOptionSelections)
+			.innerJoin(
+				variantOptionValues,
+				eq(variantOptionSelections.optionValueId, variantOptionValues.id),
+			)
+			.innerJoin(
+				variantOptionTypes,
+				eq(variantOptionValues.optionTypeId, variantOptionTypes.id),
+			)
+			.where(inArray(variantOptionSelections.variantId, variantIds))
+			.orderBy(
+				asc(variantOptionTypes.displayOrder),
+				asc(variantOptionValues.displayOrder),
+			);
+
+		for (const row of optionRows) {
+			const option: PublicVariantOption = {
+				optionTypeSlug: row.optionTypeSlug,
+				optionTypeName: row.optionTypeName,
+				valueSlug: row.valueSlug,
+				value: row.value,
+				imageUrl: row.imageUrl,
+				description: row.description,
+			};
+			const existing = optionsByVariant.get(row.variantId);
+			if (existing) {
+				existing.push(option);
+			} else {
+				optionsByVariant.set(row.variantId, [option]);
+			}
+		}
+	}
+
+	for (const row of variantRows) {
+		const variant: PublicVariant = {
+			id: row.id,
+			price: Number(row.price),
+			stock: row.stock,
+			isDefault: row.isDefault,
+			options: optionsByVariant.get(row.id) ?? [],
+		};
+		const existing = byProduct.get(row.productId);
+		if (existing) {
+			existing.push(variant);
+		} else {
+			byProduct.set(row.productId, [variant]);
+		}
+	}
+
+	return byProduct;
 }
 
 export interface Repository {
 	getActive: (
 		params: GetPublicProductsParams,
-	) => Promise<{ items: Product[]; pagination: Pagination }>;
-	getActiveBySlug: (slug: string) => Promise<Product | null>;
+	) => Promise<{ items: PublicProduct[]; pagination: Pagination }>;
+	getActiveBySlug: (slug: string) => Promise<PublicProduct | null>;
 }
 
 /**
  * @description Public, unauthenticated storefront reads — always filters
  * `is_active = true` (never surfaces a deactivated/soft-deleted product),
- * matching munod's own `web/products` convention.
+ * matching munod's own `web/products` convention. Only ACTIVE variants are
+ * nested (`loadActiveVariantsByProductId`) — a published product is
+ * guaranteed at least one by the deferrable constraint trigger
+ * (`drizzle/0005_variant_rls_and_invariants.sql`).
  */
 function webProductRepo(): Repository {
 	async function getActive(
@@ -76,7 +180,17 @@ function webProductRepo(): Repository {
 				previous: page > 0 ? page - 1 : 0,
 			};
 
-			return { items: rows.map(toProduct), pagination };
+			const variantsByProduct = await loadActiveVariantsByProductId(
+				tx,
+				rows.map((row) => row.id),
+			);
+
+			return {
+				items: rows.map((row) =>
+					toProduct(row, variantsByProduct.get(row.id) ?? []),
+				),
+				pagination,
+			};
 		});
 	}
 
@@ -89,7 +203,15 @@ function webProductRepo(): Repository {
 				.from(products)
 				.where(and(eq(products.slug, slug), eq(products.isActive, true)));
 
-			return row ? toProduct(row) : null;
+			if (!row) {
+				return null;
+			}
+
+			const variantsByProduct = await loadActiveVariantsByProductId(tx, [
+				row.id,
+			]);
+
+			return toProduct(row, variantsByProduct.get(row.id) ?? []);
 		});
 	}
 

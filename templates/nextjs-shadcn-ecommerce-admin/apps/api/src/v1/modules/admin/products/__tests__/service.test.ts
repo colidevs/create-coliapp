@@ -9,15 +9,12 @@ const FAKE_PRODUCT: Product = {
 	id: "9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c",
 	name: "Wireless Mouse",
 	slug: "wireless-mouse",
-	code: "WM-100",
-	altCode: null,
 	description: null,
-	price: 29.99,
-	stock: 10,
-	stockMin: 2,
 	coverImage: null,
 	categoryId: null,
 	isActive: true,
+	defaultPrice: 29.99,
+	variantCount: 1,
 	createdAt: "2026-01-01T00:00:00.000Z",
 	updatedAt: "2026-01-01T00:00:00.000Z",
 };
@@ -64,7 +61,7 @@ describe("admin/products service — happy path", () => {
 		const svc = createProductService(repo);
 
 		await expect(
-			svc.create(admin, { name: "Wireless Mouse", price: 29.99 }),
+			svc.create(admin, { name: "Wireless Mouse" }),
 		).resolves.toEqual(FAKE_PRODUCT);
 	});
 
@@ -73,7 +70,7 @@ describe("admin/products service — happy path", () => {
 		const svc = createProductService(repo);
 
 		await expect(
-			svc.update(admin, FAKE_PRODUCT.id, { price: 24.99 }),
+			svc.update(admin, FAKE_PRODUCT.id, { isActive: true }),
 		).resolves.toEqual(FAKE_PRODUCT);
 	});
 
@@ -102,7 +99,7 @@ describe("admin/products service — CASL denial", () => {
 		const svc = createProductService(repo);
 
 		await expect(
-			svc.create(viewer, { name: "Wireless Mouse", price: 29.99 }),
+			svc.create(viewer, { name: "Wireless Mouse" }),
 		).rejects.toBeInstanceOf(ForbiddenHttpError);
 		expect(repo.create).not.toHaveBeenCalled();
 	});
@@ -112,7 +109,7 @@ describe("admin/products service — CASL denial", () => {
 		const svc = createProductService(repo);
 
 		await expect(
-			svc.update(viewer, FAKE_PRODUCT.id, { price: 1 }),
+			svc.update(viewer, FAKE_PRODUCT.id, { isActive: true }),
 		).rejects.toBeInstanceOf(ForbiddenHttpError);
 		expect(repo.update).not.toHaveBeenCalled();
 	});

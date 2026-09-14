@@ -1,19 +1,29 @@
 import { z } from "zod";
 
 /**
- * @description `admin-catalog-crud` domain (Phase 3b). Column set matches
- * `src/lib/db/schema.ts`'s `product_images` table exactly. No `isActive`
- * column exists on this table (unlike `categories`/`products`) — deletion
- * is a HARD delete here (`./repository.ts`), a documented deviation from
- * munod's own `product_media` soft-delete convention, since this template's
- * schema simply has no soft-delete column to set.
+ * @description `admin-catalog-crud` domain, widened by
+ * `sdd/ecommerce-product-variants/design` (D5): `productId` is now nullable
+ * — an image can belong to its parent product OR to one specific variant
+ * (`variantId`, also nullable). The DB-level `chk_image_owner` CHECK
+ * constraint (`src/lib/db/schema.ts`) enforces at least one of the two is
+ * set; this schema only mirrors the column nullability, it does not repeat
+ * that invariant client-side. No `isActive` column exists on this table
+ * (unlike `categories`/`products`) — deletion is a HARD delete here
+ * (`./repository.ts`), a documented deviation from munod's own
+ * `product_media` soft-delete convention, since this template's schema
+ * simply has no soft-delete column to set.
  */
 export const ProductImageSchema = z
 	.object({
 		id: z.uuid().meta({ example: "9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c" }),
 		productId: z
 			.uuid()
+			.nullable()
 			.meta({ example: "1b2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e" }),
+		variantId: z
+			.uuid()
+			.nullable()
+			.meta({ example: "c1a2b3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d" }),
 		url: z
 			.url()
 			.meta({ example: "https://images.example.com/wireless-mouse-1.jpg" }),
@@ -24,7 +34,8 @@ export const ProductImageSchema = z
 	})
 	.meta({
 		id: "ProductImage",
-		description: "A gallery image belonging to a product.",
+		description:
+			"A gallery image belonging to a product or one of its variants.",
 	});
 export type ProductImage = z.infer<typeof ProductImageSchema>;
 
@@ -32,9 +43,19 @@ export type ProductImage = z.infer<typeof ProductImageSchema>;
  * @description Not one of this Phase's `.meta()`-registered top-level
  * schemas — used only as an inline request-body schema in
  * `scripts/generate-openapi.ts`, never as a named OpenAPI component.
+ * `productId`/`variantId` are both optional here (unlike the mandatory
+ * `productId` before this change) — the DB `chk_image_owner` CHECK is the
+ * enforcement layer for "at least one must be set", not this schema.
  */
 export const ProductImageCreateSchema = z.object({
-	productId: z.uuid().meta({ example: "1b2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e" }),
+	productId: z
+		.uuid()
+		.optional()
+		.meta({ example: "1b2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e" }),
+	variantId: z
+		.uuid()
+		.optional()
+		.meta({ example: "c1a2b3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d" }),
 	url: z
 		.url()
 		.meta({ example: "https://images.example.com/wireless-mouse-1.jpg" }),
@@ -51,6 +72,12 @@ export const ProductImageUpdateSchema = z.object({
 });
 export type ProductImageUpdate = z.infer<typeof ProductImageUpdateSchema>;
 
+/**
+ * @description `?productId=` and `?variantId=` are independently optional
+ * filters (both may be supplied together) — same scoping shape as
+ * `admin/variants`' `GetVariantsParams`.
+ */
 export interface GetProductImagesParams {
 	productId?: string;
+	variantId?: string;
 }

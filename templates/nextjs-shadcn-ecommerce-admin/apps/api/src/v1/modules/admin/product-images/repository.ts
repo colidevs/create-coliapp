@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { schema, withPlatformSession } from "@/lib/db";
 import type {
 	GetProductImagesParams,
@@ -13,6 +13,7 @@ function toProductImage(row: typeof productImages.$inferSelect): ProductImage {
 	return {
 		id: row.id,
 		productId: row.productId,
+		variantId: row.variantId,
 		url: row.url,
 		position: row.position,
 		createdAt: row.createdAt.toISOString(),
@@ -34,9 +35,11 @@ function productImageRepo(): Repository {
 	async function get(
 		params: GetProductImagesParams,
 	): ReturnType<Repository["get"]> {
-		const where = params.productId
-			? eq(productImages.productId, params.productId)
-			: undefined;
+		const filters = [
+			params.productId ? eq(productImages.productId, params.productId) : null,
+			params.variantId ? eq(productImages.variantId, params.variantId) : null,
+		].filter((clause) => clause !== null);
+		const where = filters.length > 0 ? and(...filters) : undefined;
 
 		return withPlatformSession(async (tx) => {
 			const rows = await tx
@@ -67,7 +70,8 @@ function productImageRepo(): Repository {
 			const [inserted] = await tx
 				.insert(productImages)
 				.values({
-					productId: input.productId,
+					productId: input.productId ?? null,
+					variantId: input.variantId ?? null,
 					url: input.url,
 					...(input.position !== undefined ? { position: input.position } : {}),
 				})
