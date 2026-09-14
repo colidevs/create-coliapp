@@ -1,0 +1,17 @@
+# @colidevs/* packages (e.g. @colidevs/api-kit, @colidevs/utils, @colidevs/thumbor-client)
+# are published to colidevs' own Verdaccio registry, not the public npm
+# registry. Scoped so `pnpm install` resolves them without affecting
+# resolution of any other package.
+#
+# Lives at the WORKSPACE ROOT, not per-app: ADR 0029's monorepo has exactly
+# one `pnpm-lock.yaml` and one install boundary (`.claude/rules/
+# monorepo-structure.md`), so pnpm's registry config is a root-level concern
+# here — unlike `templates/express-ts` and `templates/nextjs-kumo-console`,
+# which are each their own standalone install root and therefore each ship
+# their own `.npmrc.template`.
+#
+# Ships as `.npmrc.template`, not `.npmrc`, because `pnpm pack`/`pnpm publish`
+# unconditionally strip any file literally named `.npmrc` — this repo's own
+# `index.ts`'s `restoreNpmrcFiles()` renames it back to `.npmrc` at scaffold
+# time (see that function's own header comment for the verified reasoning).
+@colidevs:registry=https://verdaccio.coli.com.ar

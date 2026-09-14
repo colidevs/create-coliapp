@@ -1,0 +1,129 @@
+name: Frontend Standard
+
+# Copied into every app scaffolded from this template (create-coliapp's
+# `cpyTemplate` uses `fs.copySync` with no dotfile filter). Adapted from
+# `templates/nextjs-kumo-console/.github/workflows/frontend-standard.yml`
+# for this template's ADR 0029 monorepo layout (`.claude/rules/
+# monorepo-structure.md`): `working-directory: apps/web` on every step, and
+# `cache-dependency-path: pnpm-lock.yaml` pointing at the WORKSPACE ROOT
+# lockfile (there is exactly one, per ADR 0029 — never a per-app lockfile).
+#
+# Ordinary `pull_request` trigger only — no `pull_request_target`, no
+# dynamic `gh pr` composition, same Threat Matrix posture as
+# `api-standard.yml`.
+#
+# **Deliberately dropped vs. `nextjs-kumo-console`'s own workflow**, per this
+# template's own design (`sdd/ecommerce-admin-template/design`, "Root
+# Workspace Wiring"): the `lighthouse` job and the `frontend-standard-
+# gate.mjs` attestation step. Both depend on artifacts no task in this
+# template's build-out produces — Lighthouse needs a real, buildable
+# `apps/web` (this PR's `apps/web` is a placeholder package), and the
+# attestation step unconditionally requires a committed `frontend-standard/
+# findings.json` at HEAD (an absent attestation is never treated as a pass).
+# Shipping either now would fail every real PR opened against this template
+# by construction. Re-add once `apps/web` is real (this series' later PRs)
+# and, for the attestation step, once a human has actually run the
+# `frontend-standard-check` skill against it and committed its findings.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frontend-standard-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-typecheck-build:
+    name: Lint, format, typecheck, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.4.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint and format check (Biome)
+        working-directory: .
+        run: pnpm exec biome check .
+
+      - name: Type check
+        run: pnpm exec tsc --noEmit
+
+      # Required by the `storybook` Vitest project, if/when this template
+      # adopts it (see `nextjs-kumo-console` precedent) — kept here so the
+      # step exists and is a documented no-op if `apps/web` never wires
+      # Storybook; harmless either way (`pnpm exec playwright install` is a
+      # local devDependency binary call, not a network-dependent app step).
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Unit tests (Vitest)
+        run: pnpm test
+
+      - name: Build
+        run: pnpm run build
+
+  e2e:
+    name: E2E (Playwright + axe)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.4.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run Playwright E2E suite
+        env:
+          CI: "true"
+        run: pnpm run test:e2e
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 7

@@ -1,0 +1,6 @@
+{
+	"name": "{{name}}-web",
+	"private": true,
+	"license": "MIT",
+	"scripts": {}
+}
