@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Eye, PenIcon } from "lucide-react";
-import { RedirectType, redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 import { useAbility } from "@/components/can";
 import {
@@ -19,17 +19,25 @@ import { deleteProductAction, paginationQuery } from "./actions";
 import { useProductsContext } from "./context";
 import type { Product } from "./types";
 
-/** Ported (structurally) from `munod/www/src/modules/products/table.tsx`, columns trimmed to this template's actual, flatter `Product` shape (no `product_type`/`tags`/`is_published`/`discount` — design decision A4). */
+/**
+ * Ported (structurally) from `munod/www/src/modules/products/table.tsx`,
+ * columns trimmed to this template's actual, flatter `Product` shape (no
+ * `product_type`/`tags`/`is_published`/`discount` — design decision A4).
+ *
+ * **Corrected (PR7b): `router.push()`, not `redirect()`** — see
+ * `modules/categories/table.tsx`'s identical fix and
+ * `components/data-table.tsx`'s `add()` for the full writeup.
+ */
 export function ProductsTable() {
 	const { queryKey } = useProductsContext();
 	const ability = useAbility();
+	const router = useRouter();
 
 	const actions: DropdownMenuActionsProps<Product>["actions"] = [
 		{
 			title: "View details",
 			icon: <Eye />,
-			onClick: ({ original: { id } }) =>
-				redirect(`/admin/products/${id}`, RedirectType.push),
+			onClick: ({ original: { id } }) => router.push(`/admin/products/${id}`),
 		},
 	];
 
@@ -38,7 +46,7 @@ export function ProductsTable() {
 			title: "Edit",
 			icon: <PenIcon />,
 			onClick: ({ original: { id } }) =>
-				redirect(`/admin/products/${id}/update`, RedirectType.push),
+				router.push(`/admin/products/${id}/update`),
 		});
 	}
 

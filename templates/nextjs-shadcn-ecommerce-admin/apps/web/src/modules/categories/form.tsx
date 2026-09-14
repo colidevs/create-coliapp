@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { getQueryClient } from "@/lib/query";
 import { createCategoryAction, updateCategoryAction } from "./actions";
 import {
 	type Category,
@@ -75,6 +76,11 @@ export function CategoryForm({
 		}
 
 		toast.success(category ? "Category updated." : "Category created.");
+		// See `modules/products/form.tsx`'s identical comment — the browser
+		// `QueryClient` singleton's global `staleTime: 60_000` (`lib/query.ts`)
+		// otherwise serves this list's pre-write cached page for up to a
+		// minute after this `router.push()`.
+		getQueryClient().invalidateQueries({ queryKey: ["categories"] });
 		onSuccess?.();
 		router.push(redirectTo);
 	}

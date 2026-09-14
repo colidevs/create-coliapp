@@ -41,7 +41,7 @@ import {
 	Trash,
 } from "lucide-react";
 import Link from "next/link";
-import { redirect, usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type * as React from "react";
 import {
 	Fragment,
@@ -393,6 +393,7 @@ function DataTableComponent<TData, TValue, TFilters>({
 	renderMobileRow,
 }: DataTableComponentProps<TData, TValue, TFilters>) {
 	const pathname = usePathname();
+	const router = useRouter();
 	const queryClient = useQueryClient();
 	const [sorting, setSorting] = useState<SortingState>([]);
 
@@ -560,8 +561,21 @@ function DataTableComponent<TData, TValue, TFilters>({
 			});
 	}
 
+	// `useRouter().push()`, NOT `next/navigation`'s `redirect()` — a real,
+	// found-live bug (PR7b): `redirect()` unconditionally `throw`s a special
+	// digest React only intercepts during a render pass or inside a Server
+	// Action's own async-storage context (confirmed by reading
+	// `next/dist/client/components/redirect.js` directly). Called from a
+	// plain client-side event handler like this one, that throw is just an
+	// uncaught exception in a DOM event listener — React error boundaries do
+	// not catch event-handler errors, so this silently did nothing at all.
+	// Every row-action `onClick` across every `table.tsx` in this admin
+	// surface (PR7a's `categories`/`products`/`product-images`, PR7b's own
+	// `stock`/`orders`) carried the identical bug — found and fixed together
+	// in this same batch, verified via a real, authenticated Playwright
+	// click-through (`e2e/admin-flow.spec.ts`), not just a type-check.
 	function add() {
-		redirect(`${pathname}/add`);
+		router.push(`${pathname}/add`);
 	}
 
 	return (
