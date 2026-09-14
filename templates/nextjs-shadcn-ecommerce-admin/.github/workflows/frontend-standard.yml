@@ -71,11 +71,11 @@ jobs:
       - name: Type check
         run: pnpm exec tsc --noEmit
 
-      # Required by the `storybook` Vitest project, if/when this template
-      # adopts it (see `nextjs-kumo-console` precedent) — kept here so the
-      # step exists and is a documented no-op if `apps/web` never wires
-      # Storybook; harmless either way (`pnpm exec playwright install` is a
-      # local devDependency binary call, not a network-dependent app step).
+      # Was a documented no-op through Phase 5 (no `@playwright/test`
+      # dependency existed yet). Phase 6 (storefront port) added a real E2E
+      # suite (`e2e/checkout-flow.spec.ts`) — this step now actually installs
+      # the browser the `e2e` job below (and this job's own Playwright-based
+      # unit-test-adjacent tooling, if any is ever added) needs.
       - name: Install Playwright Chromium
         run: pnpm exec playwright install --with-deps chromium
 
@@ -83,7 +83,24 @@ jobs:
         run: pnpm test
 
       - name: Build
+        # `src/env.ts` (`@t3-oss/env-nextjs`, ADR 0041) validates at import
+        # time — `SERVICE_KEY` has no default (deliberately: an
+        # auth-adjacent value should never silently default, per
+        # `.claude/rules/api-rbac-signing-auth.md`'s "explicit
+        # security-parameter configuration" principle). Phase 6's own pages
+        # (`sitemap.ts`, `(ecommerce)/*`) are the first to import
+        # `@/generated/endpoints` → `@/lib/api` → `@/env` at build time
+        # (Phase 5 had no page reaching that chain), so this step now needs
+        # real (dummy, CI-only) values — `API_MOCKING=disabled` since no
+        # live `apps/api` runs in this job; the actual fetches these pages
+        # make are already guarded with `.catch()` fallbacks for exactly
+        # this no-backend-reachable case.
         run: pnpm run build
+        env:
+          SERVICE_KEY: ci-placeholder-service-key
+          API_MOCKING: disabled
+          API_BASE_URL: http://localhost:3001
+          NEXT_PUBLIC_API_BASE_URL: http://localhost:3001
 
   e2e:
     name: E2E (Playwright + axe)
