@@ -1,4 +1,4 @@
-import { and, eq, gte, inArray, ne, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, ne, sql } from "drizzle-orm";
 import { config } from "@/config";
 import { schema, type Tx, withPlatformSession } from "@/lib/db";
 import { err } from "@/lib/logger";
@@ -20,7 +20,14 @@ import {
 	DlocalPaymentApiResponseSchema,
 } from "./types";
 
-const { orders, products } = schema;
+const {
+	orders,
+	products,
+	productVariants,
+	variantOptionSelections,
+	variantOptionValues,
+	variantOptionTypes,
+} = schema;
 
 /**
  * @description dLocal Go's real, documented payment-status vocabulary for
@@ -46,6 +53,63 @@ const TERMINAL_FAILURE_STATUSES = new Set(["REJECTED", "CANCELLED", "EXPIRED"]);
  * self-documents "no tenant dimension applies to this query" instead of
  * silently passing an unused tenant context.
  */
+
+/**
+ * @description Builds each variant's `variantLabel` — its selected
+ * option-values, human-readable, joined `" / "` — ordered by
+ * `variant_option_types.display_order` then `variant_option_values.
+ * display_order`. Identical join-order convention to
+ * `admin/stock/repository.ts`'s own `loadVariantLabels`, reused here
+ * unchanged (per `sdd/ecommerce-product-variants/design`'s Phase 6 note)
+ * rather than re-derived independently. Returns `undefined` for a variant
+ * with zero option-value selections — never an empty string.
+ */
+async function loadVariantLabels(
+	tx: Tx,
+	variantIds: string[],
+): Promise<Map<string, string>> {
+	const byVariant = new Map<string, string>();
+
+	if (variantIds.length === 0) {
+		return byVariant;
+	}
+
+	const rows = await tx
+		.select({
+			variantId: variantOptionSelections.variantId,
+			value: variantOptionValues.value,
+		})
+		.from(variantOptionSelections)
+		.innerJoin(
+			variantOptionValues,
+			eq(variantOptionSelections.optionValueId, variantOptionValues.id),
+		)
+		.innerJoin(
+			variantOptionTypes,
+			eq(variantOptionValues.optionTypeId, variantOptionTypes.id),
+		)
+		.where(inArray(variantOptionSelections.variantId, variantIds))
+		.orderBy(
+			asc(variantOptionTypes.displayOrder),
+			asc(variantOptionValues.displayOrder),
+		);
+
+	const valuesByVariant = new Map<string, string[]>();
+	for (const row of rows) {
+		const existing = valuesByVariant.get(row.variantId);
+		if (existing) {
+			existing.push(row.value);
+		} else {
+			valuesByVariant.set(row.variantId, [row.value]);
+		}
+	}
+
+	for (const [variantId, values] of valuesByVariant) {
+		byVariant.set(variantId, values.join(" / "));
+	}
+
+	return byVariant;
+}
 
 function toOrder(row: typeof orders.$inferSelect): Order {
 	return {
@@ -106,41 +170,55 @@ function dlocalRepo(): Repository {
 		items: CheckoutItem[],
 	): ReturnType<Repository["priceAndValidateItems"]> {
 		return withPlatformSession(async (tx) => {
-			const ids = items.map((item) => item.productId);
+			const ids = items.map((item) => item.variantId);
 
 			const rows = await tx
 				.select({
-					id: products.id,
+					id: productVariants.id,
 					slug: products.slug,
-					price: products.price,
-					stock: products.stock,
-					isActive: products.isActive,
+					price: productVariants.price,
+					stock: productVariants.stock,
+					isActive: productVariants.isActive,
+					productIsActive: products.isActive,
 				})
-				.from(products)
-				.where(inArray(products.id, ids));
+				.from(productVariants)
+				.innerJoin(products, eq(productVariants.productId, products.id))
+				.where(inArray(productVariants.id, ids));
+
+			const labels = await loadVariantLabels(
+				tx,
+				rows.map((row) => row.id),
+			);
 
 			const orderItems: PricedOrderItem[] = [];
 			let amount = 0;
 
 			for (const item of items) {
-				const product = rows.find((row) => row.id === item.productId);
+				const variant = rows.find((row) => row.id === item.variantId);
 
-				if (!product?.isActive) {
-					throw new NotFoundHttpError(`Product ${item.productId} not found`);
+				// A variant is only purchasable when BOTH it and its parent
+				// product are active — a variant of an inactive/unpublished
+				// product shouldn't be purchasable even if the variant row
+				// itself was never individually deactivated.
+				if (!variant?.isActive || !variant.productIsActive) {
+					throw new NotFoundHttpError(
+						`Product variant ${item.variantId} not found`,
+					);
 				}
 
-				const stockIsTracked = product.stock >= 0;
+				const stockIsTracked = variant.stock >= 0;
 
-				if (stockIsTracked && product.stock < item.quantity) {
-					throw new InsufficientStockHttpError(product.slug);
+				if (stockIsTracked && variant.stock < item.quantity) {
+					throw new InsufficientStockHttpError(variant.slug);
 				}
 
-				const unitPrice = Number(product.price);
+				const unitPrice = Number(variant.price);
 				const lineTotal = Math.round(unitPrice * item.quantity * 100) / 100;
 
 				orderItems.push({
-					productId: product.id,
-					slug: product.slug,
+					variantId: variant.id,
+					slug: variant.slug,
+					variantLabel: labels.get(variant.id) ?? null,
 					quantity: item.quantity,
 					unitPrice,
 					lineTotal,
@@ -395,9 +473,13 @@ function dlocalRepo(): Repository {
  * (`Dlocal/repository.ts:347-402`), one of the 5 gaps this whole change
  * exists to close. Runs inside the SAME transaction as the status
  * transition above (`applyPaymentTransition`) — `tx`, never a fresh session.
+ * Retargeted from `products` to `product_variants`, keyed by `variantId`
+ * (`sdd/ecommerce-product-variants/design`) — the atomic UPDATE shape, the
+ * ambiguity-disambiguation read, and the untracked-inventory sentinel below
+ * are otherwise byte-identical to the pre-retarget version.
  *
  * Zero rows affected is ambiguous on its own: it means EITHER "insufficient
- * tracked stock" (must reject) OR "this product's stock is negative, i.e.
+ * tracked stock" (must reject) OR "this variant's stock is negative, i.e.
  * intentionally untracked inventory" (must silently no-op, matching munod's
  * own `continue` for the same case, `Dlocal/repository.ts:366`). The extra
  * read below exists only to disambiguate those two cases — it never
@@ -410,30 +492,30 @@ export async function decrementStock(
 ): Promise<void> {
 	for (const item of items) {
 		const [row] = await tx
-			.update(products)
-			.set({ stock: sql`${products.stock} - ${item.quantity}` })
+			.update(productVariants)
+			.set({ stock: sql`${productVariants.stock} - ${item.quantity}` })
 			.where(
 				and(
-					eq(products.id, item.productId),
-					gte(products.stock, item.quantity),
+					eq(productVariants.id, item.variantId),
+					gte(productVariants.stock, item.quantity),
 				),
 			)
-			.returning({ id: products.id, stock: products.stock });
+			.returning({ id: productVariants.id, stock: productVariants.stock });
 
 		if (row) {
 			continue;
 		}
 
 		const [current] = await tx
-			.select({ stock: products.stock })
-			.from(products)
-			.where(eq(products.id, item.productId));
+			.select({ stock: productVariants.stock })
+			.from(productVariants)
+			.where(eq(productVariants.id, item.variantId));
 
 		if (current && current.stock >= 0) {
 			throw new InsufficientStockHttpError(item.slug);
 		}
 
-		// `current.stock < 0` (untracked) or the product no longer exists —
+		// `current.stock < 0` (untracked) or the variant no longer exists —
 		// intentional no-op, matches munod's own untracked-inventory branch.
 	}
 }
@@ -445,13 +527,16 @@ export async function decrementStock(
  * stock-management domain, "Cancelled order restores stock"). ONE
  * conditional `UPDATE ... WHERE stock >= 0 RETURNING` per item, run inside
  * the SAME transaction as the status transition above
- * (`applyPaymentTransition`) — `tx`, never a fresh session.
+ * (`applyPaymentTransition`) — `tx`, never a fresh session. Retargeted from
+ * `products` to `product_variants`, keyed by `variantId`
+ * (`sdd/ecommerce-product-variants/design`) — otherwise byte-identical in
+ * shape to the pre-retarget version.
  *
  * The `stock >= 0` guard mirrors `decrementStock`'s own untracked-inventory
  * convention: a negative `stock` value is this module's sentinel for
  * "intentionally untracked inventory". Restoring without this guard would
- * incorrectly move an untracked product's sentinel value toward zero,
- * silently making it look tracked. A product already at `stock >= 0` simply
+ * incorrectly move an untracked variant's sentinel value toward zero,
+ * silently making it look tracked. A variant already at `stock >= 0` simply
  * gets its reserved quantity added back — there is no analogous "would go
  * negative" failure mode for an increment, so no
  * `InsufficientStockHttpError` branch is needed here, unlike
@@ -463,9 +548,14 @@ export async function restoreStock(
 ): Promise<void> {
 	for (const item of items) {
 		await tx
-			.update(products)
-			.set({ stock: sql`${products.stock} + ${item.quantity}` })
-			.where(and(eq(products.id, item.productId), gte(products.stock, 0)));
+			.update(productVariants)
+			.set({ stock: sql`${productVariants.stock} + ${item.quantity}` })
+			.where(
+				and(
+					eq(productVariants.id, item.variantId),
+					gte(productVariants.stock, 0),
+				),
+			);
 	}
 }
 

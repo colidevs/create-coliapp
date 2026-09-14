@@ -132,8 +132,9 @@ describe("decrementStock — atomic conditional UPDATE", () => {
 		await expect(
 			decrementStock(tx, [
 				{
-					productId: "p1",
+					variantId: "p1",
 					slug: "widget",
+					variantLabel: "Red / M",
 					quantity: 2,
 					unitPrice: 10,
 					lineTotal: 20,
@@ -151,8 +152,9 @@ describe("decrementStock — atomic conditional UPDATE", () => {
 		await expect(
 			decrementStock(tx, [
 				{
-					productId: "p1",
+					variantId: "p1",
 					slug: "widget",
+					variantLabel: "Red / M",
 					quantity: 5,
 					unitPrice: 10,
 					lineTotal: 50,
@@ -170,8 +172,9 @@ describe("decrementStock — atomic conditional UPDATE", () => {
 		await expect(
 			decrementStock(tx, [
 				{
-					productId: "p1",
+					variantId: "p1",
 					slug: "widget",
+					variantLabel: "Red / M",
 					quantity: 5,
 					unitPrice: 10,
 					lineTotal: 50,
@@ -215,6 +218,246 @@ describe("decrementStock — concurrency race (simulated)", () => {
 
 		expect(successes).toBe(1);
 		expect(store.stock).toBe(0);
+	});
+});
+
+interface FakeVariantPriceRow {
+	id: string;
+	slug: string;
+	price: string;
+	stock: number;
+	isActive: boolean;
+	productIsActive: boolean;
+}
+
+/**
+ * @description Fake `Tx` for `priceAndValidateItems`'s TWO queries
+ * (`product_variants` INNER JOIN `products`, then `variant_option_selections`
+ * double-joined for `loadVariantLabels`), branching on `.from()`'s table
+ * identity — same pattern as `admin/variants/__tests__/repository.test.ts`'s
+ * table-identity-branching fake tx, adapted for chained `.innerJoin()` calls.
+ *
+ * Takes the `productVariants`/`variantOptionSelections` table references as
+ * PARAMETERS, resolved from the SAME `vi.importActual("@/lib/db")` call the
+ * `@/lib/db` mock factory itself uses (see `repoWithPriceScript` below) —
+ * never captured from an outer scope. `vi.resetModules()` (required so
+ * `../repository` re-imports against the freshly doMocked `@/lib/db`) gives
+ * each test a NEW module registry, so a `schema.productVariants` reference
+ * captured before `resetModules()` would be a DIFFERENT object instance from
+ * the one the freshly-re-imported `repository.ts` actually compares against.
+ */
+function createFakePriceTx(
+	productVariantsTable: unknown,
+	variantOptionSelectionsTable: unknown,
+	script: {
+		variantRows: FakeVariantPriceRow[];
+		labelRows?: Array<{ variantId: string; value: string }>;
+	},
+) {
+	const labelRows = script.labelRows ?? [];
+
+	const select = vi.fn(() => ({
+		from: vi.fn((table: unknown) => {
+			if (table === productVariantsTable) {
+				return {
+					innerJoin: vi.fn(() => ({
+						where: vi.fn(async () => script.variantRows),
+					})),
+				};
+			}
+
+			if (table === variantOptionSelectionsTable) {
+				return {
+					innerJoin: vi.fn(() => ({
+						innerJoin: vi.fn(() => ({
+							where: vi.fn(() => ({
+								orderBy: vi.fn(async () => labelRows),
+							})),
+						})),
+					})),
+				};
+			}
+
+			throw new Error(`unexpected table in select().from(): ${String(table)}`);
+		}),
+	}));
+
+	// biome-ignore lint/suspicious/noExplicitAny: test double, not a real Tx
+	return { select } as any;
+}
+
+describe("priceAndValidateItems — variant-level pricing/stock (product_variants)", () => {
+	beforeEach(() => {
+		vi.resetModules();
+	});
+
+	/**
+	 * @description Also re-imports `@/v1/res/errors` from the SAME
+	 * post-`resetModules()` registry epoch as `../repository`, and returns its
+	 * classes alongside the repo — for the identical reason
+	 * `createFakePriceTx` above takes its table references as parameters
+	 * rather than closing over a module-top-level import: `NotFoundHttpError`/
+	 * `InsufficientStockHttpError` imported at this file's top (before any
+	 * `resetModules()`) are DIFFERENT class objects from the ones the
+	 * freshly-reimported `repository.ts` actually throws, so `toBeInstanceOf`
+	 * against the top-level import would always fail.
+	 */
+	async function repoWithPriceScript(script: {
+		variantRows: FakeVariantPriceRow[];
+		labelRows?: Array<{ variantId: string; value: string }>;
+	}) {
+		vi.doMock("@/lib/db", async () => {
+			const actual =
+				await vi.importActual<typeof import("@/lib/db")>("@/lib/db");
+			const fakeTx = createFakePriceTx(
+				actual.schema.productVariants,
+				actual.schema.variantOptionSelections,
+				script,
+			);
+			return {
+				...actual,
+				withPlatformSession: async (fn: (tx: unknown) => unknown) => fn(fakeTx),
+			};
+		});
+
+		const { createDlocalRepository } = await import("../repository");
+		const errors = await import("@/v1/res/errors");
+		return { repo: createDlocalRepository(), errors };
+	}
+
+	it("prices and validates against product_variants columns, joined to the parent product's slug", async () => {
+		const { repo } = await repoWithPriceScript({
+			variantRows: [
+				{
+					id: "v1",
+					slug: "widget",
+					price: "19.99",
+					stock: 10,
+					isActive: true,
+					productIsActive: true,
+				},
+			],
+			labelRows: [
+				{ variantId: "v1", value: "Red" },
+				{ variantId: "v1", value: "M" },
+			],
+		});
+
+		const { orderItems, amount } = await repo.priceAndValidateItems([
+			{ variantId: "v1", quantity: 2 },
+		]);
+
+		expect(orderItems).toEqual([
+			{
+				variantId: "v1",
+				slug: "widget",
+				variantLabel: "Red / M",
+				quantity: 2,
+				unitPrice: 19.99,
+				lineTotal: 39.98,
+			},
+		]);
+		expect(amount).toBe(39.98);
+	});
+
+	it("resolves variantLabel to null when the variant has zero option-value selections", async () => {
+		const { repo } = await repoWithPriceScript({
+			variantRows: [
+				{
+					id: "v1",
+					slug: "widget",
+					price: "10.00",
+					stock: 10,
+					isActive: true,
+					productIsActive: true,
+				},
+			],
+			labelRows: [],
+		});
+
+		const { orderItems } = await repo.priceAndValidateItems([
+			{ variantId: "v1", quantity: 1 },
+		]);
+
+		expect(orderItems[0]?.variantLabel).toBeNull();
+	});
+
+	it("rejects an inactive variant even when its parent product is active", async () => {
+		const { repo, errors } = await repoWithPriceScript({
+			variantRows: [
+				{
+					id: "v1",
+					slug: "widget",
+					price: "10.00",
+					stock: 10,
+					isActive: false,
+					productIsActive: true,
+				},
+			],
+		});
+
+		await expect(
+			repo.priceAndValidateItems([{ variantId: "v1", quantity: 1 }]),
+		).rejects.toBeInstanceOf(errors.NotFoundHttpError);
+	});
+
+	it("rejects an active variant whose parent product is inactive/unpublished", async () => {
+		const { repo, errors } = await repoWithPriceScript({
+			variantRows: [
+				{
+					id: "v1",
+					slug: "widget",
+					price: "10.00",
+					stock: 10,
+					isActive: true,
+					productIsActive: false,
+				},
+			],
+		});
+
+		await expect(
+			repo.priceAndValidateItems([{ variantId: "v1", quantity: 1 }]),
+		).rejects.toBeInstanceOf(errors.NotFoundHttpError);
+	});
+
+	it("throws InsufficientStockHttpError when tracked stock is below the requested quantity", async () => {
+		const { repo, errors } = await repoWithPriceScript({
+			variantRows: [
+				{
+					id: "v1",
+					slug: "widget",
+					price: "10.00",
+					stock: 1,
+					isActive: true,
+					productIsActive: true,
+				},
+			],
+		});
+
+		await expect(
+			repo.priceAndValidateItems([{ variantId: "v1", quantity: 5 }]),
+		).rejects.toBeInstanceOf(errors.InsufficientStockHttpError);
+	});
+
+	it("treats negative variant stock as untracked inventory — always purchasable", async () => {
+		const { repo } = await repoWithPriceScript({
+			variantRows: [
+				{
+					id: "v1",
+					slug: "widget",
+					price: "10.00",
+					stock: -1,
+					isActive: true,
+					productIsActive: true,
+				},
+			],
+		});
+
+		const { orderItems } = await repo.priceAndValidateItems([
+			{ variantId: "v1", quantity: 999 },
+		]);
+
+		expect(orderItems).toHaveLength(1);
 	});
 });
 
@@ -272,8 +515,9 @@ describe("applyPaymentTransition — webhook transition guard", () => {
 									status: "REJECTED",
 									buyerProducts: [
 										{
-											productId: "p1",
+											variantId: "p1",
 											slug: "widget",
+											variantLabel: "Red / M",
 											quantity: 2,
 											unitPrice: 10,
 											lineTotal: 20,
@@ -321,8 +565,9 @@ describe("applyPaymentTransition — webhook transition guard", () => {
 									status: "REJECTED",
 									buyerProducts: [
 										{
-											productId: "p2",
+											variantId: "p2",
 											slug: "gadget",
+											variantLabel: null,
 											quantity: 1,
 											unitPrice: 5,
 											lineTotal: 5,
