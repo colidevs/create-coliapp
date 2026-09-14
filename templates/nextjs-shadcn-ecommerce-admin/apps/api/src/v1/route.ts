@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { serviceAuth } from "@/v1/middlewares/service-auth";
+import { dlocalRouter } from "@/v1/modules/Dlocal/route";
 import { healthcheckRouter } from "@/v1/modules/healthcheck/route";
 import { meRouter } from "@/v1/modules/me/route";
 
@@ -18,5 +19,10 @@ const root = Router();
 root.use(serviceAuth);
 root.use("/healthcheck", healthcheckRouter);
 root.use(meRouter);
+// dLocal's payment-notification webhook (`/dlocal/notifications`) is NOT
+// mounted here — see `src/v1/modules/Dlocal/route.ts`'s `dlocalNotificationRouter`
+// doc comment and `src/api.ts` for why it is mounted directly on the
+// top-level app, before this router is ever reached.
+root.use("/dlocal", dlocalRouter);
 
 export { root as v1Router };
