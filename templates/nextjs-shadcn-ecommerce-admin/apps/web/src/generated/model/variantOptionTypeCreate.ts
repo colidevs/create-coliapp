@@ -6,7 +6,15 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export type ListProductImagesParams = {
-	productId?: string;
-	variantId?: string;
-};
+/**
+ * Creates a variant option type. `slug` is derived from `name`.
+ */
+export interface VariantOptionTypeCreate {
+	/** @minLength 1 */
+	name: string;
+	/**
+	 * @minimum -9007199254740991
+	 * @maximum 9007199254740991
+	 */
+	displayOrder?: number;
+}

@@ -6,7 +6,6 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export type ListProductImagesParams = {
-	productId?: string;
-	variantId?: string;
+export type ListVariantOptionValuesParams = {
+	optionTypeId?: string;
 };

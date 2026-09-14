@@ -12,21 +12,7 @@
 export interface ProductUpdate {
 	/** @minLength 1 */
 	name?: string;
-	code?: string | null;
-	altCode?: string | null;
 	description?: string | null;
-	/** @exclusiveMinimum 0 */
-	price?: number;
-	/**
-	 * @minimum -9007199254740991
-	 * @maximum 9007199254740991
-	 */
-	stock?: number;
-	/**
-	 * @minimum -9007199254740991
-	 * @maximum 9007199254740991
-	 */
-	stockMin?: number;
 	coverImage?: string | null;
 	categoryId?: string | null;
 	isActive?: boolean;

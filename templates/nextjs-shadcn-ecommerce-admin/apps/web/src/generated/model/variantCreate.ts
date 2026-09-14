@@ -7,27 +7,31 @@
  */
 
 /**
- * A variant's stock projection, with its parent product's name/slug and its resolved option-value label.
+ * Creates a variant under a product, with its option-value selections.
  */
-export interface StockItem {
-	/** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
-	id: string;
+export interface VariantCreate {
 	/** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
 	productId: string;
-	name: string;
-	slug: string;
-	variantLabel: string | null;
+	code?: string;
+	altCode?: string;
+	/** @exclusiveMinimum 0 */
+	price: number;
 	/**
 	 * @minimum -9007199254740991
 	 * @maximum 9007199254740991
 	 */
-	stock: number;
+	stock?: number;
 	/**
 	 * @minimum -9007199254740991
 	 * @maximum 9007199254740991
 	 */
-	stockMin: number;
-	code: string | null;
-	altCode: string | null;
-	coverImage: string | null;
+	stockMin?: number;
+	isDefault?: boolean;
+	/**
+	 * @minimum -9007199254740991
+	 * @maximum 9007199254740991
+	 */
+	displayOrder?: number;
+	/** @items.pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+	optionValueIds?: string[];
 }

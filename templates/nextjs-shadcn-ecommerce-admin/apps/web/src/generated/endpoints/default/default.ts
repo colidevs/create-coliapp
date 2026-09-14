@@ -22,6 +22,8 @@ import type {
 	ListProductsParams,
 	ListPublicProductsParams,
 	ListStockParams,
+	ListVariantOptionValuesParams,
+	ListVariantsParams,
 	MeResponse,
 	OrderList,
 	OrderOutput,
@@ -31,9 +33,20 @@ import type {
 	ProductList,
 	ProductOutput,
 	ProductUpdate,
+	PublicProductList,
+	PublicProductOutput,
 	StockItem,
 	StockUpdate,
 	UpdateProductImageBody,
+	Variant,
+	VariantCreate,
+	VariantOptionType,
+	VariantOptionTypeCreate,
+	VariantOptionTypeUpdate,
+	VariantOptionValue,
+	VariantOptionValueCreate,
+	VariantOptionValueUpdate,
+	VariantUpdate,
 } from "../../model";
 
 export type HTTPStatusCode1xx = 100 | 101 | 102 | 103;
@@ -1569,7 +1582,7 @@ export const listPublicCategories = async (
 };
 
 export type listPublicProductsResponse200 = {
-	data: ProductList;
+	data: PublicProductList;
 	status: 200;
 };
 
@@ -1624,7 +1637,7 @@ export const listPublicProducts = async (
 };
 
 export type getPublicProductBySlugResponse200 = {
-	data: ProductOutput;
+	data: PublicProductOutput;
 	status: 200;
 };
 
@@ -1671,4 +1684,968 @@ export const getPublicProductBySlug = async (
 			method: "GET",
 		},
 	);
+};
+
+export type listVariantOptionTypesResponse200 = {
+	data: VariantOptionType[];
+	status: 200;
+};
+
+export type listVariantOptionTypesResponseDefault = {
+	data: Problem;
+	status: Exclude<HTTPStatusCodes, 200>;
+};
+
+export type listVariantOptionTypesResponseSuccess =
+	listVariantOptionTypesResponse200 & {
+		headers: Headers;
+	};
+export type listVariantOptionTypesResponseError =
+	listVariantOptionTypesResponseDefault & {
+		headers: Headers;
+	};
+
+export type listVariantOptionTypesResponse =
+	| listVariantOptionTypesResponseSuccess
+	| listVariantOptionTypesResponseError;
+
+export const getListVariantOptionTypesUrl = () => {
+	return `/api/v1/admin/variant-option-types`;
+};
+
+/**
+ * @summary List variant option types
+ */
+export const listVariantOptionTypes = async (
+	options?: Parameters<typeof apiRequest>[1],
+): Promise<listVariantOptionTypesResponse> => {
+	return apiRequest<listVariantOptionTypesResponse>(
+		getListVariantOptionTypesUrl(),
+		{
+			...options,
+			method: "GET",
+		},
+	);
+};
+
+export type createVariantOptionTypeResponse201 = {
+	data: VariantOptionType;
+	status: 201;
+};
+
+export type createVariantOptionTypeResponse403 = {
+	data: Problem;
+	status: 403;
+};
+
+export type createVariantOptionTypeResponse409 = {
+	data: Problem;
+	status: 409;
+};
+
+export type createVariantOptionTypeResponseDefault = {
+	data: Problem;
+	status: Exclude<HTTPStatusCodes, 201 | 403 | 409>;
+};
+
+export type createVariantOptionTypeResponseSuccess =
+	createVariantOptionTypeResponse201 & {
+		headers: Headers;
+	};
+export type createVariantOptionTypeResponseError = (
+	| createVariantOptionTypeResponse403
+	| createVariantOptionTypeResponse409
+	| createVariantOptionTypeResponseDefault
+) & {
+	headers: Headers;
+};
+
+export type createVariantOptionTypeResponse =
+	| createVariantOptionTypeResponseSuccess
+	| createVariantOptionTypeResponseError;
+
+export const getCreateVariantOptionTypeUrl = () => {
+	return `/api/v1/admin/variant-option-types`;
+};
+
+/**
+ * @summary Create a variant option type
+ */
+export const createVariantOptionType = async (
+	variantOptionTypeCreate: VariantOptionTypeCreate,
+	options?: Parameters<typeof apiRequest>[1],
+): Promise<createVariantOptionTypeResponse> => {
+	const getHeaders = (
+		h?: NonNullable<RequestInit["headers"]>,
+	): Record<string, string | readonly string[]> => {
+		if (!h) return {};
+		if (h instanceof Headers) return Object.fromEntries(h.entries());
+		if (Symbol.iterator in h) {
+			return Object.fromEntries(
+				Array.from(
+					h as Iterable<Iterable<string>>,
+					(entry) => Array.from(entry) as [string, string],
+				),
+			);
+		}
+		const headers: Record<string, string | readonly string[]> = {};
+		for (const [name, value] of Object.entries<
+			string | readonly string[] | undefined
+		>(h)) {
+			if (value !== undefined) headers[name] = value;
+		}
+		return headers;
+	};
+	return apiRequest<createVariantOptionTypeResponse>(
+		getCreateVariantOptionTypeUrl(),
+		{
+			...options,
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				...getHeaders(options?.headers),
+			},
+			body: JSON.stringify(variantOptionTypeCreate),
+		},
+	);
+};
+
+export type getVariantOptionTypeByIdResponse200 = {
+	data: VariantOptionType;
+	status: 200;
+};
+
+export type getVariantOptionTypeByIdResponse404 = {
+	data: Problem;
+	status: 404;
+};
+
+export type getVariantOptionTypeByIdResponseDefault = {
+	data: Problem;
+	status: Exclude<HTTPStatusCodes, 200 | 404>;
+};
+
+export type getVariantOptionTypeByIdResponseSuccess =
+	getVariantOptionTypeByIdResponse200 & {
+		headers: Headers;
+	};
+export type getVariantOptionTypeByIdResponseError = (
+	| getVariantOptionTypeByIdResponse404
+	| getVariantOptionTypeByIdResponseDefault
+) & {
+	headers: Headers;
+};
+
+export type getVariantOptionTypeByIdResponse =
+	| getVariantOptionTypeByIdResponseSuccess
+	| getVariantOptionTypeByIdResponseError;
+
+export const getGetVariantOptionTypeByIdUrl = (id: string) => {
+	return `/api/v1/admin/variant-option-types/${id}`;
+};
+
+/**
+ * @summary Get a variant option type by id
+ */
+export const getVariantOptionTypeById = async (
+	id: string,
+	options?: Parameters<typeof apiRequest>[1],
+): Promise<getVariantOptionTypeByIdResponse> => {
+	return apiRequest<getVariantOptionTypeByIdResponse>(
+		getGetVariantOptionTypeByIdUrl(id),
+		{
+			...options,
+			method: "GET",
+		},
+	);
+};
+
+export type updateVariantOptionTypeResponse200 = {
+	data: VariantOptionType;
+	status: 200;
+};
+
+export type updateVariantOptionTypeResponse403 = {
+	data: Problem;
+	status: 403;
+};
+
+export type updateVariantOptionTypeResponse404 = {
+	data: Problem;
+	status: 404;
+};
+
+export type updateVariantOptionTypeResponse409 = {
+	data: Problem;
+	status: 409;
+};
+
+export type updateVariantOptionTypeResponseDefault = {
+	data: Problem;
+	status: Exclude<HTTPStatusCodes, 200 | 403 | 404 | 409>;
+};
+
+export type updateVariantOptionTypeResponseSuccess =
+	updateVariantOptionTypeResponse200 & {
+		headers: Headers;
+	};
+export type updateVariantOptionTypeResponseError = (
+	| updateVariantOptionTypeResponse403
+	| updateVariantOptionTypeResponse404
+	| updateVariantOptionTypeResponse409
+	| updateVariantOptionTypeResponseDefault
+) & {
+	headers: Headers;
+};
+
+export type updateVariantOptionTypeResponse =
+	| updateVariantOptionTypeResponseSuccess
+	| updateVariantOptionTypeResponseError;
+
+export const getUpdateVariantOptionTypeUrl = (id: string) => {
+	return `/api/v1/admin/variant-option-types/${id}`;
+};
+
+/**
+ * @summary Update a variant option type
+ */
+export const updateVariantOptionType = async (
+	id: string,
+	variantOptionTypeUpdate: VariantOptionTypeUpdate,
+	options?: Parameters<typeof apiRequest>[1],
+): Promise<updateVariantOptionTypeResponse> => {
+	const getHeaders = (
+		h?: NonNullable<RequestInit["headers"]>,
+	): Record<string, string | readonly string[]> => {
+		if (!h) return {};
+		if (h instanceof Headers) return Object.fromEntries(h.entries());
+		if (Symbol.iterator in h) {
+			return Object.fromEntries(
+				Array.from(
+					h as Iterable<Iterable<string>>,
+					(entry) => Array.from(entry) as [string, string],
+				),
+			);
+		}
+		const headers: Record<string, string | readonly string[]> = {};
+		for (const [name, value] of Object.entries<
+			string | readonly string[] | undefined
+		>(h)) {
+			if (value !== undefined) headers[name] = value;
+		}
+		return headers;
+	};
+	return apiRequest<updateVariantOptionTypeResponse>(
+		getUpdateVariantOptionTypeUrl(id),
+		{
+			...options,
+			method: "PATCH",
+			headers: {
+				"Content-Type": "application/json",
+				...getHeaders(options?.headers),
+			},
+			body: JSON.stringify(variantOptionTypeUpdate),
+		},
+	);
+};
+
+export type deleteVariantOptionTypeResponse204 = {
+	data: void;
+	status: 204;
+};
+
+export type deleteVariantOptionTypeResponse403 = {
+	data: Problem;
+	status: 403;
+};
+
+export type deleteVariantOptionTypeResponse404 = {
+	data: Problem;
+	status: 404;
+};
+
+export type deleteVariantOptionTypeResponseDefault = {
+	data: Problem;
+	status: Exclude<HTTPStatusCodes, 204 | 403 | 404>;
+};
+
+export type deleteVariantOptionTypeResponseSuccess =
+	deleteVariantOptionTypeResponse204 & {
+		headers: Headers;
+	};
+export type deleteVariantOptionTypeResponseError = (
+	| deleteVariantOptionTypeResponse403
+	| deleteVariantOptionTypeResponse404
+	| deleteVariantOptionTypeResponseDefault
+) & {
+	headers: Headers;
+};
+
+export type deleteVariantOptionTypeResponse =
+	| deleteVariantOptionTypeResponseSuccess
+	| deleteVariantOptionTypeResponseError;
+
+export const getDeleteVariantOptionTypeUrl = (id: string) => {
+	return `/api/v1/admin/variant-option-types/${id}`;
+};
+
+/**
+ * @summary Deactivate a variant option type (soft delete)
+ */
+export const deleteVariantOptionType = async (
+	id: string,
+	options?: Parameters<typeof apiRequest>[1],
+): Promise<deleteVariantOptionTypeResponse> => {
+	return apiRequest<deleteVariantOptionTypeResponse>(
+		getDeleteVariantOptionTypeUrl(id),
+		{
+			...options,
+			method: "DELETE",
+		},
+	);
+};
+
+export type listVariantOptionValuesResponse200 = {
+	data: VariantOptionValue[];
+	status: 200;
+};
+
+export type listVariantOptionValuesResponseDefault = {
+	data: Problem;
+	status: Exclude<HTTPStatusCodes, 200>;
+};
+
+export type listVariantOptionValuesResponseSuccess =
+	listVariantOptionValuesResponse200 & {
+		headers: Headers;
+	};
+export type listVariantOptionValuesResponseError =
+	listVariantOptionValuesResponseDefault & {
+		headers: Headers;
+	};
+
+export type listVariantOptionValuesResponse =
+	| listVariantOptionValuesResponseSuccess
+	| listVariantOptionValuesResponseError;
+
+export const getListVariantOptionValuesUrl = (
+	params?: ListVariantOptionValuesParams,
+) => {
+	const normalizedParams = new URLSearchParams();
+
+	Object.entries(params || {}).forEach(([key, value]) => {
+		if (value !== undefined) {
+			normalizedParams.append(key, value === null ? "null" : String(value));
+		}
+	});
+
+	const stringifiedParams = normalizedParams.toString();
+
+	return stringifiedParams.length > 0
+		? `/api/v1/admin/variant-option-values?${stringifiedParams}`
+		: `/api/v1/admin/variant-option-values`;
+};
+
+/**
+ * @summary List variant option values
+ */
+export const listVariantOptionValues = async (
+	params?: ListVariantOptionValuesParams,
+	options?: Parameters<typeof apiRequest>[1],
+): Promise<listVariantOptionValuesResponse> => {
+	return apiRequest<listVariantOptionValuesResponse>(
+		getListVariantOptionValuesUrl(params),
+		{
+			...options,
+			method: "GET",
+		},
+	);
+};
+
+export type createVariantOptionValueResponse201 = {
+	data: VariantOptionValue;
+	status: 201;
+};
+
+export type createVariantOptionValueResponse403 = {
+	data: Problem;
+	status: 403;
+};
+
+export type createVariantOptionValueResponse409 = {
+	data: Problem;
+	status: 409;
+};
+
+export type createVariantOptionValueResponseDefault = {
+	data: Problem;
+	status: Exclude<HTTPStatusCodes, 201 | 403 | 409>;
+};
+
+export type createVariantOptionValueResponseSuccess =
+	createVariantOptionValueResponse201 & {
+		headers: Headers;
+	};
+export type createVariantOptionValueResponseError = (
+	| createVariantOptionValueResponse403
+	| createVariantOptionValueResponse409
+	| createVariantOptionValueResponseDefault
+) & {
+	headers: Headers;
+};
+
+export type createVariantOptionValueResponse =
+	| createVariantOptionValueResponseSuccess
+	| createVariantOptionValueResponseError;
+
+export const getCreateVariantOptionValueUrl = () => {
+	return `/api/v1/admin/variant-option-values`;
+};
+
+/**
+ * @summary Create a variant option value
+ */
+export const createVariantOptionValue = async (
+	variantOptionValueCreate: VariantOptionValueCreate,
+	options?: Parameters<typeof apiRequest>[1],
+): Promise<createVariantOptionValueResponse> => {
+	const getHeaders = (
+		h?: NonNullable<RequestInit["headers"]>,
+	): Record<string, string | readonly string[]> => {
+		if (!h) return {};
+		if (h instanceof Headers) return Object.fromEntries(h.entries());
+		if (Symbol.iterator in h) {
+			return Object.fromEntries(
+				Array.from(
+					h as Iterable<Iterable<string>>,
+					(entry) => Array.from(entry) as [string, string],
+				),
+			);
+		}
+		const headers: Record<string, string | readonly string[]> = {};
+		for (const [name, value] of Object.entries<
+			string | readonly string[] | undefined
+		>(h)) {
+			if (value !== undefined) headers[name] = value;
+		}
+		return headers;
+	};
+	return apiRequest<createVariantOptionValueResponse>(
+		getCreateVariantOptionValueUrl(),
+		{
+			...options,
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				...getHeaders(options?.headers),
+			},
+			body: JSON.stringify(variantOptionValueCreate),
+		},
+	);
+};
+
+export type getVariantOptionValueByIdResponse200 = {
+	data: VariantOptionValue;
+	status: 200;
+};
+
+export type getVariantOptionValueByIdResponse404 = {
+	data: Problem;
+	status: 404;
+};
+
+export type getVariantOptionValueByIdResponseDefault = {
+	data: Problem;
+	status: Exclude<HTTPStatusCodes, 200 | 404>;
+};
+
+export type getVariantOptionValueByIdResponseSuccess =
+	getVariantOptionValueByIdResponse200 & {
+		headers: Headers;
+	};
+export type getVariantOptionValueByIdResponseError = (
+	| getVariantOptionValueByIdResponse404
+	| getVariantOptionValueByIdResponseDefault
+) & {
+	headers: Headers;
+};
+
+export type getVariantOptionValueByIdResponse =
+	| getVariantOptionValueByIdResponseSuccess
+	| getVariantOptionValueByIdResponseError;
+
+export const getGetVariantOptionValueByIdUrl = (id: string) => {
+	return `/api/v1/admin/variant-option-values/${id}`;
+};
+
+/**
+ * @summary Get a variant option value by id
+ */
+export const getVariantOptionValueById = async (
+	id: string,
+	options?: Parameters<typeof apiRequest>[1],
+): Promise<getVariantOptionValueByIdResponse> => {
+	return apiRequest<getVariantOptionValueByIdResponse>(
+		getGetVariantOptionValueByIdUrl(id),
+		{
+			...options,
+			method: "GET",
+		},
+	);
+};
+
+export type updateVariantOptionValueResponse200 = {
+	data: VariantOptionValue;
+	status: 200;
+};
+
+export type updateVariantOptionValueResponse403 = {
+	data: Problem;
+	status: 403;
+};
+
+export type updateVariantOptionValueResponse404 = {
+	data: Problem;
+	status: 404;
+};
+
+export type updateVariantOptionValueResponse409 = {
+	data: Problem;
+	status: 409;
+};
+
+export type updateVariantOptionValueResponseDefault = {
+	data: Problem;
+	status: Exclude<HTTPStatusCodes, 200 | 403 | 404 | 409>;
+};
+
+export type updateVariantOptionValueResponseSuccess =
+	updateVariantOptionValueResponse200 & {
+		headers: Headers;
+	};
+export type updateVariantOptionValueResponseError = (
+	| updateVariantOptionValueResponse403
+	| updateVariantOptionValueResponse404
+	| updateVariantOptionValueResponse409
+	| updateVariantOptionValueResponseDefault
+) & {
+	headers: Headers;
+};
+
+export type updateVariantOptionValueResponse =
+	| updateVariantOptionValueResponseSuccess
+	| updateVariantOptionValueResponseError;
+
+export const getUpdateVariantOptionValueUrl = (id: string) => {
+	return `/api/v1/admin/variant-option-values/${id}`;
+};
+
+/**
+ * @summary Update a variant option value
+ */
+export const updateVariantOptionValue = async (
+	id: string,
+	variantOptionValueUpdate: VariantOptionValueUpdate,
+	options?: Parameters<typeof apiRequest>[1],
+): Promise<updateVariantOptionValueResponse> => {
+	const getHeaders = (
+		h?: NonNullable<RequestInit["headers"]>,
+	): Record<string, string | readonly string[]> => {
+		if (!h) return {};
+		if (h instanceof Headers) return Object.fromEntries(h.entries());
+		if (Symbol.iterator in h) {
+			return Object.fromEntries(
+				Array.from(
+					h as Iterable<Iterable<string>>,
+					(entry) => Array.from(entry) as [string, string],
+				),
+			);
+		}
+		const headers: Record<string, string | readonly string[]> = {};
+		for (const [name, value] of Object.entries<
+			string | readonly string[] | undefined
+		>(h)) {
+			if (value !== undefined) headers[name] = value;
+		}
+		return headers;
+	};
+	return apiRequest<updateVariantOptionValueResponse>(
+		getUpdateVariantOptionValueUrl(id),
+		{
+			...options,
+			method: "PATCH",
+			headers: {
+				"Content-Type": "application/json",
+				...getHeaders(options?.headers),
+			},
+			body: JSON.stringify(variantOptionValueUpdate),
+		},
+	);
+};
+
+export type deleteVariantOptionValueResponse204 = {
+	data: void;
+	status: 204;
+};
+
+export type deleteVariantOptionValueResponse403 = {
+	data: Problem;
+	status: 403;
+};
+
+export type deleteVariantOptionValueResponse404 = {
+	data: Problem;
+	status: 404;
+};
+
+export type deleteVariantOptionValueResponseDefault = {
+	data: Problem;
+	status: Exclude<HTTPStatusCodes, 204 | 403 | 404>;
+};
+
+export type deleteVariantOptionValueResponseSuccess =
+	deleteVariantOptionValueResponse204 & {
+		headers: Headers;
+	};
+export type deleteVariantOptionValueResponseError = (
+	| deleteVariantOptionValueResponse403
+	| deleteVariantOptionValueResponse404
+	| deleteVariantOptionValueResponseDefault
+) & {
+	headers: Headers;
+};
+
+export type deleteVariantOptionValueResponse =
+	| deleteVariantOptionValueResponseSuccess
+	| deleteVariantOptionValueResponseError;
+
+export const getDeleteVariantOptionValueUrl = (id: string) => {
+	return `/api/v1/admin/variant-option-values/${id}`;
+};
+
+/**
+ * @summary Deactivate a variant option value (soft delete)
+ */
+export const deleteVariantOptionValue = async (
+	id: string,
+	options?: Parameters<typeof apiRequest>[1],
+): Promise<deleteVariantOptionValueResponse> => {
+	return apiRequest<deleteVariantOptionValueResponse>(
+		getDeleteVariantOptionValueUrl(id),
+		{
+			...options,
+			method: "DELETE",
+		},
+	);
+};
+
+export type listVariantsResponse200 = {
+	data: Variant[];
+	status: 200;
+};
+
+export type listVariantsResponseDefault = {
+	data: Problem;
+	status: Exclude<HTTPStatusCodes, 200>;
+};
+
+export type listVariantsResponseSuccess = listVariantsResponse200 & {
+	headers: Headers;
+};
+export type listVariantsResponseError = listVariantsResponseDefault & {
+	headers: Headers;
+};
+
+export type listVariantsResponse =
+	| listVariantsResponseSuccess
+	| listVariantsResponseError;
+
+export const getListVariantsUrl = (params?: ListVariantsParams) => {
+	const normalizedParams = new URLSearchParams();
+
+	Object.entries(params || {}).forEach(([key, value]) => {
+		if (value !== undefined) {
+			normalizedParams.append(key, value === null ? "null" : String(value));
+		}
+	});
+
+	const stringifiedParams = normalizedParams.toString();
+
+	return stringifiedParams.length > 0
+		? `/api/v1/admin/variants?${stringifiedParams}`
+		: `/api/v1/admin/variants`;
+};
+
+/**
+ * @summary List variants
+ */
+export const listVariants = async (
+	params?: ListVariantsParams,
+	options?: Parameters<typeof apiRequest>[1],
+): Promise<listVariantsResponse> => {
+	return apiRequest<listVariantsResponse>(getListVariantsUrl(params), {
+		...options,
+		method: "GET",
+	});
+};
+
+export type createVariantResponse201 = {
+	data: Variant;
+	status: 201;
+};
+
+export type createVariantResponse403 = {
+	data: Problem;
+	status: 403;
+};
+
+export type createVariantResponseDefault = {
+	data: Problem;
+	status: Exclude<HTTPStatusCodes, 201 | 403>;
+};
+
+export type createVariantResponseSuccess = createVariantResponse201 & {
+	headers: Headers;
+};
+export type createVariantResponseError = (
+	| createVariantResponse403
+	| createVariantResponseDefault
+) & {
+	headers: Headers;
+};
+
+export type createVariantResponse =
+	| createVariantResponseSuccess
+	| createVariantResponseError;
+
+export const getCreateVariantUrl = () => {
+	return `/api/v1/admin/variants`;
+};
+
+/**
+ * @summary Create a variant
+ */
+export const createVariant = async (
+	variantCreate: VariantCreate,
+	options?: Parameters<typeof apiRequest>[1],
+): Promise<createVariantResponse> => {
+	const getHeaders = (
+		h?: NonNullable<RequestInit["headers"]>,
+	): Record<string, string | readonly string[]> => {
+		if (!h) return {};
+		if (h instanceof Headers) return Object.fromEntries(h.entries());
+		if (Symbol.iterator in h) {
+			return Object.fromEntries(
+				Array.from(
+					h as Iterable<Iterable<string>>,
+					(entry) => Array.from(entry) as [string, string],
+				),
+			);
+		}
+		const headers: Record<string, string | readonly string[]> = {};
+		for (const [name, value] of Object.entries<
+			string | readonly string[] | undefined
+		>(h)) {
+			if (value !== undefined) headers[name] = value;
+		}
+		return headers;
+	};
+	return apiRequest<createVariantResponse>(getCreateVariantUrl(), {
+		...options,
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			...getHeaders(options?.headers),
+		},
+		body: JSON.stringify(variantCreate),
+	});
+};
+
+export type getVariantByIdResponse200 = {
+	data: Variant;
+	status: 200;
+};
+
+export type getVariantByIdResponse404 = {
+	data: Problem;
+	status: 404;
+};
+
+export type getVariantByIdResponseDefault = {
+	data: Problem;
+	status: Exclude<HTTPStatusCodes, 200 | 404>;
+};
+
+export type getVariantByIdResponseSuccess = getVariantByIdResponse200 & {
+	headers: Headers;
+};
+export type getVariantByIdResponseError = (
+	| getVariantByIdResponse404
+	| getVariantByIdResponseDefault
+) & {
+	headers: Headers;
+};
+
+export type getVariantByIdResponse =
+	| getVariantByIdResponseSuccess
+	| getVariantByIdResponseError;
+
+export const getGetVariantByIdUrl = (id: string) => {
+	return `/api/v1/admin/variants/${id}`;
+};
+
+/**
+ * @summary Get a variant by id
+ */
+export const getVariantById = async (
+	id: string,
+	options?: Parameters<typeof apiRequest>[1],
+): Promise<getVariantByIdResponse> => {
+	return apiRequest<getVariantByIdResponse>(getGetVariantByIdUrl(id), {
+		...options,
+		method: "GET",
+	});
+};
+
+export type updateVariantResponse200 = {
+	data: Variant;
+	status: 200;
+};
+
+export type updateVariantResponse403 = {
+	data: Problem;
+	status: 403;
+};
+
+export type updateVariantResponse404 = {
+	data: Problem;
+	status: 404;
+};
+
+export type updateVariantResponse422 = {
+	data: Problem;
+	status: 422;
+};
+
+export type updateVariantResponseDefault = {
+	data: Problem;
+	status: Exclude<HTTPStatusCodes, 200 | 403 | 404 | 422>;
+};
+
+export type updateVariantResponseSuccess = updateVariantResponse200 & {
+	headers: Headers;
+};
+export type updateVariantResponseError = (
+	| updateVariantResponse403
+	| updateVariantResponse404
+	| updateVariantResponse422
+	| updateVariantResponseDefault
+) & {
+	headers: Headers;
+};
+
+export type updateVariantResponse =
+	| updateVariantResponseSuccess
+	| updateVariantResponseError;
+
+export const getUpdateVariantUrl = (id: string) => {
+	return `/api/v1/admin/variants/${id}`;
+};
+
+/**
+ * @summary Update a variant
+ */
+export const updateVariant = async (
+	id: string,
+	variantUpdate: VariantUpdate,
+	options?: Parameters<typeof apiRequest>[1],
+): Promise<updateVariantResponse> => {
+	const getHeaders = (
+		h?: NonNullable<RequestInit["headers"]>,
+	): Record<string, string | readonly string[]> => {
+		if (!h) return {};
+		if (h instanceof Headers) return Object.fromEntries(h.entries());
+		if (Symbol.iterator in h) {
+			return Object.fromEntries(
+				Array.from(
+					h as Iterable<Iterable<string>>,
+					(entry) => Array.from(entry) as [string, string],
+				),
+			);
+		}
+		const headers: Record<string, string | readonly string[]> = {};
+		for (const [name, value] of Object.entries<
+			string | readonly string[] | undefined
+		>(h)) {
+			if (value !== undefined) headers[name] = value;
+		}
+		return headers;
+	};
+	return apiRequest<updateVariantResponse>(getUpdateVariantUrl(id), {
+		...options,
+		method: "PATCH",
+		headers: {
+			"Content-Type": "application/json",
+			...getHeaders(options?.headers),
+		},
+		body: JSON.stringify(variantUpdate),
+	});
+};
+
+export type deleteVariantResponse204 = {
+	data: void;
+	status: 204;
+};
+
+export type deleteVariantResponse403 = {
+	data: Problem;
+	status: 403;
+};
+
+export type deleteVariantResponse404 = {
+	data: Problem;
+	status: 404;
+};
+
+export type deleteVariantResponse422 = {
+	data: Problem;
+	status: 422;
+};
+
+export type deleteVariantResponseDefault = {
+	data: Problem;
+	status: Exclude<HTTPStatusCodes, 204 | 403 | 404 | 422>;
+};
+
+export type deleteVariantResponseSuccess = deleteVariantResponse204 & {
+	headers: Headers;
+};
+export type deleteVariantResponseError = (
+	| deleteVariantResponse403
+	| deleteVariantResponse404
+	| deleteVariantResponse422
+	| deleteVariantResponseDefault
+) & {
+	headers: Headers;
+};
+
+export type deleteVariantResponse =
+	| deleteVariantResponseSuccess
+	| deleteVariantResponseError;
+
+export const getDeleteVariantUrl = (id: string) => {
+	return `/api/v1/admin/variants/${id}`;
+};
+
+/**
+ * @summary Delete a variant
+ */
+export const deleteVariant = async (
+	id: string,
+	options?: Parameters<typeof apiRequest>[1],
+): Promise<deleteVariantResponse> => {
+	return apiRequest<deleteVariantResponse>(getDeleteVariantUrl(id), {
+		...options,
+		method: "DELETE",
+	});
 };

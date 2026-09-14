@@ -6,7 +6,16 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export type ListProductImagesParams = {
-	productId?: string;
-	variantId?: string;
-};
+/**
+ * Updates a variant option type. Renaming re-derives `slug` from the new `name`.
+ */
+export interface VariantOptionTypeUpdate {
+	/** @minLength 1 */
+	name?: string;
+	/**
+	 * @minimum -9007199254740991
+	 * @maximum 9007199254740991
+	 */
+	displayOrder?: number;
+	isActive?: boolean;
+}
