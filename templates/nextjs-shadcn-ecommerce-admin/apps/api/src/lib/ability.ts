@@ -22,11 +22,27 @@ import { ForbiddenHttpError } from "@/v1/res/errors";
  * subject. Never enforced in a controller.
  */
 export type CatalogAction = "manage" | "create" | "read" | "update" | "delete";
-export type CatalogSubject = "Category" | "Product" | "ProductImage" | "Stock";
+export type CatalogSubject =
+	| "Category"
+	| "Product"
+	| "ProductImage"
+	| "Stock"
+	| "Order";
 export type CatalogAbility = MongoAbility<[CatalogAction, CatalogSubject]>;
 
 export type CatalogRole = "admin" | "viewer";
 
+/**
+ * @description `"Order"` (Phase 4, `admin-catalog-crud` "Order
+ * administration" requirement) is deliberately NOT granted to `"viewer"` at
+ * all — every other catalog subject grants `"viewer"` a `"read"` action, but
+ * orders carry buyer PII (`mail`/`buyerInfo`, `admin/orders/types.ts`), so
+ * even read access is restricted to `"admin"` only. `admin/orders`'s own
+ * module is read-only regardless (no create/update/delete route exists), so
+ * `"read"` is the only action ever asserted against `"Order"` — granting
+ * `"manage"` here would be a misleading capability signal for a subject with
+ * no write endpoint to actually exercise it.
+ */
 export function defineAbilityFor(role: CatalogRole): CatalogAbility {
 	const { can, build } = new AbilityBuilder<CatalogAbility>(createMongoAbility);
 
@@ -35,6 +51,7 @@ export function defineAbilityFor(role: CatalogRole): CatalogAbility {
 		can("manage", "Product");
 		can("manage", "ProductImage");
 		can("manage", "Stock");
+		can("read", "Order");
 	} else {
 		can("read", "Category");
 		can("read", "Product");

@@ -40,6 +40,7 @@ import {
 	CategorySchema,
 	CategoryUpdateSchema,
 } from "@/v1/modules/admin/categories/types";
+import { OrderListSchema, OrderSchema } from "@/v1/modules/admin/orders/types";
 import {
 	ProductImageCreateSchema,
 	ProductImageSchema,
@@ -105,6 +106,8 @@ function buildDocument() {
 				ProductImage: ProductImageSchema,
 				StockItem: StockItemSchema,
 				StockUpdate: StockUpdateSchema,
+				Order: OrderSchema,
+				OrderList: OrderListSchema,
 			},
 			securitySchemes: {
 				// Better Auth session cookie (ADR 0022) — read via
@@ -928,6 +931,93 @@ function buildDocument() {
 						},
 						"404": {
 							description: "Stock item not found",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+			},
+			"/admin/orders": {
+				get: {
+					operationId: "listOrders",
+					summary: "List orders",
+					description:
+						"Read-only — orders are created exclusively by the dLocal checkout flow (`/dlocal/checkout`) and their `status` transitions exclusively via the dLocal payment-notification webhook. Restricted to the `admin` role only (orders carry buyer PII) — a `viewer` session receives `403`.",
+					parameters: [
+						{
+							name: "page",
+							in: "query",
+							schema: { type: "integer" },
+						},
+						{
+							name: "size",
+							in: "query",
+							schema: { type: "integer" },
+						},
+						{
+							name: "status",
+							in: "query",
+							schema: { type: "string" },
+						},
+					],
+					security: [{ sessionCookie: [], apiKeyAuth: [] }],
+					responses: {
+						"200": {
+							description: "A page of orders",
+							content: {
+								"application/json": { schema: OrderListSchema },
+							},
+						},
+						"403": {
+							description: "Not allowed to read orders",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+			},
+			"/admin/orders/{id}": {
+				get: {
+					operationId: "getOrderById",
+					summary: "Get an order by id",
+					parameters: [
+						{
+							name: "id",
+							in: "path",
+							required: true,
+							schema: { type: "string", format: "uuid" },
+						},
+					],
+					security: [{ sessionCookie: [], apiKeyAuth: [] }],
+					responses: {
+						"200": {
+							description: "The order, including its current status",
+							content: {
+								"application/json": { schema: OrderSchema },
+							},
+						},
+						"403": {
+							description: "Not allowed to read orders",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						"404": {
+							description: "Order not found",
 							content: {
 								"application/problem+json": { schema: ProblemSchema },
 							},
