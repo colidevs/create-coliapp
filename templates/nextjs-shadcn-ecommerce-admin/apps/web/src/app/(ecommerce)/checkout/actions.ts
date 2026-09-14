@@ -7,8 +7,14 @@ import { createDlocalCheckout } from "@/generated/endpoints";
 import type { CheckoutRequest, CheckoutRequestPayer } from "@/generated/model";
 import { LAST_CHECKOUT_COOKIE } from "./cookie";
 
+/**
+ * RETARGETED (`sdd/ecommerce-product-variants/design`, Phase 7): a checkout
+ * line item now cites the specific `variantId` the buyer resolved, matching
+ * `CheckoutRequestItemsItem`'s own retargeted field (PR6,
+ * `apps/api`'s `Dlocal/types.ts`).
+ */
 export interface CheckoutCartItem {
-	productId: string;
+	variantId: string;
 	quantity: number;
 }
 

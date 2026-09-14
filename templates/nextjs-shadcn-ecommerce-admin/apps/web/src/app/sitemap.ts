@@ -31,9 +31,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 			changeFrequency: "daily",
 			priority: 0.8,
 		},
+		// `PublicProductOutput` (`sdd/ecommerce-product-variants/design`) carries
+		// no `updatedAt` — the storefront-facing shape was never meant to leak
+		// admin-only audit columns. No per-product last-modified signal exists
+		// to derive one from, so every product entry shares the sitemap
+		// request's own generation time instead — acceptable degradation for a
+		// `changeFrequency: "weekly"` entry, not a functional regression.
 		...products.map((product) => ({
 			url: `${siteConfig.url}/products/${product.slug}`,
-			lastModified: product.updatedAt,
+			lastModified: new Date(),
 			changeFrequency: "weekly" as const,
 			priority: 0.6,
 		})),

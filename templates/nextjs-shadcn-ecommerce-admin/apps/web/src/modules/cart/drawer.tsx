@@ -50,9 +50,9 @@ export function CartDrawer() {
 					) : (
 						<ul className="space-y-4">
 							{items.map((item) => (
-								<li key={item.slug} className="flex gap-3">
+								<li key={item.variantId} className="flex gap-3">
 									<Link
-										href={`/products/${item.slug}`}
+										href={`/products/${item.productSlug}`}
 										onClick={() => setOpen(false)}
 										className="relative size-16 shrink-0 overflow-hidden rounded-md border bg-muted"
 									>
@@ -68,7 +68,10 @@ export function CartDrawer() {
 									</Link>
 									<div className="flex flex-1 flex-col gap-1">
 										<div className="flex items-start justify-between gap-2">
-											<span className="font-medium text-sm">{item.name}</span>
+											<span className="font-medium text-sm">
+												{item.name}
+												{item.variantLabel ? ` — ${item.variantLabel}` : ""}
+											</span>
 											<Price price={item.price * item.quantity} />
 										</div>
 										<div className="flex items-center gap-2">
@@ -77,7 +80,7 @@ export function CartDrawer() {
 												variant="outline"
 												size="icon"
 												className="size-6"
-												onClick={() => updateQuantity(item.slug, -1)}
+												onClick={() => updateQuantity(item.variantId, -1)}
 											>
 												<Minus className="size-3" />
 											</Button>
@@ -87,7 +90,7 @@ export function CartDrawer() {
 												variant="outline"
 												size="icon"
 												className="size-6"
-												onClick={() => updateQuantity(item.slug, 1)}
+												onClick={() => updateQuantity(item.variantId, 1)}
 											>
 												<Plus className="size-3" />
 											</Button>
@@ -96,7 +99,7 @@ export function CartDrawer() {
 												variant="ghost"
 												size="icon"
 												className="ml-auto size-6"
-												onClick={() => removeItem(item.slug)}
+												onClick={() => removeItem(item.variantId)}
 											>
 												<Trash2 className="size-3" />
 											</Button>

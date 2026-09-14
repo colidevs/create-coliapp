@@ -1,15 +1,17 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
-import type { Product } from "@/generated/model";
+import { formatVariantLabel } from "@/modules/products/ecommerce/variant-selection";
+import type { PublicProduct, PublicVariant } from "@/modules/products/types";
 import type { CartItem } from "./types";
 
 /**
  * Ported near-verbatim from munod's real `hooks/use-cart.ts` — Zustand +
- * `persist`/`createJSONStorage(localStorage)`, matching this template's
- * "port whatever mechanism munod actually uses" instruction (task 6.5). Only
- * the item shape changed (`CartItem`, this module's own type, not munod's
- * `EcomProduct & { quantity }` — see `./types.ts`).
+ * `persist`/`createJSONStorage(localStorage)`. RETARGETED
+ * (`sdd/ecommerce-product-variants/design`, Phase 7): every lookup key that
+ * used to be `item.slug === product.slug` is now `item.variantId ===
+ * variant.id` — a cart line item is keyed by the specific variant a buyer
+ * resolved via `variant-selector.tsx`, not by the parent product.
  *
  * `skipHydration: true` + the manual `.persist.rehydrate()` call in
  * `./context.tsx`'s provider is the documented Zustand+Next.js SSR pattern
@@ -23,9 +25,9 @@ import type { CartItem } from "./types";
  */
 interface CartState {
 	items: CartItem[];
-	addItem: (product: Product) => void;
-	removeItem: (productSlug: string) => void;
-	updateQuantity: (productSlug: string, amount: number) => void;
+	addItem: (product: PublicProduct, variant: PublicVariant) => void;
+	removeItem: (variantId: string) => void;
+	updateQuantity: (variantId: string, amount: number) => void;
 	clearCart: () => void;
 }
 
@@ -34,14 +36,16 @@ export const useCartStore = create<CartState>()(
 		(set, get) => ({
 			items: [],
 
-			addItem: (product) => {
+			addItem: (product, variant) => {
 				const items = get().items;
-				const existingItem = items.find((item) => item.slug === product.slug);
+				const existingItem = items.find(
+					(item) => item.variantId === variant.id,
+				);
 
 				if (existingItem) {
 					set({
 						items: items.map((item) =>
-							item.slug === product.slug
+							item.variantId === variant.id
 								? { ...item, quantity: item.quantity + 1 }
 								: item,
 						),
@@ -50,23 +54,25 @@ export const useCartStore = create<CartState>()(
 				}
 
 				const cartItem: CartItem = {
-					id: product.id,
+					variantId: variant.id,
+					productId: product.id,
 					name: product.name,
-					slug: product.slug,
-					price: product.price,
+					productSlug: product.slug,
+					variantLabel: formatVariantLabel(variant),
+					price: variant.price,
 					coverImage: product.coverImage,
-					stock: product.stock,
+					stock: variant.stock,
 					quantity: 1,
 				};
 
 				set({ items: [...items, cartItem] });
 			},
 
-			updateQuantity: (productSlug, amount) => {
+			updateQuantity: (variantId, amount) => {
 				const items = get().items;
 				const newItems = items
 					.map((item) =>
-						item.slug === productSlug
+						item.variantId === variantId
 							? { ...item, quantity: Math.max(0, item.quantity + amount) }
 							: item,
 					)
@@ -75,16 +81,21 @@ export const useCartStore = create<CartState>()(
 				set({ items: newItems });
 			},
 
-			removeItem: (productSlug) => {
+			removeItem: (variantId) => {
 				set({
-					items: get().items.filter((item) => item.slug !== productSlug),
+					items: get().items.filter((item) => item.variantId !== variantId),
 				});
 			},
 
 			clearCart: () => set({ items: [] }),
 		}),
 		{
-			name: "cart-storage",
+			// Bumped from `"cart-storage"` — the old persisted shape keyed by
+			// `slug`/`stock` at the top level and cannot deserialize into the new
+			// `variantId`-keyed `CartItem` shape. A stale v1 payload in a
+			// returning buyer's browser is simply ignored (fresh empty cart)
+			// rather than crashing `persist`'s rehydration.
+			name: "cart-storage-v2",
 			storage: createJSONStorage(() => localStorage),
 			skipHydration: true,
 		},
