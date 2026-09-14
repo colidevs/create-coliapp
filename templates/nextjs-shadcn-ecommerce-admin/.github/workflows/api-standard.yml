@@ -89,6 +89,14 @@ jobs:
       - name: OpenAPI spec freshness (ADR 0040 generate-and-diff)
         run: pnpm run generate:openapi:check
 
+      # Same generate-and-diff discipline, applied to Drizzle migrations
+      # (`scripts/db-generate-check.mjs`, `drizzle/MIGRATIONS.md`): re-runs
+      # the DB-less `drizzle-kit generate` and fails if the committed
+      # `drizzle/` directory differs from what `src/lib/db/schema.ts`
+      # currently produces.
+      - name: Drizzle migration freshness (db-generate-check)
+        run: pnpm run db:generate:check
+
       - name: Lint OpenAPI spec (ADR 0009 shape rules)
         run: pnpm run api-standard:lint
 
