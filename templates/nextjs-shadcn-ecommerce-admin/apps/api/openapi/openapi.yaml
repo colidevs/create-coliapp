@@ -1587,7 +1587,7 @@ components:
           items:
             type: object
             properties:
-              productId:
+              variantId:
                 type: string
                 format: uuid
                 pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
@@ -1598,7 +1598,7 @@ components:
                 maximum: 9007199254740991
                 example: 2
             required:
-              - productId
+              - variantId
               - quantity
       required:
         - orderId
@@ -1613,7 +1613,7 @@ components:
           email: jane@example.com
           document: "12345678"
         items:
-          - productId: 9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c
+          - variantId: 9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c
             quantity: 2
     DlocalNotification:
       type: object

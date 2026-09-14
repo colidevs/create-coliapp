@@ -1,14 +1,15 @@
 import { z } from "zod";
 
 /**
- * @description `dlocal-checkout` domain (`sdd/ecommerce-admin-template`).
- * Item shape a checkout request carries — `productId` (not `slug`, unlike
- * munod's `CheckoutItemSchema`) since this template's `products` table
- * (`src/lib/db/schema.ts`) is the join key `priceAndValidateItems` reads
- * against directly.
+ * @description `dlocal-checkout` domain, retargeted to variant-level pricing
+ * by `sdd/ecommerce-product-variants/design` — `variantId` (not `productId`)
+ * since `product_variants` (`src/lib/db/schema.ts`), not `products`, is now
+ * the sellable unit and the join key `priceAndValidateItems` reads against
+ * directly. (Previously: `productId`, unlike munod's slug-keyed
+ * `CheckoutItemSchema`.)
  */
 export const CheckoutItemSchema = z.object({
-	productId: z.uuid().meta({ example: "9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c" }),
+	variantId: z.uuid().meta({ example: "9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c" }),
 	quantity: z.number().int().positive().meta({ example: 2 }),
 });
 export type CheckoutItem = z.infer<typeof CheckoutItemSchema>;
@@ -55,7 +56,7 @@ export const CheckoutRequestSchema = z
 			},
 			items: [
 				{
-					productId: "9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c",
+					variantId: "9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c",
 					quantity: 2,
 				},
 			],
@@ -118,10 +119,21 @@ export type DlocalPaymentApiResponse = z.infer<
 	typeof DlocalPaymentApiResponseSchema
 >;
 
-/** @description A checkout item after price/stock validation against `products`. */
+/**
+ * @description A checkout item after price/stock validation against
+ * `product_variants` (joined to its parent `products` row). `slug` is the
+ * PARENT product's slug — used by `InsufficientStockHttpError` and historical
+ * order display. `variantLabel` is the variant's selected option-values,
+ * human-readable and `" / "`-joined (e.g. `"Red / L"`), `null` for a variant
+ * with zero option-value selections — same join-order convention as
+ * `admin/stock/repository.ts`'s own `loadVariantLabels` (option-type
+ * `displayOrder` then option-value `displayOrder`), reused here unchanged so
+ * `orders.buyer_products` stays human-readable for historical display.
+ */
 export interface PricedOrderItem {
-	productId: string;
+	variantId: string;
 	slug: string;
+	variantLabel: string | null;
 	quantity: number;
 	unitPrice: number;
 	lineTotal: number;
