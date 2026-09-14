@@ -10,6 +10,8 @@ describe("defineAbilityFor", () => {
 		expect(ability.can("update", "Category")).toBe(true);
 		expect(ability.can("delete", "ProductImage")).toBe(true);
 		expect(ability.can("update", "Stock")).toBe(true);
+		expect(ability.can("update", "Variant")).toBe(true);
+		expect(ability.can("delete", "VariantOptionType")).toBe(true);
 	});
 
 	it("grants viewer read-only access", () => {
@@ -19,6 +21,10 @@ describe("defineAbilityFor", () => {
 		expect(ability.can("create", "Product")).toBe(false);
 		expect(ability.can("update", "Category")).toBe(false);
 		expect(ability.can("delete", "ProductImage")).toBe(false);
+		expect(ability.can("read", "Variant")).toBe(true);
+		expect(ability.can("read", "VariantOptionType")).toBe(true);
+		expect(ability.can("update", "Variant")).toBe(false);
+		expect(ability.can("delete", "VariantOptionType")).toBe(false);
 	});
 
 	it("grants admin read over Order, but never viewer (buyer PII)", () => {
