@@ -23,6 +23,19 @@ import {
 const { orders, products } = schema;
 
 /**
+ * @description dLocal Go's real, documented payment-status vocabulary for
+ * this template's scope (checkout + a single terminal-status webhook, no
+ * separate authorization/refund flow) — verified against munod's own live
+ * production usage (`munod/api/src/v1/modules/Dlocal/types.ts`'s
+ * `DlocalPaymentStatusEnum`: `PENDING | PAID | REJECTED | CANCELLED |
+ * EXPIRED`), not invented. `PAID` is terminal-success (handled below via
+ * `decrementStock`); these three are the terminal-failure counterparts that
+ * restore stock. `PENDING` is the only non-terminal status and never
+ * triggers either branch.
+ */
+const TERMINAL_FAILURE_STATUSES = new Set(["REJECTED", "CANCELLED", "EXPIRED"]);
+
+/**
  * @description The 4 new tables (`src/lib/db/schema.ts`) carry no
  * `tenant_id` column — this template targets a single-tenant-per-deployment
  * client project (design decision A1/A4). `withPlatformSession` (not
@@ -66,13 +79,21 @@ export interface Repository {
 	getPayment: (dlocalId: string) => Promise<DlocalPaymentApiResponse>;
 	/**
 	 * Atomically flips `status` only if it actually changed
-	 * (`WHERE status <> newStatus`), and — inside that SAME transaction, only
-	 * when the new status is `"PAID"` — atomically decrements stock for every
-	 * item on the order. Returns `transitioned: null` when the order was
-	 * already at `status` (a duplicate/stale webhook delivery), matching
-	 * munod's real `updateOrderStatusIfChanged`
+	 * (`WHERE status <> newStatus`), and — inside that SAME transaction —
+	 * atomically decrements stock when the new status is `"PAID"`, or
+	 * restores it when the new status is a terminal-failure status
+	 * (`TERMINAL_FAILURE_STATUSES`) AND the order's status immediately before
+	 * this transition was `"PAID"` (i.e. its stock was actually decremented
+	 * in the first place — see `restoreStock`'s own doc comment). Returns
+	 * `transitioned: null` when the order was already at `status` (a
+	 * duplicate/stale webhook delivery), matching munod's real
+	 * `updateOrderStatusIfChanged`
 	 * (`munod/api/src/v1/modules/Dlocal/repository.ts:319-345`) — closes the
-	 * race between concurrent webhook deliveries for the same payment.
+	 * race between concurrent webhook deliveries for the same payment, and
+	 * — since neither the decrement nor the restore branch below can run
+	 * without a successful transition first — also closes the
+	 * double-decrement/double-restore race for a repeated terminal-status
+	 * webhook.
 	 */
 	applyPaymentTransition: (
 		dlocalId: string,
@@ -285,6 +306,20 @@ function dlocalRepo(): Repository {
 		status: string,
 	): ReturnType<Repository["applyPaymentTransition"]> {
 		return withPlatformSession(async (tx) => {
+			// Row-locked read of the order's CURRENT status, taken before the
+			// guarded UPDATE below, purely to answer "did this order ever reach
+			// PAID" (and therefore have its stock decremented) when
+			// transitioning into a terminal-failure status — the UPDATE's own
+			// `RETURNING` only ever exposes the post-transition row, never the
+			// prior value. `FOR UPDATE` locks the row for the rest of this
+			// transaction, so a concurrent webhook for the same `dlocalId`
+			// cannot interleave between this read and the update below.
+			const [existing] = await tx
+				.select({ status: orders.status })
+				.from(orders)
+				.where(eq(orders.dlocalId, dlocalId))
+				.for("update");
+
 			const [row] = await tx
 				.update(orders)
 				.set({ status, updatedAt: new Date() })
@@ -299,6 +334,21 @@ function dlocalRepo(): Repository {
 
 			if (status === "PAID") {
 				await decrementStock(tx, order.buyerProducts);
+			} else if (
+				TERMINAL_FAILURE_STATUSES.has(status) &&
+				existing?.status === "PAID"
+			) {
+				// Only an order that actually reached PAID (and therefore had
+				// its stock decremented) gets restored here — an order that
+				// fails before ever reaching PAID (e.g. PENDING -> REJECTED
+				// directly) never had its stock touched, so there is nothing to
+				// restore. The `WHERE ... AND status <> newStatus` guard above
+				// already makes this whole branch unreachable on a duplicate
+				// webhook redelivery for the same terminal status (`row` is
+				// `undefined` the second time around, so this code never
+				// re-runs) — the same idempotency mechanism the `PAID` branch
+				// above already relies on.
+				await restoreStock(tx, order.buyerProducts);
 			}
 
 			return order;
@@ -364,6 +414,37 @@ export async function decrementStock(
 
 		// `current.stock < 0` (untracked) or the product no longer exists —
 		// intentional no-op, matches munod's own untracked-inventory branch.
+	}
+}
+
+/**
+ * @description The atomic stock restore — the mirror-image counterpart to
+ * `decrementStock` above, closing the previously-unimplemented "Atomic
+ * restore" requirement (`sdd/ecommerce-admin-template/spec`,
+ * stock-management domain, "Cancelled order restores stock"). ONE
+ * conditional `UPDATE ... WHERE stock >= 0 RETURNING` per item, run inside
+ * the SAME transaction as the status transition above
+ * (`applyPaymentTransition`) — `tx`, never a fresh session.
+ *
+ * The `stock >= 0` guard mirrors `decrementStock`'s own untracked-inventory
+ * convention: a negative `stock` value is this module's sentinel for
+ * "intentionally untracked inventory". Restoring without this guard would
+ * incorrectly move an untracked product's sentinel value toward zero,
+ * silently making it look tracked. A product already at `stock >= 0` simply
+ * gets its reserved quantity added back — there is no analogous "would go
+ * negative" failure mode for an increment, so no
+ * `InsufficientStockHttpError` branch is needed here, unlike
+ * `decrementStock`.
+ */
+export async function restoreStock(
+	tx: Tx,
+	items: PricedOrderItem[],
+): Promise<void> {
+	for (const item of items) {
+		await tx
+			.update(products)
+			.set({ stock: sql`${products.stock} + ${item.quantity}` })
+			.where(and(eq(products.id, item.productId), gte(products.stock, 0)));
 	}
 }
 
