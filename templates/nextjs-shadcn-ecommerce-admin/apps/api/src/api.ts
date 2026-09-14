@@ -9,6 +9,7 @@ import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import { config } from "@/config";
 import { getAuth } from "@/lib/auth";
+import { dlocalNotificationRouter } from "@/v1/modules/Dlocal/route";
 import { healthRouter } from "@/v1/modules/health/route";
 import { v1ErrorHandler } from "@/v1/res/error-handler";
 import { v1Router } from "@/v1/route";
@@ -90,6 +91,14 @@ api.use(healthRouter);
 // for why (this template's test suite imports this module with no
 // `BETTER_AUTH_*`/`DATABASE_RUNTIME_URL` env vars set).
 api.all("/api/auth/*splat", (req, res) => toNodeHandler(getAuth())(req, res));
+
+// dLocal's payment-notification webhook needs the exact, unparsed bytes it
+// signed to verify its HMAC (`v1/modules/Dlocal/signature.ts`) — mounted at
+// its full path directly on `api`, BEFORE `express.json()` below, same
+// reasoning as the Better Auth wildcard route above. See
+// `v1/modules/Dlocal/route.ts`'s `dlocalNotificationRouter` doc comment for
+// why this can't just be a route nested under `v1Router` further down.
+api.use("/api/v1/dlocal", dlocalNotificationRouter);
 
 api.use(express.json());
 api.use(express.urlencoded({ extended: true }));

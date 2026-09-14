@@ -72,8 +72,162 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /dlocal/checkout:
+    post:
+      operationId: createDlocalCheckout
+      summary: Create (or replay) a dLocal Go checkout session
+      description: Called by this template's own storefront (Server Action), never
+        directly by a browser — the `x-service-key` requirement is why.
+        Replaying the same `orderId` returns the existing session instead of
+        creating a duplicate (idempotent).
+      security:
+        - apiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CheckoutRequest"
+      responses:
+        "200":
+          description: The created (or replayed) checkout session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckoutResponse"
+        "409":
+          description: Insufficient stock for one or more items
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "502":
+          description: dLocal Go API call failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        default:
+          description: Unexpected error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /dlocal/notifications:
+    post:
+      operationId: handleDlocalNotification
+      summary: dLocal Go payment-notification webhook
+      description: Called by dLocal Go directly, never by this app's own frontend —
+        verified via a bespoke HMAC signature check
+        (`v1/modules/Dlocal/signature.ts`), not the `apiKeyAuth`/`sessionCookie`
+        schemes used elsewhere in this document. Not enforced by
+        `express-openapi-validator` at runtime (`v1/modules/Dlocal/route.ts`'s
+        `dlocalNotificationRouter` doc comment) — documented here for contract
+        completeness only.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DlocalNotification"
+      responses:
+        "200":
+          description: Notification processed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                required:
+                  - status
+        "401":
+          description: Invalid or missing webhook signature
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        default:
+          description: Unexpected error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
 components:
   schemas:
+    CheckoutRequest:
+      type: object
+      properties:
+        orderId:
+          type: string
+          minLength: 1
+          example: order-2026-000123
+        payer:
+          type: object
+          properties:
+            name:
+              type: string
+              example: Jane Doe
+            email:
+              type: string
+              format: email
+              pattern: ^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$
+              example: jane@example.com
+            document:
+              type: string
+              example: "12345678"
+            phone:
+              example: +1 555 0100
+              type: string
+          required:
+            - name
+            - email
+            - document
+        items:
+          minItems: 1
+          type: array
+          items:
+            type: object
+            properties:
+              productId:
+                type: string
+                format: uuid
+                pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                example: 9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c
+              quantity:
+                type: integer
+                exclusiveMinimum: 0
+                maximum: 9007199254740991
+                example: 2
+            required:
+              - productId
+              - quantity
+      required:
+        - orderId
+        - items
+      description: Creates a dLocal Go checkout session tied to a persisted order.
+        Replaying the same orderId returns the existing session instead of
+        creating a duplicate.
+      example:
+        orderId: order-2026-000123
+        payer:
+          name: Jane Doe
+          email: jane@example.com
+          document: "12345678"
+        items:
+          - productId: 9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c
+            quantity: 2
+    DlocalNotification:
+      type: object
+      properties:
+        payment_id:
+          type: string
+          example: D-4-e836ba0b-1f9b-4a3e
+      required:
+        - payment_id
+      description: dLocal Go's payment-notification webhook payload.
     HealthcheckStatusResponse:
       type: object
       properties:
@@ -99,6 +253,30 @@ components:
         - id
         - email
       additionalProperties: false
+    CheckoutResponse:
+      type: object
+      properties:
+        orderId:
+          type: string
+          example: order-2026-000123
+        dlocalId:
+          type: string
+          example: D-4-e836ba0b-1f9b-4a3e
+        status:
+          type: string
+          example: PENDING
+        redirectUrl:
+          type: string
+          format: uri
+          example: https://checkout.dlocalgo.com/pay/D-4-e836ba0b
+      required:
+        - orderId
+        - dlocalId
+        - status
+        - redirectUrl
+      additionalProperties: false
+      description: The created (or replayed) dLocal checkout session, including the
+        redirect URL the storefront sends the buyer to.
     Problem:
       type: object
       properties:

@@ -34,6 +34,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { stringify } from "yaml";
 import { createDocument } from "zod-openapi";
+import {
+	CheckoutRequestSchema,
+	CheckoutResponseSchema,
+	DlocalNotificationSchema,
+} from "@/v1/modules/Dlocal/types";
 import { HealthcheckStatusResponseSchema } from "@/v1/modules/healthcheck/types";
 import { MeResponseSchema } from "@/v1/modules/me/types";
 import { ProblemSchema } from "@/v1/res/problem-schema";
@@ -140,6 +145,88 @@ function buildDocument() {
 						},
 						"401": {
 							description: "Missing or invalid session",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+			},
+			"/dlocal/checkout": {
+				post: {
+					operationId: "createDlocalCheckout",
+					summary: "Create (or replay) a dLocal Go checkout session",
+					description:
+						"Called by this template's own storefront (Server Action), never directly by a browser — the `x-service-key` requirement is why. Replaying the same `orderId` returns the existing session instead of creating a duplicate (idempotent).",
+					security: [{ apiKeyAuth: [] }],
+					requestBody: {
+						required: true,
+						content: {
+							"application/json": { schema: CheckoutRequestSchema },
+						},
+					},
+					responses: {
+						"200": {
+							description: "The created (or replayed) checkout session",
+							content: {
+								"application/json": { schema: CheckoutResponseSchema },
+							},
+						},
+						"409": {
+							description: "Insufficient stock for one or more items",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						"502": {
+							description: "dLocal Go API call failed",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+			},
+			"/dlocal/notifications": {
+				post: {
+					operationId: "handleDlocalNotification",
+					summary: "dLocal Go payment-notification webhook",
+					description:
+						"Called by dLocal Go directly, never by this app's own frontend — verified via a bespoke HMAC signature check (`v1/modules/Dlocal/signature.ts`), not the `apiKeyAuth`/`sessionCookie` schemes used elsewhere in this document. Not enforced by `express-openapi-validator` at runtime (`v1/modules/Dlocal/route.ts`'s `dlocalNotificationRouter` doc comment) — documented here for contract completeness only.",
+					security: [],
+					requestBody: {
+						required: true,
+						content: {
+							"application/json": { schema: DlocalNotificationSchema },
+						},
+					},
+					responses: {
+						"200": {
+							description: "Notification processed",
+							content: {
+								"application/json": {
+									schema: {
+										type: "object",
+										properties: { status: { type: "string" } },
+										required: ["status"],
+									},
+								},
+							},
+						},
+						"401": {
+							description: "Invalid or missing webhook signature",
 							content: {
 								"application/problem+json": { schema: ProblemSchema },
 							},
