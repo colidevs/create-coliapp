@@ -28,6 +28,7 @@
 	"author": "colidevs",
 	"license": "Apache-2.0",
 	"dependencies": {
+		"@casl/ability": "^7.0.1",
 		"@colidevs/api-kit": "0.1.1",
 		"better-auth": "1.7.2",
 		"body-parser": "2.2.2",
