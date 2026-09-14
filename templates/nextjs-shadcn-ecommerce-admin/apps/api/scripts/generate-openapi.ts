@@ -33,7 +33,28 @@ import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { stringify } from "yaml";
+import { z } from "zod";
 import { createDocument } from "zod-openapi";
+import {
+	CategoryCreateSchema,
+	CategorySchema,
+	CategoryUpdateSchema,
+} from "@/v1/modules/admin/categories/types";
+import {
+	ProductImageCreateSchema,
+	ProductImageSchema,
+	ProductImageUpdateSchema,
+} from "@/v1/modules/admin/product-images/types";
+import {
+	ProductCreateSchema,
+	ProductListSchema,
+	ProductSchema,
+	ProductUpdateSchema,
+} from "@/v1/modules/admin/products/types";
+import {
+	StockItemSchema,
+	StockUpdateSchema,
+} from "@/v1/modules/admin/stock/types";
 import {
 	CheckoutRequestSchema,
 	CheckoutResponseSchema,
@@ -74,6 +95,16 @@ function buildDocument() {
 		components: {
 			schemas: {
 				Problem: ProblemSchema,
+				Category: CategorySchema,
+				CategoryCreate: CategoryCreateSchema,
+				CategoryUpdate: CategoryUpdateSchema,
+				Product: ProductSchema,
+				ProductCreate: ProductCreateSchema,
+				ProductUpdate: ProductUpdateSchema,
+				ProductList: ProductListSchema,
+				ProductImage: ProductImageSchema,
+				StockItem: StockItemSchema,
+				StockUpdate: StockUpdateSchema,
 			},
 			securitySchemes: {
 				// Better Auth session cookie (ADR 0022) — read via
@@ -227,6 +258,775 @@ function buildDocument() {
 						},
 						"401": {
 							description: "Invalid or missing webhook signature",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+			},
+			"/admin/categories": {
+				get: {
+					operationId: "listCategories",
+					summary: "List categories",
+					security: [{ sessionCookie: [], apiKeyAuth: [] }],
+					responses: {
+						"200": {
+							description: "All categories",
+							content: {
+								"application/json": { schema: z.array(CategorySchema) },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+				post: {
+					operationId: "createCategory",
+					summary: "Create a category",
+					security: [{ sessionCookie: [], apiKeyAuth: [] }],
+					requestBody: {
+						required: true,
+						content: {
+							"application/json": { schema: CategoryCreateSchema },
+						},
+					},
+					responses: {
+						"201": {
+							description: "The created category",
+							content: {
+								"application/json": { schema: CategorySchema },
+							},
+						},
+						"403": {
+							description: "Not allowed to create a category",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						"409": {
+							description: "A category with this slug already exists",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+			},
+			"/admin/categories/{id}": {
+				get: {
+					operationId: "getCategoryById",
+					summary: "Get a category by id",
+					parameters: [
+						{
+							name: "id",
+							in: "path",
+							required: true,
+							schema: { type: "string", format: "uuid" },
+						},
+					],
+					security: [{ sessionCookie: [], apiKeyAuth: [] }],
+					responses: {
+						"200": {
+							description: "The category",
+							content: {
+								"application/json": { schema: CategorySchema },
+							},
+						},
+						"404": {
+							description: "Category not found",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+				patch: {
+					operationId: "updateCategory",
+					summary: "Update a category",
+					parameters: [
+						{
+							name: "id",
+							in: "path",
+							required: true,
+							schema: { type: "string", format: "uuid" },
+						},
+					],
+					security: [{ sessionCookie: [], apiKeyAuth: [] }],
+					requestBody: {
+						required: true,
+						content: {
+							"application/json": { schema: CategoryUpdateSchema },
+						},
+					},
+					responses: {
+						"200": {
+							description: "The updated category",
+							content: {
+								"application/json": { schema: CategorySchema },
+							},
+						},
+						"403": {
+							description: "Not allowed to update a category",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						"404": {
+							description: "Category not found",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						"409": {
+							description: "A category with this slug already exists",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+				delete: {
+					operationId: "deleteCategory",
+					summary: "Delete (deactivate) a category",
+					parameters: [
+						{
+							name: "id",
+							in: "path",
+							required: true,
+							schema: { type: "string", format: "uuid" },
+						},
+					],
+					security: [{ sessionCookie: [], apiKeyAuth: [] }],
+					responses: {
+						"204": {
+							description: "Category deactivated",
+						},
+						"403": {
+							description: "Not allowed to delete a category",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						"404": {
+							description: "Category not found",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+			},
+			"/admin/products": {
+				get: {
+					operationId: "listProducts",
+					summary: "List products",
+					parameters: [
+						{
+							name: "page",
+							in: "query",
+							schema: { type: "integer" },
+						},
+						{
+							name: "size",
+							in: "query",
+							schema: { type: "integer" },
+						},
+						{
+							name: "categoryId",
+							in: "query",
+							schema: { type: "string", format: "uuid" },
+						},
+						{
+							name: "q",
+							in: "query",
+							schema: { type: "string" },
+						},
+					],
+					security: [{ sessionCookie: [], apiKeyAuth: [] }],
+					responses: {
+						"200": {
+							description: "A page of products",
+							content: {
+								"application/json": { schema: ProductListSchema },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+				post: {
+					operationId: "createProduct",
+					summary: "Create a product",
+					security: [{ sessionCookie: [], apiKeyAuth: [] }],
+					requestBody: {
+						required: true,
+						content: {
+							"application/json": { schema: ProductCreateSchema },
+						},
+					},
+					responses: {
+						"201": {
+							description: "The created product",
+							content: {
+								"application/json": { schema: ProductSchema },
+							},
+						},
+						"403": {
+							description: "Not allowed to create a product",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						"409": {
+							description: "A product with this slug already exists",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+			},
+			"/admin/products/{id}": {
+				get: {
+					operationId: "getProductById",
+					summary: "Get a product by id",
+					parameters: [
+						{
+							name: "id",
+							in: "path",
+							required: true,
+							schema: { type: "string", format: "uuid" },
+						},
+					],
+					security: [{ sessionCookie: [], apiKeyAuth: [] }],
+					responses: {
+						"200": {
+							description: "The product",
+							content: {
+								"application/json": { schema: ProductSchema },
+							},
+						},
+						"404": {
+							description: "Product not found",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+				patch: {
+					operationId: "updateProduct",
+					summary: "Update a product",
+					parameters: [
+						{
+							name: "id",
+							in: "path",
+							required: true,
+							schema: { type: "string", format: "uuid" },
+						},
+					],
+					security: [{ sessionCookie: [], apiKeyAuth: [] }],
+					requestBody: {
+						required: true,
+						content: {
+							"application/json": { schema: ProductUpdateSchema },
+						},
+					},
+					responses: {
+						"200": {
+							description: "The updated product",
+							content: {
+								"application/json": { schema: ProductSchema },
+							},
+						},
+						"403": {
+							description: "Not allowed to update a product",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						"404": {
+							description: "Product not found",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						"409": {
+							description: "A product with this slug already exists",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+				delete: {
+					operationId: "deleteProduct",
+					summary: "Delete (deactivate) a product",
+					parameters: [
+						{
+							name: "id",
+							in: "path",
+							required: true,
+							schema: { type: "string", format: "uuid" },
+						},
+					],
+					security: [{ sessionCookie: [], apiKeyAuth: [] }],
+					responses: {
+						"204": {
+							description: "Product deactivated",
+						},
+						"403": {
+							description: "Not allowed to delete a product",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						"404": {
+							description: "Product not found",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+			},
+			"/admin/product-images": {
+				get: {
+					operationId: "listProductImages",
+					summary: "List product images",
+					parameters: [
+						{
+							name: "productId",
+							in: "query",
+							schema: { type: "string", format: "uuid" },
+						},
+					],
+					security: [{ sessionCookie: [], apiKeyAuth: [] }],
+					responses: {
+						"200": {
+							description: "Product images",
+							content: {
+								"application/json": { schema: z.array(ProductImageSchema) },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+				post: {
+					operationId: "createProductImage",
+					summary: "Create a product image",
+					security: [{ sessionCookie: [], apiKeyAuth: [] }],
+					requestBody: {
+						required: true,
+						content: {
+							"application/json": { schema: ProductImageCreateSchema },
+						},
+					},
+					responses: {
+						"201": {
+							description: "The created product image",
+							content: {
+								"application/json": { schema: ProductImageSchema },
+							},
+						},
+						"403": {
+							description: "Not allowed to create a product image",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+			},
+			"/admin/product-images/{id}": {
+				get: {
+					operationId: "getProductImageById",
+					summary: "Get a product image by id",
+					parameters: [
+						{
+							name: "id",
+							in: "path",
+							required: true,
+							schema: { type: "string", format: "uuid" },
+						},
+					],
+					security: [{ sessionCookie: [], apiKeyAuth: [] }],
+					responses: {
+						"200": {
+							description: "The product image",
+							content: {
+								"application/json": { schema: ProductImageSchema },
+							},
+						},
+						"404": {
+							description: "Product image not found",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+				patch: {
+					operationId: "updateProductImage",
+					summary: "Update a product image",
+					parameters: [
+						{
+							name: "id",
+							in: "path",
+							required: true,
+							schema: { type: "string", format: "uuid" },
+						},
+					],
+					security: [{ sessionCookie: [], apiKeyAuth: [] }],
+					requestBody: {
+						required: true,
+						content: {
+							"application/json": { schema: ProductImageUpdateSchema },
+						},
+					},
+					responses: {
+						"200": {
+							description: "The updated product image",
+							content: {
+								"application/json": { schema: ProductImageSchema },
+							},
+						},
+						"403": {
+							description: "Not allowed to update a product image",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						"404": {
+							description: "Product image not found",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+				delete: {
+					operationId: "deleteProductImage",
+					summary: "Delete a product image",
+					parameters: [
+						{
+							name: "id",
+							in: "path",
+							required: true,
+							schema: { type: "string", format: "uuid" },
+						},
+					],
+					security: [{ sessionCookie: [], apiKeyAuth: [] }],
+					responses: {
+						"204": {
+							description: "Product image deleted",
+						},
+						"403": {
+							description: "Not allowed to delete a product image",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						"404": {
+							description: "Product image not found",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+			},
+			"/admin/stock": {
+				get: {
+					operationId: "listStock",
+					summary: "List stock items",
+					parameters: [
+						{
+							name: "page",
+							in: "query",
+							schema: { type: "integer" },
+						},
+						{
+							name: "size",
+							in: "query",
+							schema: { type: "integer" },
+						},
+					],
+					security: [{ sessionCookie: [], apiKeyAuth: [] }],
+					responses: {
+						"200": {
+							description: "Stock items",
+							content: {
+								"application/json": { schema: z.array(StockItemSchema) },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+			},
+			"/admin/stock/{id}": {
+				get: {
+					operationId: "getStockById",
+					summary: "Get a stock item by id",
+					parameters: [
+						{
+							name: "id",
+							in: "path",
+							required: true,
+							schema: { type: "string", format: "uuid" },
+						},
+					],
+					security: [{ sessionCookie: [], apiKeyAuth: [] }],
+					responses: {
+						"200": {
+							description: "The stock item",
+							content: {
+								"application/json": { schema: StockItemSchema },
+							},
+						},
+						"404": {
+							description: "Stock item not found",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+				patch: {
+					operationId: "updateStockById",
+					summary: "Set a product's stock and low-stock threshold",
+					parameters: [
+						{
+							name: "id",
+							in: "path",
+							required: true,
+							schema: { type: "string", format: "uuid" },
+						},
+					],
+					security: [{ sessionCookie: [], apiKeyAuth: [] }],
+					requestBody: {
+						required: true,
+						content: {
+							"application/json": { schema: StockUpdateSchema },
+						},
+					},
+					responses: {
+						"200": {
+							description: "The updated stock item",
+							content: {
+								"application/json": { schema: StockItemSchema },
+							},
+						},
+						"403": {
+							description: "Not allowed to update stock",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						"404": {
+							description: "Stock item not found",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+			},
+			"/web/categories": {
+				get: {
+					operationId: "listPublicCategories",
+					summary: "List active categories (storefront)",
+					security: [{ apiKeyAuth: [] }],
+					responses: {
+						"200": {
+							description: "Active categories",
+							content: {
+								"application/json": { schema: z.array(CategorySchema) },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+			},
+			"/web/products": {
+				get: {
+					operationId: "listPublicProducts",
+					summary: "List active products (storefront)",
+					parameters: [
+						{
+							name: "page",
+							in: "query",
+							schema: { type: "integer" },
+						},
+						{
+							name: "size",
+							in: "query",
+							schema: { type: "integer" },
+						},
+						{
+							name: "categoryId",
+							in: "query",
+							schema: { type: "string", format: "uuid" },
+						},
+						{
+							name: "q",
+							in: "query",
+							schema: { type: "string" },
+						},
+					],
+					security: [{ apiKeyAuth: [] }],
+					responses: {
+						"200": {
+							description: "A page of active products",
+							content: {
+								"application/json": { schema: ProductListSchema },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+			},
+			"/web/products/{slug}": {
+				get: {
+					operationId: "getPublicProductBySlug",
+					summary: "Get an active product by slug (storefront)",
+					parameters: [
+						{
+							name: "slug",
+							in: "path",
+							required: true,
+							schema: { type: "string" },
+						},
+					],
+					security: [{ apiKeyAuth: [] }],
+					responses: {
+						"200": {
+							description: "The product",
+							content: {
+								"application/json": { schema: ProductSchema },
+							},
+						},
+						"404": {
+							description: "Product not found",
 							content: {
 								"application/problem+json": { schema: ProblemSchema },
 							},

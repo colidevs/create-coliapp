@@ -197,6 +197,45 @@ export class WebhookSignatureHttpError extends HttpError {
 }
 
 /**
+ * @description `admin-catalog-crud` domain (Phase 3b). 403 — the RFC 9457
+ * shape CASL's own denial converts into, per ADR 0013's placement rule
+ * (middleware = coarse authenticated check, `src/v1/middlewares/auth.ts`;
+ * service layer = fine role/attribute check). Raised by `src/lib/ability.ts`'s
+ * `assertCan()`, which is the one seam every admin write path calls before
+ * touching a repository — never thrown directly by a service/controller.
+ */
+export class ForbiddenHttpError extends HttpError {
+	constructor(action?: string, subject?: string) {
+		super(
+			403,
+			action && subject ? `Not allowed to ${action} ${subject}` : "Forbidden",
+			"https://coli.dev/errors/forbidden",
+		);
+	}
+}
+
+/**
+ * @description `admin-catalog-crud` domain (Phase 3b). 409 — a client-supplied
+ * `name` collides with an existing `slug` (categories/products both carry a
+ * UNIQUE `slug` column, `src/lib/db/schema.ts`). Caught from the raw Postgres
+ * `23505` unique-violation error (`pg`'s driver attaches `.code`), matching
+ * this template's existing `23505`-detection convention
+ * (`Dlocal/repository.ts#createOrder`) — except here there is no idempotent
+ * replay to fall back to, since two DIFFERENT admin-authored resources
+ * legitimately colliding on the same slug is a real conflict, not a retried
+ * request.
+ */
+export class DuplicateSlugHttpError extends HttpError {
+	constructor(slug: string) {
+		super(
+			409,
+			`A resource with slug "${slug}" already exists`,
+			"https://coli.dev/errors/duplicate-slug",
+		);
+	}
+}
+
+/**
  * @description `dlocal-checkout` domain (Phase 3). 502 — the upstream dLocal
  * Go API call itself failed (non-2xx response, network error, or unparsable
  * response body), distinct from a 409 stock conflict or a 401 signature

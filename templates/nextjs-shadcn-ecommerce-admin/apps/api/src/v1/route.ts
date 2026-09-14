@@ -1,8 +1,11 @@
 import { Router } from "express";
+import { auth } from "@/v1/middlewares/auth";
 import { serviceAuth } from "@/v1/middlewares/service-auth";
+import { adminRouter } from "@/v1/modules/admin/route";
 import { dlocalRouter } from "@/v1/modules/Dlocal/route";
 import { healthcheckRouter } from "@/v1/modules/healthcheck/route";
 import { meRouter } from "@/v1/modules/me/route";
+import { webRouter } from "@/v1/modules/web/route";
 
 const root = Router();
 
@@ -24,5 +27,16 @@ root.use(meRouter);
 // doc comment and `src/api.ts` for why it is mounted directly on the
 // top-level app, before this router is ever reached.
 root.use("/dlocal", dlocalRouter);
+// `/admin` — every route behind BOTH `serviceAuth` above (coarse,
+// service-to-service) AND `auth` (coarse, human session), matching munod's
+// own real `admin/route.ts` mount (`router.use("/admin", auth,
+// adminRouter)`). Fine, role-based authorization is each module's own
+// service-layer CASL check (`src/lib/ability.ts`) — ADR 0013's placement
+// rule; this mount adds no permission logic of its own.
+root.use("/admin", auth, adminRouter);
+// `/web` — public storefront reads, no `auth` middleware (no human session
+// required), matching munod's own unauthenticated `/public` mount. Still
+// behind `serviceAuth` above, since every `/api/v1` route is.
+root.use("/web", webRouter);
 
 export { root as v1Router };
