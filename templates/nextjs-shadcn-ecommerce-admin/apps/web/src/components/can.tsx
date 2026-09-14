@@ -1,7 +1,11 @@
 "use client";
 
 import { createMongoAbility } from "@casl/ability";
-import { AbilityProvider, Can } from "@casl/react";
+import {
+	AbilityProvider,
+	Can,
+	useAbility as useCaslAbility,
+} from "@casl/react";
 import { type PropsWithChildren, useMemo } from "react";
 
 import type { CatalogAbility, CatalogAbilityRule } from "@/lib/ability";
@@ -40,3 +44,14 @@ export function AppAbilityProvider({
 }
 
 export { Can };
+
+/**
+ * Typed wrapper over `@casl/react`'s `useAbility()` — lets a table/page read
+ * the current `CatalogAbility` directly (e.g. to conditionally pass
+ * `DataTable`'s own `addRegister`/`onDelete` props) without needing a
+ * `<Can>` render-prop for cases that aren't plain JSX conditionals. Same
+ * UI-hint-only caveat as `<Can>` above applies here.
+ */
+export function useAbility(): CatalogAbility {
+	return useCaslAbility<CatalogAbility>();
+}

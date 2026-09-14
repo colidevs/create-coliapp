@@ -1,10 +1,25 @@
 "use server";
 
+import type { ActionFormState } from "@colidevs/utils";
+
+import type { PaginationQueryFn } from "@/components/data-table";
 import {
+	createProduct,
+	deleteProduct,
+	getProductById,
 	getPublicProductBySlug,
+	listProducts,
 	listPublicProducts,
+	updateProduct,
 } from "@/generated/endpoints";
 import type { ListPublicProductsParams, ProductList } from "@/generated/model";
+import { toActionState } from "@/lib/problem";
+import type {
+	ListProductsParams,
+	Product,
+	ProductCreate,
+	ProductUpdate,
+} from "./types";
 
 /**
  * Server Actions wrapping the generated public-product endpoints — required
@@ -40,4 +55,69 @@ export async function getPublicProductBySlugQuery(slug: string) {
 	}
 
 	return result.data;
+}
+
+//* ADMIN ACTIONS (Phase 7 — `admin-catalog-crud` domain)
+
+export type ProductActionResult =
+	| { success: true; data: Product }
+	| ({ success: false } & ActionFormState);
+
+/**
+ * `admin/products` DOES paginate server-side (`page`/`size`, 0-based —
+ * confirmed against `admin/products/repository.ts`'s own
+ * `page ?? 0`/`offset = page * size`), unlike `admin/categories`. Maps
+ * directly onto `DataTable`'s own `pageIndex`/`pageSize` — no client-side
+ * slicing needed here (contrast `modules/categories/actions.ts`'s
+ * `paginationQuery`).
+ */
+export const paginationQuery: PaginationQueryFn<
+	Product,
+	ListProductsParams
+> = async ({ pageIndex, pageSize }, filters) => {
+	const result = await listProducts({
+		page: pageIndex,
+		size: pageSize,
+		...filters,
+	});
+
+	if (result.status !== 200) {
+		throw new Error(result.data.detail ?? result.data.title);
+	}
+
+	return { rows: result.data.items, totalRows: result.data.pagination.total };
+};
+
+export async function getProductByIdQuery(id: string): Promise<Product | null> {
+	const result = await getProductById(id);
+	if (result.status !== 200) return null;
+	return result.data;
+}
+
+export async function createProductAction(
+	input: ProductCreate,
+): Promise<ProductActionResult> {
+	const result = await createProduct(input);
+	if (result.status !== 201) {
+		return { success: false, ...toActionState(result.data) };
+	}
+	return { success: true, data: result.data };
+}
+
+export async function updateProductAction(
+	id: string,
+	input: ProductUpdate,
+): Promise<ProductActionResult> {
+	const result = await updateProduct(id, input);
+	if (result.status !== 200) {
+		return { success: false, ...toActionState(result.data) };
+	}
+	return { success: true, data: result.data };
+}
+
+export async function deleteProductAction(
+	id: string,
+): Promise<{ success: boolean }> {
+	const result = await deleteProduct(id);
+	return { success: result.status === 204 };
 }

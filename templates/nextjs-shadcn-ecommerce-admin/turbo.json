@@ -5,7 +5,13 @@
 		"build": {
 			"dependsOn": ["^build"],
 			"inputs": ["$TURBO_DEFAULT$"],
-			"outputs": ["dist/**", ".next/**", "!.next/cache/**"]
+			"outputs": ["dist/**", ".next/**", "!.next/cache/**"],
+			"env": [
+				"SERVICE_KEY",
+				"API_MOCKING",
+				"API_BASE_URL",
+				"NEXT_PUBLIC_API_BASE_URL"
+			]
 		},
 		"dev": {
 			"cache": false,
