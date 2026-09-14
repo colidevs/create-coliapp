@@ -33,8 +33,11 @@ function controller(svc: Service): Controller {
 		const productId = req.query.productId
 			? String(req.query.productId)
 			: undefined;
+		const variantId = req.query.variantId
+			? String(req.query.variantId)
+			: undefined;
 
-		const images = await svc.get(ability, { productId });
+		const images = await svc.get(ability, { productId, variantId });
 
 		return res.status(200).json(images);
 	};

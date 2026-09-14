@@ -1,24 +1,25 @@
 import { describe, expect, it, vi } from "vitest";
-import type { Product } from "@/v1/modules/admin/products/types";
 import { NotFoundHttpError } from "@/v1/res/errors";
 import type { Repository } from "../repository";
 import { createWebProductService } from "../service";
+import type { PublicProduct } from "../types";
 
-const FAKE_PRODUCT: Product = {
+const FAKE_PRODUCT: PublicProduct = {
 	id: "9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c",
 	name: "Wireless Mouse",
 	slug: "wireless-mouse",
-	code: "WM-100",
-	altCode: null,
 	description: null,
-	price: 29.99,
-	stock: 10,
-	stockMin: 2,
 	coverImage: null,
 	categoryId: null,
-	isActive: true,
-	createdAt: "2026-01-01T00:00:00.000Z",
-	updatedAt: "2026-01-01T00:00:00.000Z",
+	variants: [
+		{
+			id: "1b2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e",
+			price: 29.99,
+			stock: 10,
+			isDefault: true,
+			options: [],
+		},
+	],
 };
 
 const FAKE_PAGE = {

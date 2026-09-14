@@ -1,14 +1,13 @@
-import type { Product } from "@/v1/modules/admin/products/types";
 import { NotFoundHttpError } from "@/v1/res/errors";
 import type { Pagination } from "@/v1/types";
 import type { Repository } from "./repository";
-import type { GetPublicProductsParams } from "./types";
+import type { GetPublicProductsParams, PublicProduct } from "./types";
 
 export interface Service {
 	getActive: (
 		params: GetPublicProductsParams,
-	) => Promise<{ items: Product[]; pagination: Pagination }>;
-	getActiveBySlug: (slug: string) => Promise<Product>;
+	) => Promise<{ items: PublicProduct[]; pagination: Pagination }>;
+	getActiveBySlug: (slug: string) => Promise<PublicProduct>;
 }
 
 /**

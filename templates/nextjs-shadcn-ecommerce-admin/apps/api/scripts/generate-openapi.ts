@@ -57,12 +57,33 @@ import {
 	StockUpdateSchema,
 } from "@/v1/modules/admin/stock/types";
 import {
+	VariantOptionTypeCreateSchema,
+	VariantOptionTypeSchema,
+	VariantOptionTypeUpdateSchema,
+} from "@/v1/modules/admin/variant-option-types/types";
+import {
+	VariantOptionValueCreateSchema,
+	VariantOptionValueSchema,
+	VariantOptionValueUpdateSchema,
+} from "@/v1/modules/admin/variant-option-values/types";
+import {
+	VariantCreateSchema,
+	VariantSchema,
+	VariantUpdateSchema,
+} from "@/v1/modules/admin/variants/types";
+import {
 	CheckoutRequestSchema,
 	CheckoutResponseSchema,
 	DlocalNotificationSchema,
 } from "@/v1/modules/Dlocal/types";
 import { HealthcheckStatusResponseSchema } from "@/v1/modules/healthcheck/types";
 import { MeResponseSchema } from "@/v1/modules/me/types";
+import {
+	PublicProductListSchema,
+	PublicProductSchema,
+	PublicVariantOptionSchema,
+	PublicVariantSchema,
+} from "@/v1/modules/web/products/types";
 import { ProblemSchema } from "@/v1/res/problem-schema";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -108,6 +129,19 @@ function buildDocument() {
 				StockUpdate: StockUpdateSchema,
 				Order: OrderSchema,
 				OrderList: OrderListSchema,
+				VariantOptionType: VariantOptionTypeSchema,
+				VariantOptionTypeCreate: VariantOptionTypeCreateSchema,
+				VariantOptionTypeUpdate: VariantOptionTypeUpdateSchema,
+				VariantOptionValue: VariantOptionValueSchema,
+				VariantOptionValueCreate: VariantOptionValueCreateSchema,
+				VariantOptionValueUpdate: VariantOptionValueUpdateSchema,
+				Variant: VariantSchema,
+				VariantCreate: VariantCreateSchema,
+				VariantUpdate: VariantUpdateSchema,
+				PublicProduct: PublicProductSchema,
+				PublicProductList: PublicProductListSchema,
+				PublicVariant: PublicVariantSchema,
+				PublicVariantOption: PublicVariantOptionSchema,
 			},
 			securitySchemes: {
 				// Better Auth session cookie (ADR 0022) — read via
@@ -666,6 +700,11 @@ function buildDocument() {
 							in: "query",
 							schema: { type: "string", format: "uuid" },
 						},
+						{
+							name: "variantId",
+							in: "query",
+							schema: { type: "string", format: "uuid" },
+						},
 					],
 					security: [{ sessionCookie: [], apiKeyAuth: [] }],
 					responses: {
@@ -1083,7 +1122,7 @@ function buildDocument() {
 						"200": {
 							description: "A page of active products",
 							content: {
-								"application/json": { schema: ProductListSchema },
+								"application/json": { schema: PublicProductListSchema },
 							},
 						},
 						default: {
@@ -1112,11 +1151,575 @@ function buildDocument() {
 						"200": {
 							description: "The product",
 							content: {
-								"application/json": { schema: ProductSchema },
+								"application/json": { schema: PublicProductSchema },
 							},
 						},
 						"404": {
 							description: "Product not found",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+			},
+			"/admin/variant-option-types": {
+				get: {
+					operationId: "listVariantOptionTypes",
+					summary: "List variant option types",
+					security: [{ sessionCookie: [], apiKeyAuth: [] }],
+					responses: {
+						"200": {
+							description: "Variant option types",
+							content: {
+								"application/json": {
+									schema: z.array(VariantOptionTypeSchema),
+								},
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+				post: {
+					operationId: "createVariantOptionType",
+					summary: "Create a variant option type",
+					security: [{ sessionCookie: [], apiKeyAuth: [] }],
+					requestBody: {
+						required: true,
+						content: {
+							"application/json": { schema: VariantOptionTypeCreateSchema },
+						},
+					},
+					responses: {
+						"201": {
+							description: "The created variant option type",
+							content: {
+								"application/json": { schema: VariantOptionTypeSchema },
+							},
+						},
+						"403": {
+							description: "Not allowed to create a variant option type",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						"409": {
+							description:
+								"A variant option type with this slug already exists",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+			},
+			"/admin/variant-option-types/{id}": {
+				get: {
+					operationId: "getVariantOptionTypeById",
+					summary: "Get a variant option type by id",
+					parameters: [
+						{
+							name: "id",
+							in: "path",
+							required: true,
+							schema: { type: "string", format: "uuid" },
+						},
+					],
+					security: [{ sessionCookie: [], apiKeyAuth: [] }],
+					responses: {
+						"200": {
+							description: "The variant option type",
+							content: {
+								"application/json": { schema: VariantOptionTypeSchema },
+							},
+						},
+						"404": {
+							description: "Variant option type not found",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+				patch: {
+					operationId: "updateVariantOptionType",
+					summary: "Update a variant option type",
+					parameters: [
+						{
+							name: "id",
+							in: "path",
+							required: true,
+							schema: { type: "string", format: "uuid" },
+						},
+					],
+					security: [{ sessionCookie: [], apiKeyAuth: [] }],
+					requestBody: {
+						required: true,
+						content: {
+							"application/json": { schema: VariantOptionTypeUpdateSchema },
+						},
+					},
+					responses: {
+						"200": {
+							description: "The updated variant option type",
+							content: {
+								"application/json": { schema: VariantOptionTypeSchema },
+							},
+						},
+						"403": {
+							description: "Not allowed to update a variant option type",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						"404": {
+							description: "Variant option type not found",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						"409": {
+							description:
+								"A variant option type with this slug already exists",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+				delete: {
+					operationId: "deleteVariantOptionType",
+					summary: "Deactivate a variant option type (soft delete)",
+					parameters: [
+						{
+							name: "id",
+							in: "path",
+							required: true,
+							schema: { type: "string", format: "uuid" },
+						},
+					],
+					security: [{ sessionCookie: [], apiKeyAuth: [] }],
+					responses: {
+						"204": {
+							description: "Variant option type deactivated",
+						},
+						"403": {
+							description: "Not allowed to delete a variant option type",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						"404": {
+							description: "Variant option type not found",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+			},
+			"/admin/variant-option-values": {
+				get: {
+					operationId: "listVariantOptionValues",
+					summary: "List variant option values",
+					parameters: [
+						{
+							name: "optionTypeId",
+							in: "query",
+							schema: { type: "string", format: "uuid" },
+						},
+					],
+					security: [{ sessionCookie: [], apiKeyAuth: [] }],
+					responses: {
+						"200": {
+							description: "Variant option values",
+							content: {
+								"application/json": {
+									schema: z.array(VariantOptionValueSchema),
+								},
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+				post: {
+					operationId: "createVariantOptionValue",
+					summary: "Create a variant option value",
+					security: [{ sessionCookie: [], apiKeyAuth: [] }],
+					requestBody: {
+						required: true,
+						content: {
+							"application/json": { schema: VariantOptionValueCreateSchema },
+						},
+					},
+					responses: {
+						"201": {
+							description: "The created variant option value",
+							content: {
+								"application/json": { schema: VariantOptionValueSchema },
+							},
+						},
+						"403": {
+							description: "Not allowed to create a variant option value",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						"409": {
+							description:
+								"A variant option value with this slug already exists for this option type",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+			},
+			"/admin/variant-option-values/{id}": {
+				get: {
+					operationId: "getVariantOptionValueById",
+					summary: "Get a variant option value by id",
+					parameters: [
+						{
+							name: "id",
+							in: "path",
+							required: true,
+							schema: { type: "string", format: "uuid" },
+						},
+					],
+					security: [{ sessionCookie: [], apiKeyAuth: [] }],
+					responses: {
+						"200": {
+							description: "The variant option value",
+							content: {
+								"application/json": { schema: VariantOptionValueSchema },
+							},
+						},
+						"404": {
+							description: "Variant option value not found",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+				patch: {
+					operationId: "updateVariantOptionValue",
+					summary: "Update a variant option value",
+					parameters: [
+						{
+							name: "id",
+							in: "path",
+							required: true,
+							schema: { type: "string", format: "uuid" },
+						},
+					],
+					security: [{ sessionCookie: [], apiKeyAuth: [] }],
+					requestBody: {
+						required: true,
+						content: {
+							"application/json": { schema: VariantOptionValueUpdateSchema },
+						},
+					},
+					responses: {
+						"200": {
+							description: "The updated variant option value",
+							content: {
+								"application/json": { schema: VariantOptionValueSchema },
+							},
+						},
+						"403": {
+							description: "Not allowed to update a variant option value",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						"404": {
+							description: "Variant option value not found",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						"409": {
+							description:
+								"A variant option value with this slug already exists for this option type",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+				delete: {
+					operationId: "deleteVariantOptionValue",
+					summary: "Deactivate a variant option value (soft delete)",
+					parameters: [
+						{
+							name: "id",
+							in: "path",
+							required: true,
+							schema: { type: "string", format: "uuid" },
+						},
+					],
+					security: [{ sessionCookie: [], apiKeyAuth: [] }],
+					responses: {
+						"204": {
+							description: "Variant option value deactivated",
+						},
+						"403": {
+							description: "Not allowed to delete a variant option value",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						"404": {
+							description: "Variant option value not found",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+			},
+			"/admin/variants": {
+				get: {
+					operationId: "listVariants",
+					summary: "List variants",
+					parameters: [
+						{
+							name: "productId",
+							in: "query",
+							schema: { type: "string", format: "uuid" },
+						},
+					],
+					security: [{ sessionCookie: [], apiKeyAuth: [] }],
+					responses: {
+						"200": {
+							description: "Variants",
+							content: {
+								"application/json": { schema: z.array(VariantSchema) },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+				post: {
+					operationId: "createVariant",
+					summary: "Create a variant",
+					security: [{ sessionCookie: [], apiKeyAuth: [] }],
+					requestBody: {
+						required: true,
+						content: {
+							"application/json": { schema: VariantCreateSchema },
+						},
+					},
+					responses: {
+						"201": {
+							description: "The created variant",
+							content: {
+								"application/json": { schema: VariantSchema },
+							},
+						},
+						"403": {
+							description: "Not allowed to create a variant",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+			},
+			"/admin/variants/{id}": {
+				get: {
+					operationId: "getVariantById",
+					summary: "Get a variant by id",
+					parameters: [
+						{
+							name: "id",
+							in: "path",
+							required: true,
+							schema: { type: "string", format: "uuid" },
+						},
+					],
+					security: [{ sessionCookie: [], apiKeyAuth: [] }],
+					responses: {
+						"200": {
+							description: "The variant",
+							content: {
+								"application/json": { schema: VariantSchema },
+							},
+						},
+						"404": {
+							description: "Variant not found",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+				patch: {
+					operationId: "updateVariant",
+					summary: "Update a variant",
+					parameters: [
+						{
+							name: "id",
+							in: "path",
+							required: true,
+							schema: { type: "string", format: "uuid" },
+						},
+					],
+					security: [{ sessionCookie: [], apiKeyAuth: [] }],
+					requestBody: {
+						required: true,
+						content: {
+							"application/json": { schema: VariantUpdateSchema },
+						},
+					},
+					responses: {
+						"200": {
+							description: "The updated variant",
+							content: {
+								"application/json": { schema: VariantSchema },
+							},
+						},
+						"403": {
+							description: "Not allowed to update a variant",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						"404": {
+							description: "Variant not found",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						"422": {
+							description:
+								"Update would leave an active product with zero active variants",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						default: {
+							description: "Unexpected error",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+					},
+				},
+				delete: {
+					operationId: "deleteVariant",
+					summary: "Delete a variant",
+					parameters: [
+						{
+							name: "id",
+							in: "path",
+							required: true,
+							schema: { type: "string", format: "uuid" },
+						},
+					],
+					security: [{ sessionCookie: [], apiKeyAuth: [] }],
+					responses: {
+						"204": {
+							description: "Variant deleted",
+						},
+						"403": {
+							description: "Not allowed to delete a variant",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						"404": {
+							description: "Variant not found",
+							content: {
+								"application/problem+json": { schema: ProblemSchema },
+							},
+						},
+						"422": {
+							description:
+								"Deletion would leave an active product with zero active variants",
 							content: {
 								"application/problem+json": { schema: ProblemSchema },
 							},

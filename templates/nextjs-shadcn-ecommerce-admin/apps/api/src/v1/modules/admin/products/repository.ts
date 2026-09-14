@@ -1,5 +1,5 @@
-import { and, count, desc, eq, ilike } from "drizzle-orm";
-import { schema, withPlatformSession } from "@/lib/db";
+import { and, count, desc, eq, ilike, inArray, sql } from "drizzle-orm";
+import { schema, type Tx, withPlatformSession } from "@/lib/db";
 import { toSlug } from "@/lib/utils";
 import {
 	DuplicateSlugHttpError,
@@ -13,7 +13,7 @@ import type {
 	ProductUpdate,
 } from "./types";
 
-const { products } = schema;
+const { products, productVariants } = schema;
 
 /**
  * @description `withPlatformSession`, not `withTenantSession` — same
@@ -21,23 +21,70 @@ const { products } = schema;
  * design decision A4).
  */
 
-function toProduct(row: typeof products.$inferSelect): Product {
+interface VariantAggregate {
+	variantCount: number;
+	defaultPrice: number | null;
+}
+
+function toProduct(
+	row: typeof products.$inferSelect,
+	aggregate: VariantAggregate | undefined,
+): Product {
 	return {
 		id: row.id,
 		name: row.name,
 		slug: row.slug,
-		code: row.code,
-		altCode: row.altCode,
 		description: row.description,
-		price: Number(row.price),
-		stock: row.stock,
-		stockMin: row.stockMin,
 		coverImage: row.coverImage,
 		categoryId: row.categoryId,
 		isActive: row.isActive,
+		defaultPrice: aggregate?.defaultPrice ?? null,
+		variantCount: aggregate?.variantCount ?? 0,
 		createdAt: row.createdAt.toISOString(),
 		updatedAt: row.updatedAt.toISOString(),
 	};
+}
+
+/**
+ * @description `variant-options` domain (design D4) — no stored rollup
+ * column exists on `products`; `defaultPrice`/`variantCount` are derived at
+ * read time from `product_variants`, one batched query per page (never
+ * N+1), keyed by `productId`. `defaultPrice` reads the price of the variant
+ * flagged `is_default` (there is at most one, design D7's partial unique
+ * index); `variantCount` counts every variant regardless of `isActive`, so
+ * an admin can tell a draft product with zero variants apart from one that
+ * simply has none currently active.
+ */
+async function loadVariantAggregates(
+	tx: Tx,
+	productIds: string[],
+): Promise<Map<string, VariantAggregate>> {
+	const byProduct = new Map<string, VariantAggregate>();
+
+	if (productIds.length === 0) {
+		return byProduct;
+	}
+
+	const rows = await tx
+		.select({
+			productId: productVariants.productId,
+			variantCount: count(productVariants.id),
+			defaultPrice: sql<
+				string | null
+			>`max(case when ${productVariants.isDefault} then ${productVariants.price} end)`,
+		})
+		.from(productVariants)
+		.where(inArray(productVariants.productId, productIds))
+		.groupBy(productVariants.productId);
+
+	for (const row of rows) {
+		byProduct.set(row.productId, {
+			variantCount: row.variantCount,
+			defaultPrice: row.defaultPrice !== null ? Number(row.defaultPrice) : null,
+		});
+	}
+
+	return byProduct;
 }
 
 function isUniqueViolation(e: unknown): boolean {
@@ -112,7 +159,15 @@ function productRepo(): Repository {
 				previous: page > 0 ? page - 1 : 0,
 			};
 
-			return { items: rows.map(toProduct), pagination };
+			const aggregates = await loadVariantAggregates(
+				tx,
+				rows.map((row) => row.id),
+			);
+
+			return {
+				items: rows.map((row) => toProduct(row, aggregates.get(row.id))),
+				pagination,
+			};
 		});
 	}
 
@@ -120,7 +175,13 @@ function productRepo(): Repository {
 		return withPlatformSession(async (tx) => {
 			const [row] = await tx.select().from(products).where(eq(products.id, id));
 
-			return row ? toProduct(row) : null;
+			if (!row) {
+				return null;
+			}
+
+			const aggregates = await loadVariantAggregates(tx, [row.id]);
+
+			return toProduct(row, aggregates.get(row.id));
 		});
 	}
 
@@ -148,20 +209,15 @@ function productRepo(): Repository {
 						.values({
 							name: input.name,
 							slug,
-							code: input.code ?? null,
-							altCode: input.altCode ?? null,
 							description: input.description ?? null,
-							price: input.price.toFixed(2),
-							...(input.stock !== undefined ? { stock: input.stock } : {}),
-							...(input.stockMin !== undefined
-								? { stockMin: input.stockMin }
-								: {}),
 							coverImage: input.coverImage ?? null,
 							categoryId: input.categoryId ?? null,
 						})
 						.returning();
 
-					return toProduct(inserted);
+					// A freshly created product has zero variants (design D3) —
+					// no aggregate lookup needed.
+					return toProduct(inserted, undefined);
 				} catch (e) {
 					if (isUniqueViolation(e)) {
 						throw new DuplicateSlugHttpError(slug);
@@ -191,12 +247,7 @@ function productRepo(): Repository {
 			values.name = input.name;
 			values.slug = slug;
 		}
-		if (input.code !== undefined) values.code = input.code;
-		if (input.altCode !== undefined) values.altCode = input.altCode;
 		if (input.description !== undefined) values.description = input.description;
-		if (input.price !== undefined) values.price = input.price.toFixed(2);
-		if (input.stock !== undefined) values.stock = input.stock;
-		if (input.stockMin !== undefined) values.stockMin = input.stockMin;
 		if (input.coverImage !== undefined) values.coverImage = input.coverImage;
 		if (input.categoryId !== undefined) values.categoryId = input.categoryId;
 		if (input.isActive !== undefined) values.isActive = input.isActive;
@@ -217,7 +268,13 @@ function productRepo(): Repository {
 						.where(eq(products.id, id))
 						.returning();
 
-					return row ? toProduct(row) : null;
+					if (!row) {
+						return null;
+					}
+
+					const aggregates = await loadVariantAggregates(tx, [row.id]);
+
+					return toProduct(row, aggregates.get(row.id));
 				} catch (e) {
 					if (isUniqueViolation(e) && slug) {
 						throw new DuplicateSlugHttpError(slug);

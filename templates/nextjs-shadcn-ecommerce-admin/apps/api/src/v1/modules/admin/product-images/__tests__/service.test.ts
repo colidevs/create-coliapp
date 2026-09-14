@@ -5,9 +5,12 @@ import type { Repository } from "../repository";
 import { createProductImageService } from "../service";
 import type { ProductImage } from "../types";
 
+const FAKE_PRODUCT_ID = "9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c";
+
 const FAKE_IMAGE: ProductImage = {
 	id: "1b2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e",
-	productId: "9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c",
+	productId: FAKE_PRODUCT_ID,
+	variantId: null,
 	url: "https://images.example.com/wireless-mouse-1.jpg",
 	position: 0,
 	createdAt: "2026-01-01T00:00:00.000Z",
@@ -44,7 +47,7 @@ describe("admin/product-images service — happy path", () => {
 
 		await expect(
 			svc.create(admin, {
-				productId: FAKE_IMAGE.productId,
+				productId: FAKE_PRODUCT_ID,
 				url: FAKE_IMAGE.url,
 			}),
 		).resolves.toEqual(FAKE_IMAGE);
@@ -85,7 +88,7 @@ describe("admin/product-images service — CASL denial", () => {
 
 		await expect(
 			svc.create(viewer, {
-				productId: FAKE_IMAGE.productId,
+				productId: FAKE_PRODUCT_ID,
 				url: FAKE_IMAGE.url,
 			}),
 		).rejects.toBeInstanceOf(ForbiddenHttpError);

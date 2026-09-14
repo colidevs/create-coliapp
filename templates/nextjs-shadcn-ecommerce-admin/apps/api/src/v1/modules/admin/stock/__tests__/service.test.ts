@@ -7,11 +7,13 @@ import type { StockItem } from "../types";
 
 const FAKE_STOCK_ITEM: StockItem = {
 	id: "9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c",
+	productId: "1b2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e",
 	name: "Wireless Mouse",
 	slug: "wireless-mouse",
+	variantLabel: "Red / M",
 	stock: 10,
 	stockMin: 2,
-	code: "WM-100",
+	code: "WM-100-RED-M",
 	altCode: null,
 	coverImage: null,
 };
