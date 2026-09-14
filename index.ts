@@ -23,6 +23,12 @@ const TEMPLATES: prompts.Choice[] = [
     value: "nextjs-kumo-console",
   },
   {
+    title: "nextjs 16 > biome > shadcn/ui > express > ecommerce admin",
+    description:
+      "Monorepo single-tenant: panel admin (shadcn) + storefront + API Express con pagos dLocal Go, gestión de stock y órdenes ya wireados. Distinto de la consola Kumo (multitenant, sin storefront) y del shadcn básico (sin backend).",
+    value: "nextjs-shadcn-ecommerce-admin",
+  },
+  {
     title: "nextjs > eslint > typescript > shadcn/ui",
     description: "Basico, usado principalmente para practicar.",
     value: "nextjs-eslint-ts-shadcn",
@@ -206,6 +212,10 @@ function standardPluginHint(template: string): string | undefined {
 
   if (template === "nextjs-kumo-console") {
     return "Building a console? Check colidevs' `frontend-standard` plugin (coli-marketplace) for design-time guidance against colidevs' frontend standard.";
+  }
+
+  if (template === "nextjs-shadcn-ecommerce-admin") {
+    return "Building an API + admin console? Check colidevs' `api-standard` and `frontend-standard` plugins (coli-marketplace) for design-time guidance against colidevs' standards.";
   }
 
   return undefined;

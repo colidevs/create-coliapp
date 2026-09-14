@@ -1,0 +1,37 @@
+{
+	"$schema": "https://turborepo.dev/schema.json",
+	"ui": "tui",
+	"tasks": {
+		"build": {
+			"dependsOn": ["^build"],
+			"inputs": ["$TURBO_DEFAULT$"],
+			"outputs": ["dist/**", ".next/**", "!.next/cache/**"],
+			"env": [
+				"SERVICE_KEY",
+				"API_MOCKING",
+				"API_BASE_URL",
+				"NEXT_PUBLIC_API_BASE_URL"
+			]
+		},
+		"dev": {
+			"cache": false,
+			"persistent": true
+		},
+		"lint": {
+			"dependsOn": ["^lint"]
+		},
+		"check-types": {
+			"dependsOn": ["^build"]
+		},
+		"test": {
+			"dependsOn": ["^build"],
+			"outputs": []
+		},
+		"db:generate:check": {
+			"cache": false
+		},
+		"generate:openapi:check": {
+			"cache": false
+		}
+	}
+}

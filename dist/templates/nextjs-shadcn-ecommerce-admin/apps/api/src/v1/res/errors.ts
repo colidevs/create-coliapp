@@ -1,0 +1,253 @@
+/**
+ * @description RFC 9457 Problem Details (`type`/`status`/`title`/`detail`/
+ * `instance`) — the mandatory error shape per ADR 0009 / `api-communication-
+ * standard.md`, replacing this template's previous `{message, data}` shape
+ * (2026-08-17 audit's single most-repeated finding). `errors` is the
+ * documented per-field validation-failure extension, present only when
+ * relevant.
+ */
+export interface ProblemDetails {
+	type: string;
+	status: number;
+	title: string;
+	detail?: string;
+	instance?: string;
+	errors?: Array<{ field: string; message: string }>;
+}
+
+abstract class AppError extends Error {
+	constructor(message?: string) {
+		super(message ?? "");
+		this.name = this.constructor.name;
+		Object.setPrototypeOf(this, new.target.prototype);
+	}
+}
+
+/**
+ * @description `type` MUST be a URI reference per RFC 9457 §3.1 — `about:
+ * blank` is the explicit default for errors with no dedicated documentation
+ * page, exactly as the RFC allows ("about:blank" indicates the problem has
+ * no additional semantics beyond the HTTP status code). Subclasses below
+ * override it with a real `https://coli.dev/errors/...` slug once one
+ * exists; otherwise they inherit this default rather than inventing an
+ * unresolvable URI.
+ */
+export class HttpError extends AppError {
+	constructor(
+		public statusCode: number,
+		message: string,
+		public type: string = "about:blank",
+		public errors?: Array<{ field: string; message: string }>,
+	) {
+		super(message);
+	}
+
+	toProblemDetails(instance?: string): ProblemDetails {
+		return {
+			type: this.type,
+			status: this.statusCode,
+			title: this.message,
+			detail: this.message,
+			...(instance ? { instance } : {}),
+			...(this.errors ? { errors: this.errors } : {}),
+		};
+	}
+}
+
+export class InternalServerError extends HttpError {
+	constructor() {
+		super(500, "Internal error");
+	}
+}
+
+export class UnexpectedError extends AppError {
+	message = "Unexpected error, create a new AppError";
+}
+
+export class NotImplementedError extends AppError {
+	message = "Not implemented error";
+}
+
+export class RequiredError extends AppError {
+	constructor(public paramName: string) {
+		super(`${paramName} is required`);
+	}
+}
+
+export class UnauthorizedHttpError extends HttpError {
+	constructor() {
+		super(
+			401,
+			"Unauthorized, invalid credentials",
+			"https://coli.dev/errors/unauthorized",
+		);
+	}
+}
+
+export class AccessDeniedInactiveResourceHttpError extends HttpError {
+	constructor() {
+		super(
+			403,
+			"Access denied. The account associated with this resource is inactive",
+			"https://coli.dev/errors/inactive-resource",
+		);
+	}
+}
+
+export class NotAllowedMethod extends HttpError {
+	constructor() {
+		super(
+			405,
+			"This endpoint only supports POST requests",
+			"https://coli.dev/errors/method-not-allowed",
+		);
+	}
+}
+
+export class ParseHttpError extends HttpError {
+	constructor() {
+		super(
+			502,
+			"DATA_SOURCE_PARSE_ERROR",
+			"https://coli.dev/errors/upstream-parse-error",
+		);
+	}
+}
+
+export class NotFoundHttpError extends HttpError {
+	constructor(public msg?: string) {
+		super(
+			404,
+			`Resource not found. ${msg ?? ""}`.trim(),
+			"https://coli.dev/errors/not-found",
+		);
+	}
+}
+
+/**
+ * @description Per-field validation failure, the RFC 9457 `errors[]`
+ * extension. `status` is 422 (semantically invalid), per ADR 0009's status
+ * code split — not 400, which this codebase reserves for transport/syntax
+ * failures.
+ */
+export class ValidationHttpError extends HttpError {
+	constructor(errors: Array<{ field: string; message: string }>) {
+		super(
+			422,
+			"One or more fields failed validation",
+			"https://coli.dev/errors/validation",
+			errors,
+		);
+	}
+}
+
+export class EnvironmentError extends AppError {
+	constructor(
+		public envKey: string,
+		public exampleValue?: string,
+	) {
+		super(
+			`env with key ${envKey} is required${exampleValue ? ` e.g ${exampleValue}` : ""}`,
+		);
+	}
+}
+
+export class InfraError extends AppError {
+	constructor(
+		public node: string,
+		message: string,
+	) {
+		super(message);
+		this.message = `${node}: ${message}`;
+	}
+}
+
+/**
+ * @description `dlocal-checkout` / `stock-management` domains (Phase 3).
+ * 409 — state conflict (ADR 0009's status-code split: 409 for a conflicting
+ * state, distinct from 422's semantic-validation-failure meaning). Raised
+ * when an atomic stock decrement affects zero rows for a tracked (stock >= 0)
+ * product with insufficient quantity — see `sdd/ecommerce-admin-template/
+ * design`'s atomic-decrement design.
+ */
+export class InsufficientStockHttpError extends HttpError {
+	constructor(slug: string) {
+		super(
+			409,
+			`Insufficient stock for ${slug}`,
+			"https://coli.dev/errors/insufficient-stock",
+		);
+	}
+}
+
+/**
+ * @description `dlocal-checkout` domain (Phase 3). 401 — deliberately does
+ * not echo back why verification failed (wrong secret vs. malformed header
+ * vs. missing body are all indistinguishable to the caller), matching this
+ * template's existing `UnauthorizedHttpError` posture.
+ */
+export class WebhookSignatureHttpError extends HttpError {
+	constructor() {
+		super(
+			401,
+			"Invalid webhook signature",
+			"https://coli.dev/errors/webhook-signature",
+		);
+	}
+}
+
+/**
+ * @description `admin-catalog-crud` domain (Phase 3b). 403 — the RFC 9457
+ * shape CASL's own denial converts into, per ADR 0013's placement rule
+ * (middleware = coarse authenticated check, `src/v1/middlewares/auth.ts`;
+ * service layer = fine role/attribute check). Raised by `src/lib/ability.ts`'s
+ * `assertCan()`, which is the one seam every admin write path calls before
+ * touching a repository — never thrown directly by a service/controller.
+ */
+export class ForbiddenHttpError extends HttpError {
+	constructor(action?: string, subject?: string) {
+		super(
+			403,
+			action && subject ? `Not allowed to ${action} ${subject}` : "Forbidden",
+			"https://coli.dev/errors/forbidden",
+		);
+	}
+}
+
+/**
+ * @description `admin-catalog-crud` domain (Phase 3b). 409 — a client-supplied
+ * `name` collides with an existing `slug` (categories/products both carry a
+ * UNIQUE `slug` column, `src/lib/db/schema.ts`). Caught from the raw Postgres
+ * `23505` unique-violation error (`pg`'s driver attaches `.code`), matching
+ * this template's existing `23505`-detection convention
+ * (`Dlocal/repository.ts#createOrder`) — except here there is no idempotent
+ * replay to fall back to, since two DIFFERENT admin-authored resources
+ * legitimately colliding on the same slug is a real conflict, not a retried
+ * request.
+ */
+export class DuplicateSlugHttpError extends HttpError {
+	constructor(slug: string) {
+		super(
+			409,
+			`A resource with slug "${slug}" already exists`,
+			"https://coli.dev/errors/duplicate-slug",
+		);
+	}
+}
+
+/**
+ * @description `dlocal-checkout` domain (Phase 3). 502 — the upstream dLocal
+ * Go API call itself failed (non-2xx response, network error, or unparsable
+ * response body), distinct from a 409 stock conflict or a 401 signature
+ * failure, both of which are this app's own domain logic rejecting the
+ * request.
+ */
+export class PaymentProviderHttpError extends HttpError {
+	constructor() {
+		super(
+			502,
+			"Payment provider error",
+			"https://coli.dev/errors/payment-provider",
+		);
+	}
+}
