@@ -33,6 +33,12 @@
 					}
 				}
 			}
+		},
+		{
+			"includes": ["**/drizzle/meta/**"],
+			"formatter": {
+				"enabled": false
+			}
 		}
 	],
 	"javascript": {

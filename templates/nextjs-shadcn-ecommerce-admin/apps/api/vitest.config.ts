@@ -37,7 +37,8 @@ export default defineConfig({
 			DLOCAL_API_URL: "https://api-sbx.dlocalgo.com/v1/payments",
 			DLOCAL_API_KEY: "test-dlocal-api-key",
 			DLOCAL_API_SECRET: "test-dlocal-api-secret",
-			DLOCAL_NOTIFICATION_URL: "http://localhost:3001/api/v1/dlocal/notifications",
+			DLOCAL_NOTIFICATION_URL:
+				"http://localhost:3001/api/v1/dlocal/notifications",
 			DLOCAL_SUCCESS_URL: "http://localhost:3000/checkout/return",
 			DLOCAL_BACK_URL: "http://localhost:3000/checkout",
 			DLOCAL_DEFAULT_CURRENCY: "USD",

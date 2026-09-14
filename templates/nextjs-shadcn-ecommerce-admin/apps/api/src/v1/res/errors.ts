@@ -205,6 +205,10 @@ export class WebhookSignatureHttpError extends HttpError {
  */
 export class PaymentProviderHttpError extends HttpError {
 	constructor() {
-		super(502, "Payment provider error", "https://coli.dev/errors/payment-provider");
+		super(
+			502,
+			"Payment provider error",
+			"https://coli.dev/errors/payment-provider",
+		);
 	}
 }
