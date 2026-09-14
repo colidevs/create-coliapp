@@ -1,0 +1,77 @@
+# Spectral ruleset enforcing ADR 0009's schema-shape rules
+# (`api-communication-standard.md` in the hefesto repo): RFC 9457 Problem
+# Details on every error response, cursor-based pagination, the `/v1` path
+# prefix, plural-noun resource naming, and OpenAPI completeness (≥1 example +
+# security scheme declared per operation). This is the "lint-tool-checkable"
+# half of the api-standard-check skill's checklist — see
+# `.claude/skills/api-standard-check/SKILL.md` (hefesto repo) for the
+# behavioral half this ruleset does not and cannot cover.
+#
+# Part of the `api-enforcement-mechanism` SDD change, Phase 2 (PR 2 of 4).
+extends: ["spectral:oas"]
+documentationUrl: "https://github.com/colidevs/hefesto/blob/main/.claude/rules/api-communication-standard.md"
+functionsDir: .spectral/functions
+functions:
+  - problemDetailsShape
+  - operationHasExample
+  - pluralNounPath
+  - cursorPaginationShape
+rules:
+  # --- RFC 9457 Problem Details ---------------------------------------
+  adr0009-error-responses-are-problem-details:
+    description: "Every 4xx/5xx/default response must use RFC 9457 Problem Details over application/problem+json, not a flat {message, data}/{error} shape."
+    message: "{{error}}"
+    severity: error
+    given: "$.paths[*][get,put,post,patch,delete,options,head].responses[*]"
+    then:
+      function: problemDetailsShape
+
+  # --- Cursor-based pagination -----------------------------------------
+  adr0009-cursor-pagination-shape:
+    description: "Paginated response schemas must be cursor-based (next_cursor/page_token) by default, not offset/page, unless documented as an exception."
+    message: "{{error}}"
+    severity: warn
+    given: "$.paths[*][get,put,post,patch,delete].responses[*].content[*].schema"
+    then:
+      function: cursorPaginationShape
+
+  # --- /v1 path prefix ---------------------------------------------------
+  adr0009-v1-server-prefix:
+    description: "Every server URL must be versioned under /v1 (URL-path versioning, ADR 0009)."
+    message: "Server URL '{{value}}' must end in /v1 (ADR 0009 versioning)."
+    severity: error
+    given: "$.servers[*].url"
+    then:
+      function: pattern
+      functionOptions:
+        match: "/v1$"
+
+  # --- Naming: plural-noun resources --------------------------------------
+  adr0009-plural-noun-resource-paths:
+    description: "Resource path segments must be plural nouns; action-style/infra endpoints are exempted (see the custom function)."
+    message: "{{error}}"
+    severity: warn
+    given: "$"
+    then:
+      field: paths
+      function: pluralNounPath
+
+  # --- OpenAPI completeness: ≥1 example per operation ---------------------
+  adr0009-operation-has-example:
+    description: "Every operation must document at least one example (ADR 0009 OpenAPI completeness)."
+    message: "{{error}}"
+    severity: error
+    given: "$.paths[*][get,put,post,patch,delete]"
+    then:
+      field: responses
+      function: operationHasExample
+
+  # --- OpenAPI completeness: security scheme declared per operation -------
+  adr0009-operation-declares-security:
+    description: "Every operation must explicitly declare `security` — a real scheme reference, or an intentional `security: []` for public endpoints (ADR 0009 OpenAPI completeness). Silence (an omitted key) is not an accepted way to opt out."
+    message: "Operation must declare a `security` field (use `security: []` for an intentionally public endpoint)."
+    severity: error
+    given: "$.paths[*][get,put,post,patch,delete]"
+    then:
+      field: security
+      function: truthy
