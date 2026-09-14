@@ -3,8 +3,10 @@ import { InsufficientStockHttpError } from "@/v1/res/errors";
 
 /**
  * @description Unit tests for the atomic stock decrement (design decision
- * (c), `sdd/ecommerce-admin-template/design`) and the webhook transition
- * guard (`applyPaymentTransition`).
+ * (c), `sdd/ecommerce-admin-template/design`), the mirror-image atomic
+ * stock restore (`restoreStock`, closing the spec's previously-unimplemented
+ * "Atomic restore" requirement), and the webhook transition guard
+ * (`applyPaymentTransition`).
  *
  * **Honesty note on DB coverage**: no live Postgres instance is reachable in
  * this sandbox/CI environment, so these tests do NOT exercise a real
@@ -17,7 +19,10 @@ import { InsufficientStockHttpError } from "@/v1/res/errors";
  * quantity RETURNING` relies on, via a faithful in-memory model of that
  * exact predicate (see its own comment) — a logical simulation of Postgres's
  * per-statement atomicity guarantee, not a live concurrent-transaction test
- * against a real server.
+ * against a real server. The `applyPaymentTransition` restore tests below
+ * assert on the fake `Tx`'s own `vi.fn()` call counts (was `products`
+ * updated a second time, or not) rather than on any real row state, for the
+ * same reason.
  */
 
 vi.mock("@/config", () => ({
@@ -43,37 +48,73 @@ interface FakeRow {
 }
 
 /**
- * @description Builds a fake Drizzle `Tx` supporting exactly the chain shape
- * `decrementStock` calls: `.update(table).set(...).where(...).returning(...)`
- * and `.select(...).from(table).where(...)`. Each call consumes the next
- * scripted outcome in order — sufficient to test `decrementStock`'s
- * per-item branching without a real query planner.
+ * @description The `.returning()`/awaited-directly row shape for the
+ * ORDERS-table update in `applyPaymentTransition` (`orderId`/`dlocalId`/
+ * `status`/`buyerProducts`) — distinct from `FakeRow` above, which models
+ * the PRODUCTS-table row shape `decrementStock`/`restoreStock` read/write.
+ */
+interface FakeOrderRow {
+	id: string;
+	orderId: string;
+	dlocalId: string;
+	status: string;
+	buyerProducts: unknown[];
+}
+
+/**
+ * @description Builds a fake Drizzle `Tx` supporting every chain shape this
+ * module's functions call:
+ * `.update(table).set(...).where(...).returning(...)` (`decrementStock`,
+ * `applyPaymentTransition`'s own status flip), a `.returning()`-less
+ * `.update(table).set(...).where(...)` awaited directly (`restoreStock`),
+ * `.select(...).from(table).where(...)` awaited directly (`decrementStock`'s
+ * disambiguation read), and `.select(...).from(table).where(...).for(...)`
+ * (`applyPaymentTransition`'s row-locked "was this order ever PAID" read).
+ * Each `.update(...)` call consumes the next scripted `updateReturning`
+ * entry in order, regardless of whether the caller reads it via
+ * `.returning()` or by awaiting the chain directly — sufficient to test
+ * every function's branching without a real query planner.
  */
 function createFakeTx(script: {
-	updateReturning: FakeRow[][];
+	updateReturning: Array<FakeRow[] | FakeOrderRow[]>;
 	selectRows?: FakeRow[][];
+	existingOrderStatus?: { status: string } | null;
 }) {
 	let updateCallIndex = 0;
 	let selectCallIndex = 0;
 
 	const update = vi.fn(() => ({
 		set: vi.fn(() => ({
-			where: vi.fn(() => ({
-				returning: vi.fn(async () => {
-					const rows = script.updateReturning[updateCallIndex] ?? [];
-					updateCallIndex += 1;
-					return rows;
-				}),
-			})),
+			where: vi.fn(() => {
+				const rows = script.updateReturning[updateCallIndex] ?? [];
+				updateCallIndex += 1;
+				return Object.assign(Promise.resolve(rows), {
+					returning: vi.fn(async () => rows),
+				});
+			}),
 		})),
 	}));
 
 	const select = vi.fn(() => ({
 		from: vi.fn(() => ({
-			where: vi.fn(async () => {
-				const rows = script.selectRows?.[selectCallIndex] ?? [];
-				selectCallIndex += 1;
-				return rows;
+			where: vi.fn(() => {
+				let rows: unknown[];
+
+				if (script.existingOrderStatus !== undefined) {
+					rows = script.existingOrderStatus ? [script.existingOrderStatus] : [];
+				} else {
+					rows = script.selectRows?.[selectCallIndex] ?? [];
+					selectCallIndex += 1;
+				}
+
+				// `.for("update")` (`applyPaymentTransition`'s row-locked read)
+				// and a direct `await` (`decrementStock`'s disambiguation read)
+				// must both resolve to the SAME scripted rows — real Drizzle
+				// query builders are thenable regardless of which trailing
+				// clause is appended.
+				return Object.assign(Promise.resolve(rows), {
+					for: vi.fn(async () => rows),
+				});
 			}),
 		})),
 	}));
@@ -201,5 +242,147 @@ describe("applyPaymentTransition — webhook transition guard", () => {
 		const result = await repo.applyPaymentTransition("D-4-abc", "PAID");
 
 		expect(result).toBeNull();
+	});
+
+	/**
+	 * @description The spec's previously-unimplemented "Cancelled order
+	 * restores stock" scenario (`sdd/ecommerce-admin-template/spec`,
+	 * stock-management domain). `capturedTx` is set inside the mocked
+	 * `withPlatformSession` so each test can assert on the fake `Tx`'s own
+	 * `vi.fn()` call counts afterward — the only observable signal available
+	 * without a real Postgres instance (see the file-level doc comment).
+	 */
+	it("restores stock atomically when an order that reached PAID transitions to a terminal-failure status", async () => {
+		// biome-ignore lint/suspicious/noExplicitAny: test double, not a real Tx
+		let capturedTx: any;
+
+		vi.doMock("@/lib/db", async () => {
+			const actual =
+				await vi.importActual<typeof import("@/lib/db")>("@/lib/db");
+			return {
+				...actual,
+				withPlatformSession: async (fn: (tx: unknown) => unknown) => {
+					capturedTx = createFakeTx({
+						updateReturning: [
+							[
+								{
+									id: "o1",
+									orderId: "order-1",
+									dlocalId: "D-1",
+									status: "REJECTED",
+									buyerProducts: [
+										{
+											productId: "p1",
+											slug: "widget",
+											quantity: 2,
+											unitPrice: 10,
+											lineTotal: 20,
+										},
+									],
+								},
+							],
+						],
+						existingOrderStatus: { status: "PAID" },
+					});
+					return fn(capturedTx);
+				},
+			};
+		});
+
+		const { createDlocalRepository } = await import("../repository");
+		const repo = createDlocalRepository();
+
+		const result = await repo.applyPaymentTransition("D-1", "REJECTED");
+
+		expect(result?.status).toBe("REJECTED");
+		// One `update` call for the order's own status flip, one more for
+		// `restoreStock`'s per-item product update — proves the restore
+		// branch actually ran, not just that the transition succeeded.
+		expect(capturedTx.update).toHaveBeenCalledTimes(2);
+	});
+
+	it("does NOT restore stock when the order never reached PAID before the terminal-failure status", async () => {
+		// biome-ignore lint/suspicious/noExplicitAny: test double, not a real Tx
+		let capturedTx: any;
+
+		vi.doMock("@/lib/db", async () => {
+			const actual =
+				await vi.importActual<typeof import("@/lib/db")>("@/lib/db");
+			return {
+				...actual,
+				withPlatformSession: async (fn: (tx: unknown) => unknown) => {
+					capturedTx = createFakeTx({
+						updateReturning: [
+							[
+								{
+									id: "o2",
+									orderId: "order-2",
+									dlocalId: "D-2",
+									status: "REJECTED",
+									buyerProducts: [
+										{
+											productId: "p2",
+											slug: "gadget",
+											quantity: 1,
+											unitPrice: 5,
+											lineTotal: 5,
+										},
+									],
+								},
+							],
+						],
+						// Never PAID — e.g. PENDING straight to REJECTED. Its
+						// stock was never decremented, so there is nothing to
+						// restore here.
+						existingOrderStatus: { status: "PENDING" },
+					});
+					return fn(capturedTx);
+				},
+			};
+		});
+
+		const { createDlocalRepository } = await import("../repository");
+		const repo = createDlocalRepository();
+
+		const result = await repo.applyPaymentTransition("D-2", "REJECTED");
+
+		expect(result?.status).toBe("REJECTED");
+		// Only the order's own status-flip update — `restoreStock` must never
+		// have run.
+		expect(capturedTx.update).toHaveBeenCalledTimes(1);
+	});
+
+	it("does not double-restore stock on a duplicate webhook redelivery for the same terminal status", async () => {
+		// biome-ignore lint/suspicious/noExplicitAny: test double, not a real Tx
+		let capturedTx: any;
+
+		vi.doMock("@/lib/db", async () => {
+			const actual =
+				await vi.importActual<typeof import("@/lib/db")>("@/lib/db");
+			return {
+				...actual,
+				withPlatformSession: async (fn: (tx: unknown) => unknown) => {
+					capturedTx = createFakeTx({
+						// Order is already REJECTED — the `WHERE status <>
+						// newStatus` guard fails, so the update affects zero
+						// rows, exactly like a real duplicate webhook
+						// redelivery.
+						updateReturning: [[]],
+						existingOrderStatus: { status: "REJECTED" },
+					});
+					return fn(capturedTx);
+				},
+			};
+		});
+
+		const { createDlocalRepository } = await import("../repository");
+		const repo = createDlocalRepository();
+
+		const result = await repo.applyPaymentTransition("D-3", "REJECTED");
+
+		expect(result).toBeNull();
+		// The guarded UPDATE ran (and returned zero rows) — `restoreStock`
+		// must never have been reached a second time.
+		expect(capturedTx.update).toHaveBeenCalledTimes(1);
 	});
 });
