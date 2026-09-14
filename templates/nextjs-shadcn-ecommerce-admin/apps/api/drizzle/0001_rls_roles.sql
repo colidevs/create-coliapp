@@ -12,6 +12,26 @@
 -- - The runtime role must NOT own these tables (ownership itself grants an
 --   RLS bypass), so all access must come through explicit GRANTs.
 --
+-- **Corrected (found by a real pilot build, `ecommerce-admin-template`
+-- PR10): `app_runtime` is no longer CREATEd here.** This migration is
+-- applied through `DATABASE_OWNER_URL` — `app_migrator` connected with an
+-- auto `SET ROLE app_owner` (see `drizzle.config.ts`) — and Postgres role
+-- ATTRIBUTES (like CREATEROLE), unlike privileges, are never inherited via
+-- membership. `app_owner` deliberately has no CREATEROLE attribute of its
+-- own (granting it as a standing attribute would itself be a
+-- privilege-escalation surface — the same class of concern
+-- `backend-template-stack.md`'s `app_migrator` addendum already exists to
+-- close), so a `CREATE ROLE` statement running as `app_owner` always fails
+-- with "permission denied to create role" on any Postgres instance that
+-- actually enforces least privilege — this is not an environment-specific
+-- fluke. `app_runtime` (and `app_owner`/`app_migrator` themselves) are now
+-- provisioned ONCE, by the Postgres superuser, via the standalone
+-- `drizzle/bootstrap-roles.sql` — see that file and this directory's
+-- `MIGRATIONS.md` ("Role bootstrap" section) for the mandatory one-time
+-- step that MUST run before this migration. Everything below only ALTERs
+-- tables and GRANTs against an already-existing role, both of which
+-- `app_owner` (the table owner) can do without CREATEROLE.
+--
 -- **Deviation from `templates/express-ts`'s own `0001_rls_roles.sql`
 -- (`sdd/ecommerce-admin-template/design`, orchestrator-recorded)**: this
 -- template's four tables (`categories`, `products`, `product_images`,
@@ -23,15 +43,6 @@
 -- unconditional (`USING (true)`) rather than a tenant-scoping comparison —
 -- there is no tenant dimension to filter on. Access control for these
 -- tables is CASL, at the service layer (Phase 3), not a Postgres policy.
-
-DO $$
-BEGIN
-	IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_runtime') THEN
-		CREATE ROLE app_runtime NOBYPASSRLS LOGIN PASSWORD 'change_me_in_infisical';
-	END IF;
-END
-$$;
---> statement-breakpoint
 
 ALTER TABLE "categories" ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint

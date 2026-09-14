@@ -57,9 +57,21 @@ api.disable("x-powered-by");
 // CORS: explicit origin allow-list, never `*` (ADR 0009/0010).
 // `CORS_ALLOWED_ORIGINS` is a comma-separated list; empty/unset means no
 // browser origin is allowed by default — fail closed, not open.
+//
+// `credentials: true` is mandatory here (found live by a real pilot build,
+// `ecommerce-admin-template` PR10): every admin browser call carries the
+// Better Auth session cookie (`apps/web`'s `lib/api.ts` forwards it), and a
+// browser rejects ANY cross-origin response with a credentialed request
+// unless `Access-Control-Allow-Credentials: true` is present — without this,
+// every admin call fails at the CORS layer before `apps/api` ever sees the
+// request, regardless of how correct the session/cookie handling is on
+// either side. Safe to combine with an explicit origin allow-list (never
+// `*`) above — `cors` already rejects wildcard origins when `credentials`
+// is enabled.
 api.use(
 	cors({
 		origin: config.cors.allowedOrigins,
+		credentials: true,
 	}),
 );
 

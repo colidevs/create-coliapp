@@ -11,7 +11,8 @@ import * as schema from "./schema";
  * design D4). Application code goes through `withTenantSession`/
  * `withPlatformSession` in `./session.ts` only.
  *
- * The pool MUST connect using the runtime role (`NOBYPASSRLS`, created by
+ * The pool MUST connect using the runtime role (`NOBYPASSRLS`, provisioned
+ * once by `drizzle/bootstrap-roles.sql`, then granted table access by
  * `drizzle/0001_rls_roles.sql`), never the migration/owner role — the owner
  * role bypasses RLS regardless of `FORCE ROW LEVEL SECURITY` (Postgres table
  * owners and superusers are exempt unless the client connects as a
