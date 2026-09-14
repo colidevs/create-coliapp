@@ -6,6 +6,7 @@ import { productRouter } from "./products/route";
 import { stockRouter } from "./stock/route";
 import { variantOptionTypeRouter } from "./variant-option-types/route";
 import { variantOptionValueRouter } from "./variant-option-values/route";
+import { variantRouter } from "./variants/route";
 
 /**
  * @description Mounted at `/api/v1/admin`, behind the Better Auth
@@ -23,5 +24,6 @@ router.use("/stock", stockRouter);
 router.use("/orders", orderRouter);
 router.use("/variant-option-types", variantOptionTypeRouter);
 router.use("/variant-option-values", variantOptionValueRouter);
+router.use("/variants", variantRouter);
 
 export { router as adminRouter };
