@@ -9,7 +9,7 @@
 		"pnpm": "10.x"
 	},
 	"scripts": {
-		"dev": "next dev --turbopack",
+		"dev": "infisical run --env=dev --path=/web -- next dev --turbopack",
 		"build": "next build",
 		"start": "next start",
 		"check-types": "tsc --noEmit",
