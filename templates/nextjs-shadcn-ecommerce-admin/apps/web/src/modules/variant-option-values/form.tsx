@@ -1,6 +1,13 @@
 "use client";
 
-import { Field, FieldError, FieldGroup, FieldLabel } from "@colidevs/ui/field";
+import {
+	Field,
+	FieldError,
+	FieldGroup,
+	FieldLabel,
+	FieldLegend,
+	FieldSet,
+} from "@colidevs/ui/field";
 import { CheckboxField, NumberStepperField } from "@colidevs/ui/form-fields";
 import { useForm } from "@tanstack/react-form";
 import { useRouter } from "next/navigation";
@@ -68,6 +75,14 @@ import {
  * `FieldError` primitives instead of a bare `space-y-1` div + `<Label>` +
  * ad hoc `<p>`. Grouping now uses `FieldGroup` instead of a bare
  * `space-y-4` div. Button order fixed to outline-then-primary.
+ *
+ * **Grouping pass (PR21)**: fields now sit inside three `FieldSet` +
+ * `FieldLegend` sections — "Identification" (`optionTypeId`, `value`),
+ * "Media" (`imageUrl`, `description`), "Display" (`displayOrder`,
+ * `isActive`) — mirroring `modules/variants/form.tsx`'s own grouping
+ * convention. `isActive` (edit-only, per the note above) stays inside
+ * "Display" alongside `displayOrder`, with its exact current
+ * `CheckboxField` rendering unchanged.
  *
  * Conditional rendering (hiding `imageUrl` for a "size"-like option type,
  * mirroring munod's own `option_type === "size"` check) was evaluated and
@@ -177,134 +192,145 @@ export function VariantOptionValueForm({
 			className="max-w-md"
 		>
 			<FieldGroup>
-				<form.Field name="optionTypeId">
-					{(field) => {
-						const isInvalid = field.state.meta.errors.length > 0;
-						return (
-							<Field data-invalid={isInvalid}>
-								<FieldLabel htmlFor={field.name}>Option type</FieldLabel>
-								{/* Conditionally spread `value` (ADR 0030 floor) — `field.state.value`
-								 is `string | undefined` (unselected), but `Select`'s own `value?`
-								 prop type has no explicit `| undefined`.
-								 NOT swapped to `@colidevs/ui`'s `SelectField` — checked its real
-								 signature (`framework/packages/ui/src/form-fields.tsx`): it has no
-								 `disabled` prop at all, and this field must stay disabled once
-								 editing (`optionTypeId` is immutable after creation). Forcing the
-								 swap would silently drop that behavior. */}
-								<Select
-									{...(field.state.value ? { value: field.state.value } : {})}
-									onValueChange={field.handleChange}
-									disabled={Boolean(optionValue)}
-								>
-									<SelectTrigger
-										id={field.name}
-										className="w-full"
-										aria-invalid={isInvalid}
+				<FieldSet>
+					<FieldLegend>Identification</FieldLegend>
+					<form.Field name="optionTypeId">
+						{(field) => {
+							const isInvalid = field.state.meta.errors.length > 0;
+							return (
+								<Field data-invalid={isInvalid}>
+									<FieldLabel htmlFor={field.name}>Option type</FieldLabel>
+									{/* Conditionally spread `value` (ADR 0030 floor) — `field.state.value`
+									 is `string | undefined` (unselected), but `Select`'s own `value?`
+									 prop type has no explicit `| undefined`.
+									 NOT swapped to `@colidevs/ui`'s `SelectField` — checked its real
+									 signature (`framework/packages/ui/src/form-fields.tsx`): it has no
+									 `disabled` prop at all, and this field must stay disabled once
+									 editing (`optionTypeId` is immutable after creation). Forcing the
+									 swap would silently drop that behavior. */}
+									<Select
+										{...(field.state.value ? { value: field.state.value } : {})}
+										onValueChange={field.handleChange}
+										disabled={Boolean(optionValue)}
 									>
-										<SelectValue placeholder="Select an option type" />
-									</SelectTrigger>
-									<SelectContent>
-										{optionTypes.map((type) => (
-											<SelectItem key={type.id} value={type.id}>
-												{type.name}
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
-								{isInvalid ? (
-									<FieldError>
-										{fieldErrorMessage(field.state.meta.errors)}
-									</FieldError>
-								) : null}
-							</Field>
-						);
-					}}
-				</form.Field>
-				<form.Field
-					name="value"
-					validators={{ onChange: variantOptionValueFormSchema.shape.value }}
-				>
-					{(field) => {
-						const isInvalid = field.state.meta.errors.length > 0;
-						return (
-							<Field data-invalid={isInvalid}>
-								<FieldLabel htmlFor={field.name}>Value</FieldLabel>
-								<Input
-									id={field.name}
-									name={field.name}
-									value={field.state.value}
-									onBlur={field.handleBlur}
-									onChange={(event) => field.handleChange(event.target.value)}
-									aria-invalid={isInvalid}
-								/>
-								{isInvalid ? (
-									<FieldError>
-										{fieldErrorMessage(field.state.meta.errors)}
-									</FieldError>
-								) : null}
-							</Field>
-						);
-					}}
-				</form.Field>
-				<form.Field
-					name="imageUrl"
-					// `.unwrap()` — see `modules/products/form.tsx`'s identical comment on
-					// `coverImage`: the field's own value type is always `string`.
-					validators={{
-						onChange: variantOptionValueFormSchema.shape.imageUrl.unwrap(),
-					}}
-				>
-					{(field) => {
-						const isInvalid = field.state.meta.errors.length > 0;
-						return (
-							<Field data-invalid={isInvalid}>
-								<FieldLabel htmlFor={field.name}>Image URL</FieldLabel>
-								<Input
-									id={field.name}
-									name={field.name}
-									value={field.state.value}
-									onBlur={field.handleBlur}
-									onChange={(event) => field.handleChange(event.target.value)}
-									aria-invalid={isInvalid}
-								/>
-								{isInvalid ? (
-									<FieldError>
-										{fieldErrorMessage(field.state.meta.errors)}
-									</FieldError>
-								) : null}
-							</Field>
-						);
-					}}
-				</form.Field>
-				<form.Field name="description">
-					{(field) => (
-						<Field>
-							<FieldLabel htmlFor={field.name}>Description</FieldLabel>
-							<Input
-								id={field.name}
-								name={field.name}
-								value={field.state.value}
-								onBlur={field.handleBlur}
-								onChange={(event) => field.handleChange(event.target.value)}
-							/>
-						</Field>
-					)}
-				</form.Field>
-				{/* `@colidevs/ui`'s `NumberStepperField` derives its id from `field.name`
-				 (no hardcoded-id collision risk, unlike `CheckboxField`/`SelectField`
-				 above) — safe to adopt regardless of how many numeric fields a form
-				 has. */}
-				<form.Field name="displayOrder">
-					{(field) => (
-						<NumberStepperField field={field} title="Display order" />
-					)}
-				</form.Field>
-
-				{optionValue ? (
-					<form.Field name="isActive">
-						{(field) => <CheckboxField field={field} title="Active" />}
+										<SelectTrigger
+											id={field.name}
+											className="w-full"
+											aria-invalid={isInvalid}
+										>
+											<SelectValue placeholder="Select an option type" />
+										</SelectTrigger>
+										<SelectContent>
+											{optionTypes.map((type) => (
+												<SelectItem key={type.id} value={type.id}>
+													{type.name}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+									{isInvalid ? (
+										<FieldError>
+											{fieldErrorMessage(field.state.meta.errors)}
+										</FieldError>
+									) : null}
+								</Field>
+							);
+						}}
 					</form.Field>
-				) : null}
+					<form.Field
+						name="value"
+						validators={{ onChange: variantOptionValueFormSchema.shape.value }}
+					>
+						{(field) => {
+							const isInvalid = field.state.meta.errors.length > 0;
+							return (
+								<Field data-invalid={isInvalid}>
+									<FieldLabel htmlFor={field.name}>Value</FieldLabel>
+									<Input
+										id={field.name}
+										name={field.name}
+										value={field.state.value}
+										onBlur={field.handleBlur}
+										onChange={(event) => field.handleChange(event.target.value)}
+										aria-invalid={isInvalid}
+									/>
+									{isInvalid ? (
+										<FieldError>
+											{fieldErrorMessage(field.state.meta.errors)}
+										</FieldError>
+									) : null}
+								</Field>
+							);
+						}}
+					</form.Field>
+				</FieldSet>
+
+				<FieldSet>
+					<FieldLegend>Media</FieldLegend>
+					<form.Field
+						name="imageUrl"
+						// `.unwrap()` — see `modules/products/form.tsx`'s identical comment on
+						// `coverImage`: the field's own value type is always `string`.
+						validators={{
+							onChange: variantOptionValueFormSchema.shape.imageUrl.unwrap(),
+						}}
+					>
+						{(field) => {
+							const isInvalid = field.state.meta.errors.length > 0;
+							return (
+								<Field data-invalid={isInvalid}>
+									<FieldLabel htmlFor={field.name}>Image URL</FieldLabel>
+									<Input
+										id={field.name}
+										name={field.name}
+										value={field.state.value}
+										onBlur={field.handleBlur}
+										onChange={(event) => field.handleChange(event.target.value)}
+										aria-invalid={isInvalid}
+									/>
+									{isInvalid ? (
+										<FieldError>
+											{fieldErrorMessage(field.state.meta.errors)}
+										</FieldError>
+									) : null}
+								</Field>
+							);
+						}}
+					</form.Field>
+					<form.Field name="description">
+						{(field) => (
+							<Field>
+								<FieldLabel htmlFor={field.name}>Description</FieldLabel>
+								<Input
+									id={field.name}
+									name={field.name}
+									value={field.state.value}
+									onBlur={field.handleBlur}
+									onChange={(event) => field.handleChange(event.target.value)}
+								/>
+							</Field>
+						)}
+					</form.Field>
+				</FieldSet>
+
+				<FieldSet>
+					<FieldLegend>Display</FieldLegend>
+					{/* `@colidevs/ui`'s `NumberStepperField` derives its id from `field.name`
+					 (no hardcoded-id collision risk, unlike `CheckboxField`/`SelectField`
+					 above) — safe to adopt regardless of how many numeric fields a form
+					 has. */}
+					<form.Field name="displayOrder">
+						{(field) => (
+							<NumberStepperField field={field} title="Display order" />
+						)}
+					</form.Field>
+
+					{optionValue ? (
+						<form.Field name="isActive">
+							{(field) => <CheckboxField field={field} title="Active" />}
+						</form.Field>
+					) : null}
+				</FieldSet>
 
 				<div className="flex gap-2">
 					<Button
