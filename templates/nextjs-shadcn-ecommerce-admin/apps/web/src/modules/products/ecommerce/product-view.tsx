@@ -1,3 +1,4 @@
+import { ImageOff } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -45,7 +46,8 @@ export function ProductView({
 							priority
 						/>
 					) : (
-						<div className="flex h-full w-full items-center justify-center text-muted-foreground text-sm">
+						<div className="flex h-full w-full flex-col items-center justify-center gap-1 text-muted-foreground text-sm">
+							<ImageOff className="size-8" aria-hidden />
 							No image
 						</div>
 					)}

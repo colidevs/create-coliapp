@@ -95,7 +95,12 @@ export function defaultVariantOptionValueSeed(): VariantOptionValueRecord[] {
 			optionTypeId: FINISH_OPTION_TYPE_ID,
 			value: "Walnut",
 			slug: "walnut",
-			imageUrl: null,
+			// Real, reachable test image (`sdd/ecommerce-product-variants/
+			// apply-progress` PR15) — every other seeded option value stays
+			// `imageUrl: null` on purpose, so the thumbnail's additive fallback
+			// (plain text, no broken-image icon) has real MSW-backed coverage
+			// too, not just this one populated case.
+			imageUrl: "https://picsum.photos/id/1025/64/64.jpg",
 			description: null,
 			displayOrder: 1,
 			isActive: true,

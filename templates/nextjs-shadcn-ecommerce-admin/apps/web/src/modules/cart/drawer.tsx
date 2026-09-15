@@ -1,6 +1,6 @@
 "use client";
 
-import { Minus, Plus, Trash2 } from "lucide-react";
+import { Minus, Plus, Trash2, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
 	Drawer,
+	DrawerClose,
 	DrawerContent,
 	DrawerFooter,
 	DrawerHeader,
@@ -23,6 +24,15 @@ import { useCartStore } from "./store";
  * `app-sidebar.tsx`'s `CartSidebar`, which this template does not port, see
  * `shell.tsx`). Reuses the ported `Drawer` primitive (already available from
  * Phase 5's shadcn shell) instead of munod's own `SlidePanel`.
+ *
+ * **Close-button addendum (`sdd/ecommerce-product-variants/apply-progress`
+ * PR15)**: unlike shadcn's `DialogContent`, the shared `DrawerContent`
+ * primitive (`components/ui/drawer.tsx`) renders no close button by
+ * default — verified via `rg "DrawerClose|XIcon" components/ui/drawer.tsx`,
+ * zero hits. Escape/click-outside-to-dismiss remain, but a buyer had no
+ * visible, discoverable way to close the cart. Adds an explicit `X` button
+ * in the header, matching `DialogContent`'s own close-button convention
+ * (`components/ui/dialog.tsx`).
  */
 export function CartDrawer() {
 	const { open, setOpen } = useCartDrawer();
@@ -39,7 +49,20 @@ export function CartDrawer() {
 		<Drawer open={open} onOpenChange={setOpen} direction="right">
 			<DrawerContent className="w-full sm:max-w-sm">
 				<DrawerHeader>
-					<DrawerTitle>Cart ({totalItems})</DrawerTitle>
+					<div className="flex items-center justify-between gap-2">
+						<DrawerTitle>Cart ({totalItems})</DrawerTitle>
+						<DrawerClose asChild>
+							<Button
+								type="button"
+								variant="ghost"
+								size="icon"
+								className="size-8"
+								aria-label="Close cart"
+							>
+								<X className="size-4" />
+							</Button>
+						</DrawerClose>
+					</div>
 				</DrawerHeader>
 
 				<div className="flex-1 overflow-y-auto px-4">

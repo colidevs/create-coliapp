@@ -1,3 +1,4 @@
+import { ImageOff } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -45,7 +46,8 @@ export function ProductLink({ product }: { product: PublicProduct }) {
 							className="object-contain"
 						/>
 					) : (
-						<div className="flex h-full w-full items-center justify-center bg-muted text-muted-foreground text-xs">
+						<div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-muted text-muted-foreground text-xs">
+							<ImageOff className="size-6" aria-hidden />
 							No image
 						</div>
 					)}

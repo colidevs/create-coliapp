@@ -1,6 +1,7 @@
 "use client";
 
 import { useForm } from "@tanstack/react-form";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -48,6 +49,12 @@ import {
  * `admin/variants/repository.ts#assertOptionSelectionsSatisfyProduct` is the
  * real, server-side enforcement (`variant_option_selections`'s composite-PK
  * join itself still carries no DB-level constraint for this).
+ *
+ * **Thumbnail addendum (`sdd/ecommerce-product-variants/apply-progress`
+ * PR15)**: an option value carrying an `imageUrl` renders a small swatch
+ * thumbnail next to its checkbox label, mirroring the storefront's own
+ * `<VariantSelector>` treatment and munod's real production pattern. An
+ * option value with no `imageUrl` renders exactly as before.
  */
 export function VariantForm({
 	variant,
@@ -391,6 +398,17 @@ export function VariantForm({
 															);
 														}}
 													/>
+													{value.imageUrl ? (
+														<span className="relative size-6 shrink-0 overflow-hidden rounded-full border">
+															<Image
+																src={value.imageUrl}
+																alt=""
+																fill
+																sizes="24px"
+																className="object-cover"
+															/>
+														</span>
+													) : null}
 													<Label htmlFor={inputId}>{value.value}</Label>
 												</div>
 											);

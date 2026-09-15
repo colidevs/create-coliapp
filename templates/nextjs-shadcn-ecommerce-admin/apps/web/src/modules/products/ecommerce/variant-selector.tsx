@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 
 import { AddToCartButton } from "@/components/cart-button";
@@ -26,6 +27,14 @@ import {
  * (only) variant's price/stock, matching a plain non-variant product's prior
  * look.
  *
+ * **Thumbnail addendum (`sdd/ecommerce-product-variants/apply-progress`
+ * PR15)**: an option value carrying an `imageUrl` (e.g. a Color/Material
+ * value) renders a small swatch thumbnail inside its button, matching
+ * munod's real production pattern (toggle chips with a per-value swatch,
+ * not plain text pills). An option value with no `imageUrl` renders exactly
+ * as before — this is a strict additive enhancement, never a regression.
+ *
+
  * **Bug fix (`sdd/ecommerce-product-variants/apply-progress` PR11)**:
  * `defaultVariant` is used ONLY to seed the initial `selected` state below —
  * it must NEVER be passed as `resolveVariant`'s own `fallback` argument for
@@ -84,6 +93,17 @@ export function VariantSelector({ product }: { product: PublicProduct }) {
 												}))
 											}
 										>
+											{value.imageUrl ? (
+												<span className="relative size-6 shrink-0 overflow-hidden rounded-full border">
+													<Image
+														src={value.imageUrl}
+														alt=""
+														fill
+														sizes="24px"
+														className="object-cover"
+													/>
+												</span>
+											) : null}
 											{value.value}
 										</Button>
 									);
