@@ -229,33 +229,18 @@ export function VariantForm({
 			<FieldGroup>
 				<FieldSet>
 					<FieldLegend>Identification</FieldLegend>
+					{/* `productId` stays in form state (seeded from `variant.productId`/
+					`defaultProductId` in `defaultValues` above) and is submitted as-is —
+					it's never rendered as a visible field. Every real caller today
+					(`add`/`[variantId]/update`, both nested under
+					`/admin/products/:productId/variants`) always supplies it, so the
+					disabled-input case this used to render was 100% of real usage: a
+					raw UUID in a boxed, bordered `<Input>` a human can't edit and gains
+					nothing from seeing. A hypothetical future non-nested caller with no
+					product context yet would need a real picker (a product `<Select>`),
+					not this disabled textbox — not built speculatively ahead of that
+					caller actually existing. */}
 					<Field orientation="responsive" className="*:flex-1">
-						<form.Field name="productId">
-							{(field) => {
-								const isInvalid = field.state.meta.errors.length > 0;
-								return (
-									<Field data-invalid={isInvalid}>
-										<FieldLabel htmlFor={field.name}>Product ID</FieldLabel>
-										<Input
-											id={field.name}
-											name={field.name}
-											value={field.state.value}
-											onBlur={field.handleBlur}
-											onChange={(event) =>
-												field.handleChange(event.target.value)
-											}
-											disabled={Boolean(variant) || Boolean(defaultProductId)}
-											aria-invalid={isInvalid}
-										/>
-										{isInvalid ? (
-											<FieldError>
-												{fieldErrorMessage(field.state.meta.errors)}
-											</FieldError>
-										) : null}
-									</Field>
-								);
-							}}
-						</form.Field>
 						<form.Field name="code">
 							{(field) => (
 								<Field>
@@ -412,47 +397,49 @@ export function VariantForm({
 									{groupedOptions.map(({ type, values }) => (
 										<FieldSet key={type.id}>
 											<FieldLegend variant="label">{type.name}</FieldLegend>
-											<div className="flex flex-wrap gap-4">
+											{/* Chip-style toggle buttons, not raw Checkbox+Label rows
+											(`design-to-code`'s "still just as ugly" finding, live in
+											this exact form) — same selected-state visual language as
+											the customer-facing `<VariantSelector>`'s size pills, so an
+											admin picking option values gets the same clear
+											affordance a shopper does. */}
+											<div className="flex flex-wrap gap-2">
 												{values.map((value) => {
 													const checked = field.state.value.includes(value.id);
-													const inputId = `option-value-${value.id}`;
 													return (
-														<Field
+														<button
 															key={value.id}
-															orientation="horizontal"
-															className="w-fit"
+															type="button"
+															aria-pressed={checked}
+															onClick={() => {
+																field.handleChange(
+																	checked
+																		? field.state.value.filter(
+																				(id) => id !== value.id,
+																			)
+																		: [...field.state.value, value.id],
+																);
+															}}
+															className={
+																"flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors " +
+																(checked
+																	? "border-primary bg-primary text-primary-foreground"
+																	: "border-input bg-background hover:bg-muted")
+															}
 														>
-															<Checkbox
-																id={inputId}
-																checked={checked}
-																onCheckedChange={(next) => {
-																	field.handleChange(
-																		next === true
-																			? [...field.state.value, value.id]
-																			: field.state.value.filter(
-																					(id) => id !== value.id,
-																				),
-																	);
-																}}
-															/>
 															{value.imageUrl ? (
-																<span className="relative size-6 shrink-0 overflow-hidden rounded-full border">
+																<span className="relative size-5 shrink-0 overflow-hidden rounded-full border border-white/40">
 																	<Image
 																		src={value.imageUrl}
 																		alt=""
 																		fill
-																		sizes="24px"
+																		sizes="20px"
 																		className="object-cover"
 																	/>
 																</span>
 															) : null}
-															<FieldLabel
-																htmlFor={inputId}
-																className="font-normal"
-															>
-																{value.value}
-															</FieldLabel>
-														</Field>
+															{value.value}
+														</button>
 													);
 												})}
 											</div>
