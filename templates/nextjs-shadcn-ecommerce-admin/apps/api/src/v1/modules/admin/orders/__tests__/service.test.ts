@@ -17,8 +17,9 @@ const FAKE_ORDER: Order = {
 	dlocalId: "D-4-e836ba0b-1f9b-4a3e",
 	buyerProducts: [
 		{
-			productId: "1b2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e",
+			variantId: "1b2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e",
 			slug: "wireless-mouse",
+			variantLabel: "Red / M",
 			quantity: 2,
 			unitPrice: 29.99,
 			lineTotal: 59.98,
