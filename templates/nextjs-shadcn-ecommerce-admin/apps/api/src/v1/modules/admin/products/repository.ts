@@ -44,6 +44,7 @@ function toProduct(
 		coverImage: row.coverImage,
 		categoryId: row.categoryId,
 		isActive: row.isActive,
+		isPublished: row.isPublished,
 		defaultPrice: aggregate?.defaultPrice ?? null,
 		variantCount: aggregate?.variantCount ?? 0,
 		createdAt: row.createdAt.toISOString(),
@@ -231,13 +232,14 @@ function productRepo(): Repository {
 		if (input.coverImage !== undefined) values.coverImage = input.coverImage;
 		if (input.categoryId !== undefined) values.categoryId = input.categoryId;
 		if (input.isActive !== undefined) values.isActive = input.isActive;
+		if (input.isPublished !== undefined) values.isPublished = input.isPublished;
 
 		/**
 		 * @description See `create()`'s own comment above — the outer
 		 * `try`/`catch` is required (not the inner one alone) to observe a
 		 * deferred `23514` raised at COMMIT time, which is exactly the case
-		 * this function exercises when `input.isActive` is set to `true`
-		 * with zero active variants.
+		 * this function exercises when `input.isPublished` is set to `true`
+		 * with zero active variants (or with `isActive: false`).
 		 */
 		try {
 			return await withPlatformSession(async (tx) => {

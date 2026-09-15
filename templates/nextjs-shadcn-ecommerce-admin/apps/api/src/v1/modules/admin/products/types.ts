@@ -28,7 +28,20 @@ export const ProductSchema = z
 			.uuid()
 			.nullable()
 			.meta({ example: "9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c" }),
+		/**
+		 * @description Soft-delete marker ONLY (`admin/products/repository.ts`'s
+		 * `deleteOne()`). Deliberately independent of `isPublished` — apply PR22
+		 * fixed a real conflation bug where this single boolean did double duty
+		 * as both the soft-delete marker and the draft/publish gate.
+		 */
 		isActive: z.boolean().meta({ example: true }),
+		/**
+		 * @description Draft/publish gate. `false` (the default) means the
+		 * product is still a draft; `true` requires at least one active variant
+		 * (`ProductRequiresActiveVariantHttpError`), enforced by
+		 * `drizzle/0007_products_require_published_variant.sql`.
+		 */
+		isPublished: z.boolean().meta({ example: false }),
 		/**
 		 * @description The `is_default` variant's price, or `null` when the
 		 * product has no variants yet (e.g. a freshly created draft, D3).
@@ -53,10 +66,12 @@ export type Product = z.infer<typeof ProductSchema>;
 /**
  * @description `slug` is derived server-side from `name` via `toSlug()`
  * (`src/lib/utils.ts`) — never client-supplied, same convention as
- * `admin/categories`. No `price`/`stock`/`isActive` here — design D3: a
- * product is always created as a draft (`is_active: false`, the schema
- * default). Publishing (`isActive: true`, via `PATCH`) requires at least
- * one active variant — add one via `POST /admin/variants` first.
+ * `admin/categories`. No `price`/`stock`/`isActive`/`isPublished` here — a
+ * product is always created active (`is_active: true`, the schema default —
+ * "active" means "not soft-deleted", never anything to opt out of on
+ * create) and as a draft (`is_published: false`, the schema default).
+ * Publishing (`isPublished: true`, via `PATCH`) requires at least one
+ * active variant — add one via `POST /admin/variants` first.
  */
 export const ProductCreateSchema = z
 	.object({
@@ -100,12 +115,19 @@ export const ProductUpdateSchema = z
 			.optional()
 			.meta({ example: "9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c" }),
 		/**
-		 * @description Setting `true` with zero active variants is rejected —
-		 * the deferrable constraint trigger `trg_product_requires_active_variant`
-		 * (`drizzle/0005_variant_rls_and_invariants.sql`) raises `23514` at
-		 * COMMIT, mapped to `ProductRequiresActiveVariantHttpError` (422).
+		 * @description Soft-delete marker only — flip to `false` to soft-delete,
+		 * `true` to restore. Independent of `isPublished` below (apply PR22 fix:
+		 * these two used to be the same conflated boolean).
 		 */
 		isActive: z.boolean().optional().meta({ example: true }),
+		/**
+		 * @description Draft/publish gate. Setting `true` with zero active
+		 * variants (or with `isActive: false`) is rejected — the deferrable
+		 * constraint trigger `trg_product_requires_active_variant`
+		 * (`drizzle/0007_products_require_published_variant.sql`) raises `23514`
+		 * at COMMIT, mapped to `ProductRequiresActiveVariantHttpError` (422).
+		 */
+		isPublished: z.boolean().optional().meta({ example: true }),
 	})
 	.meta({
 		id: "ProductUpdate",

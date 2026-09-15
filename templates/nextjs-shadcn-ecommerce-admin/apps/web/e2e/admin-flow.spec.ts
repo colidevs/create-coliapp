@@ -99,10 +99,17 @@ test("admin logs in and lands on the admin dashboard", async ({ page }) => {
 /**
  * **Retargeted (`sdd/ecommerce-product-variants`, task 9.2)**: `ProductForm`
  * no longer manages `price`/`stock`/`code`/`altCode` — a product is created
- * as catalog metadata only (draft, `isActive: false`), publishing it
- * requires at least one active variant (design's own publish invariant).
- * This test now only exercises the metadata fields; a variant is created
- * separately in the "creates a variant" test below.
+ * as catalog metadata only (active but a draft — `isActive: true`,
+ * `isPublished: false`), publishing it requires at least one active variant
+ * (design's own publish invariant, extended by apply PR22's `isPublished`
+ * split). This test now only exercises the metadata fields; a variant is
+ * created separately in the "creates a variant" test below.
+ *
+ * **PR22**: extended to also confirm the new `isPublished` checkbox renders
+ * on the edit form, defaults unchecked (a freshly created product is a
+ * draft), and that the storefront genuinely excludes an active-but-
+ * unpublished product — the real bug this PR fixes (previously `isActive`
+ * alone conflated "not soft-deleted" with "published").
  */
 test("admin creates a product, then views and edits it", async ({ page }) => {
 	await login(page);
@@ -130,6 +137,24 @@ test("admin creates a product, then views and edits it", async ({ page }) => {
 	// Freshly created, zero variants yet — the derived "from price" has
 	// nothing to derive from (design D4).
 	await expect(page.getByText("No variants yet")).toBeVisible();
+
+	// Storefront must NOT surface this product yet — active, but still a
+	// draft (`isPublished: false`).
+	await page.goto("/products");
+	await expect(page.getByText("E2E Test Stool")).not.toBeVisible();
+
+	// The edit form: both checkboxes render, `isPublished` defaults
+	// unchecked.
+	await page.goto("/admin/products");
+	await page
+		.getByRole("row", { name: /E2E Test Stool/ })
+		.getByRole("button", { name: "Actions" })
+		.click();
+	await page.getByRole("menuitem", { name: "Edit" }).click();
+	await expect(page).toHaveURL(/\/admin\/products\/.+\/update$/);
+
+	await expect(page.getByLabel("Active")).toBeChecked();
+	await expect(page.getByLabel("Published")).not.toBeChecked();
 });
 
 /**

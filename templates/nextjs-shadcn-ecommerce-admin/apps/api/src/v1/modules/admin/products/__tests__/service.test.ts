@@ -13,6 +13,7 @@ const FAKE_PRODUCT: Product = {
 	coverImage: null,
 	categoryId: null,
 	isActive: true,
+	isPublished: true,
 	defaultPrice: 29.99,
 	variantCount: 1,
 	createdAt: "2026-01-01T00:00:00.000Z",

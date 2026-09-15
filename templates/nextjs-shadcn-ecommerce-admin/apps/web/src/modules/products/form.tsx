@@ -8,13 +8,14 @@ import {
 	FieldLegend,
 	FieldSet,
 } from "@colidevs/ui/field";
-import { CheckboxField, SelectField } from "@colidevs/ui/form-fields";
+import { SelectField } from "@colidevs/ui/form-fields";
 import { useForm } from "@tanstack/react-form";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { Category } from "@/generated/model";
@@ -36,14 +37,27 @@ import {
  * **Retargeted (`sdd/ecommerce-product-variants`, design D3/D4)**: this form
  * manages catalog metadata only — `code`/`altCode`/`price`/`stock`/
  * `stockMin` moved to `product_variants` and are no longer editable here.
- * A product is created as a draft (`isActive: false`); publishing it is
- * gated server-side by a deferrable constraint trigger requiring at least
- * one active variant (design's own publish invariant) — this form does not
- * enforce that itself, it only surfaces the resulting error via
- * `toActionState()` like any other server-side rejection. `isActive` stays
- * edit-only (never shown/sent on create), same convention as
+ * A product is created active but as a draft (`isActive: true`,
+ * `isPublished: false`); publishing it (`isPublished: true`) is gated
+ * server-side by a deferrable constraint trigger requiring at least one
+ * active variant (design's own publish invariant, extended by apply PR22 —
+ * see that PR's fix note below) — this form does not enforce that itself,
+ * it only surfaces the resulting error via `toActionState()` like any other
+ * server-side rejection. `isActive`/`isPublished` both stay edit-only
+ * (never shown/sent on create), same convention as
  * `modules/variant-option-values/form.tsx` — `ProductCreateSchema` has no
- * such field at all.
+ * such fields at all.
+ *
+ * **`isActive`/`isPublished` split (PR22)**: fixes a real, confirmed
+ * conflation bug — `isActive` used to do double duty as BOTH the
+ * soft-delete marker (`repository.ts`'s `deleteOne()`) AND the draft/
+ * publish gate, making a soft-deleted product indistinguishable from one
+ * still being drafted. `isPublished` is a second, independent field —
+ * matching munod's own real, separately-decided schema
+ * (`munod/db/migrations/0029_enforce_product_has_active_variant.sql`).
+ * Deliberately a plain checkbox, no "Draft/Published" status badge or
+ * relabeling of `isActive` — Thomas's explicit instruction to keep this
+ * short and simple.
  *
  * **Migrated to `@tanstack/react-form`** (`colidevs/hefesto#104` — ADR 0001
  * Decision 5 was corrected: real colidevs production code, `munod` and
@@ -51,16 +65,19 @@ import {
  * Form). Only the pre-submit client-side validation layer changed — the
  * `toActionState()` server round-trip below is untouched.
  *
- * **`@colidevs/ui` adoption**: `categoryId`/`isActive` now use the shared
- * `SelectField`/`CheckboxField` composed-form-fields layer
- * (`sdd/ecommerce-product-variants/apply-progress` PR18). Safe here — each
- * renders at most once on this page; both carry a hardcoded, non-`field.name`
- * DOM id internally (`framework/packages/ui/src/form-fields.tsx`), so a
- * second instance of either on the same page would collide (see
- * `modules/variant-option-values/form.tsx`'s identical note for the one case
- * where that constraint blocked a swap). `name`/`coverImage`/`description`
- * stay hand-rolled — `InputField`/`TextareaField` carry the same hardcoded-id
- * bug and this page has multiple plain-text inputs.
+ * **`@colidevs/ui` adoption**: `categoryId` uses the shared `SelectField`
+ * composed-form-field (`sdd/ecommerce-product-variants/apply-progress`
+ * PR18) — safe, it renders at most once on this page. `name`/`coverImage`/
+ * `description` stay hand-rolled — `InputField`/`TextareaField` carry a
+ * hardcoded, non-`field.name` DOM id bug and this page has multiple
+ * plain-text inputs. `isActive`/`isPublished` (PR22) are ALSO hand-rolled,
+ * NOT `CheckboxField` — `CheckboxField` has that exact same hardcoded-id
+ * bug (`id: "checkbox_field"` literally, `framework/packages/ui/src/
+ * form-fields.tsx`), and this page now renders two checkboxes
+ * simultaneously when editing, which would collide. Same established
+ * pattern `modules/variants/form.tsx` already uses for its own
+ * `isDefault`+`isActive` pair: a bare `Field orientation="horizontal"` +
+ * `Checkbox` + `FieldLabel`, `id={field.name}`-derived.
  *
  * **Structure pass (munod parity, hefesto `design-to-code`)**: body now
  * mirrors munod's real two-column product-form layout — left column stacks
@@ -85,9 +102,10 @@ import {
  * sections — "Basic info" (`name`, `description`) and "Catalog"
  * (`coverImage`, `categoryId`) — instead of two bare `Field` columns with no
  * section heading, mirroring `modules/variants/form.tsx`'s own grouping
- * convention. The edit-only `isActive` checkbox stays exactly as before
- * (same `CheckboxField`, same position outside both sections, same
- * behavior) — this pass is structural grouping only, not a status-UI change.
+ * convention. The edit-only checkbox row stays outside both sections, same
+ * position as before — this pass was structural grouping only, not a
+ * status-UI change (PR22 above is the one that added a second checkbox to
+ * that row).
  */
 export function ProductForm({
 	product,
@@ -105,7 +123,8 @@ export function ProductForm({
 			description: product?.description ?? "",
 			coverImage: product?.coverImage ?? "",
 			categoryId: product?.categoryId ?? "",
-			isActive: product?.isActive ?? false,
+			isActive: product?.isActive ?? true,
+			isPublished: product?.isPublished ?? false,
 		} satisfies ProductFormValues,
 		onSubmit: async ({ value: values }) => {
 			setIsPending(true);
@@ -117,15 +136,17 @@ export function ProductForm({
 			// "leave unset" on create and "don't change it" on update, never an
 			// explicit null-out (this form has no dedicated "clear this field"
 			// affordance).
-			// `isActive` is never sent on create — `ProductCreateSchema` has no such
-			// field at all (design D3: every product is created as a draft,
-			// `is_active: false` is the schema default). Only `PATCH` (update) can
-			// flip it, and doing so is exactly what the publish invariant trigger
-			// guards.
+			// `isActive`/`isPublished` are never sent on create —
+			// `ProductCreateSchema` has no such fields at all (a product is always
+			// created active/`is_active: true` and a draft/`is_published: false`,
+			// both schema defaults). Only `PATCH` (update) can flip either, and
+			// setting `isPublished: true` is exactly what the publish invariant
+			// trigger guards.
 			const result = product
 				? await updateProductAction(product.id, {
 						name: values.name,
 						isActive: values.isActive,
+						isPublished: values.isPublished,
 						...(values.description ? { description: values.description } : {}),
 						...(values.coverImage ? { coverImage: values.coverImage } : {}),
 						...(values.categoryId ? { categoryId: values.categoryId } : {}),
@@ -283,9 +304,40 @@ export function ProductForm({
 				</Field>
 
 				{product ? (
-					<form.Field name="isActive">
-						{(field) => <CheckboxField field={field} title="Active" />}
-					</form.Field>
+					<div className="flex gap-6">
+						<form.Field name="isActive">
+							{(field) => (
+								<Field orientation="horizontal" className="w-fit">
+									<Checkbox
+										id={field.name}
+										checked={field.state.value}
+										onCheckedChange={(checked) =>
+											field.handleChange(checked === true)
+										}
+									/>
+									<FieldLabel htmlFor={field.name} className="font-normal">
+										Active
+									</FieldLabel>
+								</Field>
+							)}
+						</form.Field>
+						<form.Field name="isPublished">
+							{(field) => (
+								<Field orientation="horizontal" className="w-fit">
+									<Checkbox
+										id={field.name}
+										checked={field.state.value}
+										onCheckedChange={(checked) =>
+											field.handleChange(checked === true)
+										}
+									/>
+									<FieldLabel htmlFor={field.name} className="font-normal">
+										Published
+									</FieldLabel>
+								</Field>
+							)}
+						</form.Field>
+					</div>
 				) : null}
 
 				<div className="flex gap-2">

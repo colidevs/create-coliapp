@@ -135,11 +135,15 @@ export interface Repository {
 
 /**
  * @description Public, unauthenticated storefront reads — always filters
- * `is_active = true` (never surfaces a deactivated/soft-deleted product),
- * matching munod's own `web/products` convention. Only ACTIVE variants are
- * nested (`loadActiveVariantsByProductId`) — a published product is
- * guaranteed at least one by the deferrable constraint trigger
- * (`drizzle/0005_variant_rls_and_invariants.sql`).
+ * `is_active = true` (never surfaces a soft-deleted product) AND
+ * `is_published = true` (never surfaces a still-drafting product), matching
+ * munod's own `web/products` convention (apply PR22 fix: these used to be
+ * one conflated `is_active` boolean; a still-drafting product is now a
+ * genuinely distinct state from a soft-deleted one, and both must stay
+ * excluded from the storefront). Only ACTIVE variants are nested
+ * (`loadActiveVariantsByProductId`) — a published product is guaranteed at
+ * least one by the deferrable constraint trigger
+ * (`drizzle/0007_products_require_published_variant.sql`).
  */
 function webProductRepo(): Repository {
 	async function getActive(
@@ -151,6 +155,7 @@ function webProductRepo(): Repository {
 
 		const filters = [
 			eq(products.isActive, true),
+			eq(products.isPublished, true),
 			params.categoryId ? eq(products.categoryId, params.categoryId) : null,
 			params.q ? ilike(products.name, `%${params.q}%`) : null,
 		].filter((clause) => clause !== null);
@@ -201,7 +206,13 @@ function webProductRepo(): Repository {
 			const [row] = await tx
 				.select()
 				.from(products)
-				.where(and(eq(products.slug, slug), eq(products.isActive, true)));
+				.where(
+					and(
+						eq(products.slug, slug),
+						eq(products.isActive, true),
+						eq(products.isPublished, true),
+					),
+				);
 
 			if (!row) {
 				return null;

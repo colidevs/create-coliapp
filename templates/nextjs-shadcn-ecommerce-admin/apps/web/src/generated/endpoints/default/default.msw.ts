@@ -126,6 +126,7 @@ export const getListProductsResponseMock = (
 		coverImage: faker.helpers.arrayElement([faker.internet.url(), null]),
 		categoryId: faker.helpers.arrayElement([faker.string.uuid(), null]),
 		isActive: faker.datatype.boolean(),
+		isPublished: faker.datatype.boolean(),
 		defaultPrice: faker.helpers.arrayElement([
 			faker.number.float({ fractionDigits: 2 }),
 			null,
@@ -161,6 +162,7 @@ export const getCreateProductResponseMock = (
 	coverImage: faker.helpers.arrayElement([faker.internet.url(), null]),
 	categoryId: faker.helpers.arrayElement([faker.string.uuid(), null]),
 	isActive: faker.datatype.boolean(),
+	isPublished: faker.datatype.boolean(),
 	defaultPrice: faker.helpers.arrayElement([
 		faker.number.float({ fractionDigits: 2 }),
 		null,
@@ -187,6 +189,7 @@ export const getGetProductByIdResponseMock = (
 	coverImage: faker.helpers.arrayElement([faker.internet.url(), null]),
 	categoryId: faker.helpers.arrayElement([faker.string.uuid(), null]),
 	isActive: faker.datatype.boolean(),
+	isPublished: faker.datatype.boolean(),
 	defaultPrice: faker.helpers.arrayElement([
 		faker.number.float({ fractionDigits: 2 }),
 		null,
@@ -213,6 +216,7 @@ export const getUpdateProductResponseMock = (
 	coverImage: faker.helpers.arrayElement([faker.internet.url(), null]),
 	categoryId: faker.helpers.arrayElement([faker.string.uuid(), null]),
 	isActive: faker.datatype.boolean(),
+	isPublished: faker.datatype.boolean(),
 	defaultPrice: faker.helpers.arrayElement([
 		faker.number.float({ fractionDigits: 2 }),
 		null,

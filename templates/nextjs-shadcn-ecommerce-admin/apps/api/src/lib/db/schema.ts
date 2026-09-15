@@ -46,10 +46,29 @@ export const categories = pgTable("categories", {
  * `sdd/ecommerce-product-variants/design` MODIFIED this table: every
  * sellable attribute (`code`/`altCode`/`price`/`stock`/`stockMin`) MOVED to
  * `productVariants` below — a product is no longer itself the sellable
- * unit, a variant is. `isActive` default flips `true` -> `false`
- * (design D3): a product is created as a draft and can only be published
- * once it has at least one active variant, enforced by the deferrable
- * constraint trigger in `drizzle/0005_variant_rls_and_invariants.sql`.
+ * unit, a variant is.
+ *
+ * **`isActive`/`isPublished` split (fixed `sdd/ecommerce-product-variants`
+ * apply PR22)**: `isActive` previously did double duty as BOTH the
+ * soft-delete marker (`repository.ts`'s `deleteOne()`) AND, per an earlier
+ * revision of this table's own doc comment, the draft/publish gate — a
+ * real, confirmed conflation bug (a soft-deleted product and a
+ * still-drafting one were indistinguishable under one boolean). Fixed by
+ * splitting into two independent booleans, matching munod's own real,
+ * separately-decided schema
+ * (`munod/db/migrations/0029_enforce_product_has_active_variant.sql`,
+ * `munod/api/src/v1/modules/admin/products/repository.ts:207-208`):
+ * `isActive` is now the soft-delete marker ONLY, defaulting `true` (a
+ * freshly created product is not deleted) and flipped `false` only by
+ * `deleteOne()`. `isPublished` is the draft/publish gate, defaulting
+ * `false` (every product is created as a draft). Publishing
+ * (`isPublished: true`) requires `isActive` also `true` AND at least one
+ * active variant, enforced by the extended deferrable constraint trigger in
+ * `drizzle/0007_products_require_published_variant.sql` (extends, not
+ * replaces, `drizzle/0005_variant_rls_and_invariants.sql`'s original
+ * active-variant-only check). Deliberately a plain boolean, not a status
+ * enum — Thomas's explicit instruction: keep this short and simple, a
+ * second real column, not a bigger redesign.
  */
 export const products = pgTable("products", {
 	id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -58,7 +77,8 @@ export const products = pgTable("products", {
 	description: text("description"),
 	coverImage: text("cover_image"),
 	categoryId: uuid("category_id").references(() => categories.id),
-	isActive: boolean("is_active").notNull().default(false),
+	isActive: boolean("is_active").notNull().default(true),
+	isPublished: boolean("is_published").notNull().default(false),
 	createdAt: timestamp("created_at", { withTimezone: true })
 		.notNull()
 		.default(sql`now()`),

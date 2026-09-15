@@ -106,6 +106,7 @@ export const storefrontHandlers = [
 
 		const filtered = productsFixture.filter((product) => {
 			if (!product.isActive) return false;
+			if (!product.isPublished) return false;
 			if (categoryId && product.categoryId !== categoryId) return false;
 			if (q && !product.name.toLowerCase().includes(q)) return false;
 			return true;
@@ -132,7 +133,7 @@ export const storefrontHandlers = [
 
 	http.get("*/api/v1/web/products/:slug", ({ params }) => {
 		const product = productsFixture.find(
-			(item) => item.slug === params.slug && item.isActive,
+			(item) => item.slug === params.slug && item.isActive && item.isPublished,
 		);
 
 		if (!product) {

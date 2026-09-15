@@ -254,20 +254,21 @@ export class PaymentProviderHttpError extends HttpError {
 
 /**
  * @description `variant-options` domain (`sdd/ecommerce-product-variants/
- * design`). 422 — the published-product invariant: an active/published
+ * design`). 422 — the published-product invariant: an active AND published
  * product must have at least one active variant, enforced at COMMIT by the
  * deferrable constraint trigger `trg_product_requires_active_variant` /
  * `trg_variant_keeps_product_publishable`
- * (`drizzle/0005_variant_rls_and_invariants.sql`). Caught from the raw
- * Postgres `23514` (`check_violation`) error code — same `isUniqueViolation`
- * -style `.code` sniff already used for `23505` in
- * `admin/products/repository.ts`.
+ * (`drizzle/0005_variant_rls_and_invariants.sql`, extended by apply PR22's
+ * `drizzle/0007_products_require_published_variant.sql` to also require
+ * `is_published`). Caught from the raw Postgres `23514` (`check_violation`)
+ * error code — same `isUniqueViolation`-style `.code` sniff already used
+ * for `23505` in `admin/products/repository.ts`.
  */
 export class ProductRequiresActiveVariantHttpError extends HttpError {
 	constructor() {
 		super(
 			422,
-			"An active product must have at least one active variant",
+			"A published, active product must have at least one active variant",
 			"https://coli.dev/errors/product-requires-active-variant",
 		);
 	}
