@@ -133,6 +133,46 @@ test("admin creates a product, then views and edits it", async ({ page }) => {
 });
 
 /**
+ * `colidevs/hefesto#104` (ADR 0001 Decision 5 correction): proves the
+ * `@tanstack/react-form` migration's per-field `validators.onChange` actually
+ * renders inline feedback via `field.state.meta.errors` — not merely that the
+ * migration compiles. Exercises `ProductForm`'s "Name" field (`productFormSchema.
+ * shape.name`, `z.string().min(1, "Name is required")`): typing an invalid
+ * (empty) value fires the `onChange` validator and surfaces its message,
+ * correcting the value clears it, and the corrected submission still succeeds
+ * end to end.
+ */
+test("product form surfaces a TanStack Form inline validation error, then submits once corrected", async ({
+	page,
+}) => {
+	await login(page);
+
+	await page.goto("/admin/products/add");
+
+	const nameInput = page.getByLabel("Name");
+	// `field.handleChange` only runs on an actual `onChange` event — filling a
+	// value then clearing it is what fires the "min(1)" validator with an
+	// empty string, exactly like a user backspacing out a typed name.
+	await nameInput.fill("x");
+	await nameInput.fill("");
+	await expect(page.getByText("Name is required")).toBeVisible();
+
+	// Clicking Create while the field-level error is still present must not
+	// silently create a product with an empty name.
+	await page.getByRole("button", { name: "Create" }).click();
+	await expect(page).toHaveURL("/admin/products/add");
+
+	await nameInput.fill("E2E Corrected Stool");
+	await expect(page.getByText("Name is required")).not.toBeVisible();
+
+	await page.getByRole("button", { name: "Create" }).click();
+	await expect(page).toHaveURL("/admin/products");
+	await expect(
+		page.getByRole("link", { name: "E2E Corrected Stool" }),
+	).toBeVisible();
+});
+
+/**
  * **Retargeted (`sdd/ecommerce-product-variants`, task 9.4)**: `admin/stock`
  * is now keyed by VARIANT id — Oak Dining Chair's own seeded Natural variant
  * (`mocks/data/variants.ts`), not the product id this test navigated to

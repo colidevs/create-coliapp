@@ -50,6 +50,31 @@ export function toList(value: string): string[] {
 		.filter((opt) => opt.length > 0);
 }
 
+/**
+ * `@tanstack/react-form`'s `field.state.meta.errors` array mixes two shapes:
+ * plain strings (set via `form.setFieldMeta`'s `errorMap.onSubmit`, this
+ * template's own server-error bridge — see `modules/products/form.tsx`) and
+ * Standard Schema issue objects `{ message, path? }` (produced automatically
+ * when a Zod schema is passed directly as a `validators.onChange`/`onSubmit`
+ * value — confirmed live via Playwright: rendering the raw array entry
+ * produced `[object Object]`, not the issue's own message text).
+ * `colidevs/hefesto#104`.
+ */
+export function fieldErrorMessage(errors: unknown[]): string | undefined {
+	const [first] = errors;
+	if (first === undefined) return undefined;
+	if (typeof first === "string") return first;
+	if (
+		typeof first === "object" &&
+		first !== null &&
+		"message" in first &&
+		typeof first.message === "string"
+	) {
+		return first.message;
+	}
+	return String(first);
+}
+
 export function extractObjectName(url: string, folder: string): string | null {
 	try {
 		const { pathname } = new URL(url);

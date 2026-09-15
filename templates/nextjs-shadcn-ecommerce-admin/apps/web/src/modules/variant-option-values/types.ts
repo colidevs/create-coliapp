@@ -15,9 +15,10 @@ export type {
 };
 
 /**
- * Client-side validation schema for `form.tsx`. `optionTypeId` is required
- * only on create (`VariantOptionValueForm`'s own required prop, not this
- * shared schema) — mirrors `modules/product-images/types.ts`'s own
+ * Client-side validation schema for `form.tsx` (`@tanstack/react-form`,
+ * per-field `validators.onChange` — `colidevs/hefesto#104`). `optionTypeId`
+ * is required only on create (`VariantOptionValueForm`'s own required prop,
+ * not this shared schema) — mirrors `modules/product-images/types.ts`'s own
  * `productId`-scoped convention exactly. `slug` is server-derived from
  * `value`, never a form field.
  */

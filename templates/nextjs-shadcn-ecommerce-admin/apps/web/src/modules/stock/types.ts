@@ -11,14 +11,14 @@ export type { ListStockParams, StockUpdate };
 export type Stock = StockItem;
 
 /**
- * Client-side validation schema for `form.tsx` (React Hook Form +
- * `zodResolver`) — mirrors `apps/api`'s `StockUpdateSchema`
- * (`admin/stock/types.ts`), authored independently per the same reasoning as
- * `modules/categories/types.ts`. Plain `z.number()`, not `z.coerce.number()`
- * — same `exactOptionalPropertyTypes` note as `modules/products/types.ts`:
- * keeps input/output types identical so `useForm<StockUpdateFormValues>`
- * type-checks under ADR 0030's floor. Numeric `<Input>`s register with RHF's
- * own `valueAsNumber: true` instead.
+ * Client-side validation schema for `form.tsx` (`@tanstack/react-form`,
+ * per-field `validators.onChange` — `colidevs/hefesto#104`) — mirrors
+ * `apps/api`'s `StockUpdateSchema` (`admin/stock/types.ts`), authored
+ * independently per the same reasoning as `modules/categories/types.ts`.
+ * Plain `z.number()`, not `z.coerce.number()` — same
+ * `exactOptionalPropertyTypes` note as `modules/products/types.ts`: keeps
+ * input/output types identical under ADR 0030's floor. Numeric `<Input>`s
+ * convert via the native `event.target.valueAsNumber` instead.
  */
 export const stockUpdateFormSchema = z.object({
 	stock: z.number().int().min(0, "Stock cannot be negative"),

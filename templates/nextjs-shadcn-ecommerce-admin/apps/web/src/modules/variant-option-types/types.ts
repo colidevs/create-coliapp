@@ -13,8 +13,8 @@ export type {
 };
 
 /**
- * Client-side validation schema for `form.tsx` (React Hook Form +
- * `zodResolver`, `console-golden-path.md` decision 5) — mirrors
+ * Client-side validation schema for `form.tsx` (`@tanstack/react-form`,
+ * per-field `validators.onChange` — `colidevs/hefesto#104`) — mirrors
  * `apps/api`'s `VariantOptionTypeCreateSchema`/`VariantOptionTypeUpdateSchema`
  * (`admin/variant-option-types/types.ts`) but is authored independently: this
  * is a separate deployable (ADR 0029, no shared `packages/*`), so the same

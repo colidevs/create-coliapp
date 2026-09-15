@@ -23,8 +23,8 @@ export type PublicProduct = PublicProductOutput;
 export type PublicVariant = PublicVariantOutput;
 
 /**
- * Client-side validation schema for `form.tsx` (React Hook Form +
- * `zodResolver`) — mirrors `apps/api`'s `ProductCreateSchema`/
+ * Client-side validation schema for `form.tsx` (`@tanstack/react-form`,
+ * per-field `validators.onChange`) — mirrors `apps/api`'s `ProductCreateSchema`/
  * `ProductUpdateSchema` (`admin/products/types.ts`), authored independently
  * per the same reasoning as `modules/categories/types.ts`.
  *

@@ -12,12 +12,13 @@ import type {
 export type { ListVariantsParams, Variant, VariantCreate, VariantUpdate };
 
 /**
- * Client-side validation schema for `form.tsx`. `productId` is required only
- * on create (`VariantForm`'s own required prop, not this shared schema) —
- * mirrors `modules/product-images/types.ts`/`modules/variant-option-values/
- * types.ts`'s own scoped-by-parent-id convention. `optionValueIds` is a
- * plain array (never a delta) — matching `apps/api`'s own
- * `VariantCreateSchema`/`VariantUpdateSchema` (`admin/variants/types.ts`):
+ * Client-side validation schema for `form.tsx` (`@tanstack/react-form`,
+ * per-field `validators.onChange` — `colidevs/hefesto#104`). `productId` is
+ * required only on create (`VariantForm`'s own required prop, not this
+ * shared schema) — mirrors `modules/product-images/types.ts`/`modules/
+ * variant-option-values/types.ts`'s own scoped-by-parent-id convention.
+ * `optionValueIds` is a plain array (never a delta) — matching `apps/api`'s
+ * own `VariantCreateSchema`/`VariantUpdateSchema` (`admin/variants/types.ts`):
  * "providing `optionValueIds` replaces its entire selection set".
  */
 export const variantFormSchema = z.object({
@@ -27,8 +28,8 @@ export const variantFormSchema = z.object({
 	// Plain `z.number()`, not `z.coerce.number()` — same reasoning as every
 	// other numeric field in this admin surface (`modules/products/types.ts`'s
 	// own note): keeps input/output types identical under ADR 0030's
-	// `exactOptionalPropertyTypes` floor. Numeric `<Input>`s register with
-	// RHF's own `valueAsNumber: true` instead.
+	// `exactOptionalPropertyTypes` floor. Numeric `<Input>`s convert via the
+	// native `event.target.valueAsNumber` instead.
 	price: z.number().positive("Price must be greater than 0"),
 	stock: z.number().int().optional(),
 	stockMin: z.number().int().optional(),

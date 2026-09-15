@@ -1,9 +1,8 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "@tanstack/react-form";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -12,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { VariantOptionType, VariantOptionValue } from "@/generated/model";
 import { getQueryClient } from "@/lib/query";
+import { fieldErrorMessage } from "@/lib/utils";
 import { createVariantAction, updateVariantAction } from "./actions";
 import {
 	computeMissingRequiredOptionTypes,
@@ -33,6 +33,9 @@ import {
  * single-value matching — a variant can (and typically does) carry exactly
  * one value per option type.
  *
+ * Built on `@tanstack/react-form` (`colidevs/hefesto#104`, correcting
+ * `console-golden-path.md` decision 5's prior React Hook Form pick).
+ *
  * **Bug fix (`sdd/ecommerce-product-variants/apply-progress` PR11)**: this
  * form now DOES enforce that, once the product has established real option
  * types via sibling variants (`requiredOptionTypeIds`, computed by the
@@ -40,7 +43,8 @@ import {
  * selection silently became unreachable on the storefront (`variant-
  * selection.ts#resolveVariant`'s every/some predicate can never match a
  * candidate whose own `options` is empty once any option key is selected).
- * This is advisory, immediate UX feedback only; `apps/api`'s own
+ * This is advisory, immediate UX feedback only, now expressed as the
+ * `optionValueIds` field's own `validators.onSubmit` — `apps/api`'s own
  * `admin/variants/repository.ts#assertOptionSelectionsSatisfyProduct` is the
  * real, server-side enforcement (`variant_option_selections`'s composite-PK
  * join itself still carries no DB-level constraint for this).
@@ -64,14 +68,7 @@ export function VariantForm({
 	const router = useRouter();
 	const [isPending, setIsPending] = useState(false);
 
-	const {
-		register,
-		handleSubmit,
-		setError,
-		control,
-		formState: { errors },
-	} = useForm<VariantFormValues>({
-		resolver: zodResolver(variantFormSchema),
+	const form = useForm({
 		defaultValues: {
 			productId: variant?.productId ?? defaultProductId ?? "",
 			code: variant?.code ?? "",
@@ -83,6 +80,72 @@ export function VariantForm({
 			isActive: variant?.isActive ?? true,
 			displayOrder: variant?.displayOrder ?? 0,
 			optionValueIds: variant?.optionValueIds ?? [],
+		} satisfies VariantFormValues,
+		onSubmit: async ({ value: values }) => {
+			setIsPending(true);
+
+			// Conditionally include each optional field (ADR 0030's
+			// `exactOptionalPropertyTypes` floor rejects `code: undefined` etc.
+			// against `VariantCreate`/`VariantUpdate`'s optional, non-explicit-
+			// undefined fields). `optionValueIds` is always sent — an empty array
+			// is a meaningful "no selections", never "leave unset".
+			const result = variant
+				? await updateVariantAction(variant.id, {
+						...(values.code ? { code: values.code } : {}),
+						...(values.altCode ? { altCode: values.altCode } : {}),
+						price: values.price,
+						...(values.stock !== undefined ? { stock: values.stock } : {}),
+						...(values.stockMin !== undefined
+							? { stockMin: values.stockMin }
+							: {}),
+						isDefault: values.isDefault,
+						isActive: values.isActive,
+						...(values.displayOrder !== undefined
+							? { displayOrder: values.displayOrder }
+							: {}),
+						optionValueIds: values.optionValueIds,
+					})
+				: await createVariantAction({
+						productId: values.productId,
+						...(values.code ? { code: values.code } : {}),
+						...(values.altCode ? { altCode: values.altCode } : {}),
+						price: values.price,
+						...(values.stock !== undefined ? { stock: values.stock } : {}),
+						...(values.stockMin !== undefined
+							? { stockMin: values.stockMin }
+							: {}),
+						isDefault: values.isDefault,
+						...(values.displayOrder !== undefined
+							? { displayOrder: values.displayOrder }
+							: {}),
+						optionValueIds: values.optionValueIds,
+					});
+
+			setIsPending(false);
+
+			if (!result.success) {
+				if (result.errors) {
+					for (const [field, messages] of Object.entries(result.errors)) {
+						form.setFieldMeta(field as keyof VariantFormValues, (meta) => ({
+							...meta,
+							errorMap: {
+								...meta.errorMap,
+								onSubmit: messages[0] ?? "Invalid value",
+							},
+						}));
+					}
+				}
+				if (result.message) toast.error(result.message);
+				return;
+			}
+
+			toast.success(variant ? "Variant updated." : "Variant created.");
+			// See `modules/products/form.tsx`'s identical comment — the browser
+			// `QueryClient` singleton's global `staleTime: 60_000` (`lib/query.ts`)
+			// otherwise serves this list's pre-write cached page for up to a
+			// minute after this `router.push()`.
+			getQueryClient().invalidateQueries({ queryKey: ["variants"] });
+			router.push(redirectTo);
 		},
 	});
 
@@ -104,190 +167,203 @@ export function VariantForm({
 		}))
 		.filter((group) => group.values.length > 0);
 
-	async function onSubmit(values: VariantFormValues) {
-		// Bug fix (`sdd/ecommerce-product-variants/apply-progress` PR11):
-		// immediate UX feedback BEFORE ever calling the server action — the
-		// real enforcement still happens server-side regardless of this check.
-		const missingTypeIds = computeMissingRequiredOptionTypes(
-			requiredOptionTypeIds,
-			values.optionValueIds,
-			optionValues,
-		);
-		if (missingTypeIds.length > 0) {
-			const names = missingTypeIds
-				.map(
-					(typeId) => optionTypes.find((t) => t.id === typeId)?.name ?? typeId,
-				)
-				.join(", ");
-			setError("optionValueIds", {
-				type: "manual",
-				message: `Select exactly one value for: ${names} — this product already uses ${missingTypeIds.length === 1 ? "that option type" : "these option types"}.`,
-			});
-			return;
-		}
-
-		setIsPending(true);
-
-		// Conditionally include each optional field (ADR 0030's
-		// `exactOptionalPropertyTypes` floor rejects `code: undefined` etc.
-		// against `VariantCreate`/`VariantUpdate`'s optional, non-explicit-
-		// undefined fields). `optionValueIds` is always sent — an empty array
-		// is a meaningful "no selections", never "leave unset".
-		const result = variant
-			? await updateVariantAction(variant.id, {
-					...(values.code ? { code: values.code } : {}),
-					...(values.altCode ? { altCode: values.altCode } : {}),
-					price: values.price,
-					...(values.stock !== undefined ? { stock: values.stock } : {}),
-					...(values.stockMin !== undefined
-						? { stockMin: values.stockMin }
-						: {}),
-					isDefault: values.isDefault,
-					isActive: values.isActive,
-					...(values.displayOrder !== undefined
-						? { displayOrder: values.displayOrder }
-						: {}),
-					optionValueIds: values.optionValueIds,
-				})
-			: await createVariantAction({
-					productId: values.productId,
-					...(values.code ? { code: values.code } : {}),
-					...(values.altCode ? { altCode: values.altCode } : {}),
-					price: values.price,
-					...(values.stock !== undefined ? { stock: values.stock } : {}),
-					...(values.stockMin !== undefined
-						? { stockMin: values.stockMin }
-						: {}),
-					isDefault: values.isDefault,
-					...(values.displayOrder !== undefined
-						? { displayOrder: values.displayOrder }
-						: {}),
-					optionValueIds: values.optionValueIds,
-				});
-
-		setIsPending(false);
-
-		if (!result.success) {
-			if (result.errors) {
-				for (const [field, messages] of Object.entries(result.errors)) {
-					setError(field as keyof VariantFormValues, {
-						type: "server",
-						message: messages[0] ?? "Invalid value",
-					});
-				}
-			}
-			if (result.message) toast.error(result.message);
-			return;
-		}
-
-		toast.success(variant ? "Variant updated." : "Variant created.");
-		// See `modules/products/form.tsx`'s identical comment — the browser
-		// `QueryClient` singleton's global `staleTime: 60_000` (`lib/query.ts`)
-		// otherwise serves this list's pre-write cached page for up to a
-		// minute after this `router.push()`.
-		getQueryClient().invalidateQueries({ queryKey: ["variants"] });
-		router.push(redirectTo);
-	}
-
 	return (
-		<form onSubmit={handleSubmit(onSubmit)} className="max-w-2xl space-y-4">
+		<form
+			onSubmit={(event) => {
+				event.preventDefault();
+				event.stopPropagation();
+				void form.handleSubmit();
+			}}
+			className="max-w-2xl space-y-4"
+		>
 			<div className="grid gap-4 sm:grid-cols-2">
-				<div className="space-y-1">
-					<Label htmlFor="productId">Product ID</Label>
-					<Input
-						id="productId"
-						{...register("productId")}
-						disabled={Boolean(variant) || Boolean(defaultProductId)}
-					/>
-					{errors.productId ? (
-						<p className="text-destructive text-sm">
-							{errors.productId.message}
-						</p>
-					) : null}
-				</div>
-				<div className="space-y-1">
-					<Label htmlFor="code">Code</Label>
-					<Input id="code" {...register("code")} />
-				</div>
-				<div className="space-y-1">
-					<Label htmlFor="altCode">Alt. code</Label>
-					<Input id="altCode" {...register("altCode")} />
-				</div>
-				<div className="space-y-1">
-					<Label htmlFor="price">Price</Label>
-					<Input
-						id="price"
-						type="number"
-						step="0.01"
-						{...register("price", { valueAsNumber: true })}
-					/>
-					{errors.price ? (
-						<p className="text-destructive text-sm">{errors.price.message}</p>
-					) : null}
-				</div>
-				<div className="space-y-1">
-					<Label htmlFor="stock">Stock</Label>
-					<Input
-						id="stock"
-						type="number"
-						{...register("stock", { valueAsNumber: true })}
-					/>
-				</div>
-				<div className="space-y-1">
-					<Label htmlFor="stockMin">Minimum stock</Label>
-					<Input
-						id="stockMin"
-						type="number"
-						{...register("stockMin", { valueAsNumber: true })}
-					/>
-				</div>
-				<div className="space-y-1">
-					<Label htmlFor="displayOrder">Display order</Label>
-					<Input
-						id="displayOrder"
-						type="number"
-						{...register("displayOrder", { valueAsNumber: true })}
-					/>
-				</div>
-			</div>
-
-			<Controller
-				name="isDefault"
-				control={control}
-				render={({ field }) => (
-					<div className="flex items-center gap-2">
-						<Checkbox
-							id="isDefault"
-							checked={field.value}
-							onCheckedChange={(checked) => field.onChange(checked === true)}
-						/>
-						<Label htmlFor="isDefault">Default variant</Label>
-					</div>
-				)}
-			/>
-
-			{variant ? (
-				<Controller
-					name="isActive"
-					control={control}
-					render={({ field }) => (
-						<div className="flex items-center gap-2">
-							<Checkbox
-								id="isActive"
-								checked={field.value}
-								onCheckedChange={(checked) => field.onChange(checked === true)}
+				<form.Field name="productId">
+					{(field) => (
+						<div className="space-y-1">
+							<Label htmlFor={field.name}>Product ID</Label>
+							<Input
+								id={field.name}
+								name={field.name}
+								value={field.state.value}
+								onBlur={field.handleBlur}
+								onChange={(event) => field.handleChange(event.target.value)}
+								disabled={Boolean(variant) || Boolean(defaultProductId)}
 							/>
-							<Label htmlFor="isActive">Active</Label>
+							{field.state.meta.errors.length > 0 ? (
+								<p className="text-destructive text-sm">
+									{fieldErrorMessage(field.state.meta.errors)}
+								</p>
+							) : null}
 						</div>
 					)}
-				/>
+				</form.Field>
+				<form.Field name="code">
+					{(field) => (
+						<div className="space-y-1">
+							<Label htmlFor={field.name}>Code</Label>
+							<Input
+								id={field.name}
+								name={field.name}
+								value={field.state.value}
+								onBlur={field.handleBlur}
+								onChange={(event) => field.handleChange(event.target.value)}
+							/>
+						</div>
+					)}
+				</form.Field>
+				<form.Field name="altCode">
+					{(field) => (
+						<div className="space-y-1">
+							<Label htmlFor={field.name}>Alt. code</Label>
+							<Input
+								id={field.name}
+								name={field.name}
+								value={field.state.value}
+								onBlur={field.handleBlur}
+								onChange={(event) => field.handleChange(event.target.value)}
+							/>
+						</div>
+					)}
+				</form.Field>
+				<form.Field
+					name="price"
+					validators={{ onChange: variantFormSchema.shape.price }}
+				>
+					{(field) => (
+						<div className="space-y-1">
+							<Label htmlFor={field.name}>Price</Label>
+							<Input
+								id={field.name}
+								name={field.name}
+								type="number"
+								step="0.01"
+								value={field.state.value}
+								onBlur={field.handleBlur}
+								onChange={(event) =>
+									field.handleChange(event.target.valueAsNumber)
+								}
+							/>
+							{field.state.meta.errors.length > 0 ? (
+								<p className="text-destructive text-sm">
+									{fieldErrorMessage(field.state.meta.errors)}
+								</p>
+							) : null}
+						</div>
+					)}
+				</form.Field>
+				<form.Field name="stock">
+					{(field) => (
+						<div className="space-y-1">
+							<Label htmlFor={field.name}>Stock</Label>
+							<Input
+								id={field.name}
+								name={field.name}
+								type="number"
+								value={field.state.value}
+								onBlur={field.handleBlur}
+								onChange={(event) =>
+									field.handleChange(event.target.valueAsNumber)
+								}
+							/>
+						</div>
+					)}
+				</form.Field>
+				<form.Field name="stockMin">
+					{(field) => (
+						<div className="space-y-1">
+							<Label htmlFor={field.name}>Minimum stock</Label>
+							<Input
+								id={field.name}
+								name={field.name}
+								type="number"
+								value={field.state.value}
+								onBlur={field.handleBlur}
+								onChange={(event) =>
+									field.handleChange(event.target.valueAsNumber)
+								}
+							/>
+						</div>
+					)}
+				</form.Field>
+				<form.Field name="displayOrder">
+					{(field) => (
+						<div className="space-y-1">
+							<Label htmlFor={field.name}>Display order</Label>
+							<Input
+								id={field.name}
+								name={field.name}
+								type="number"
+								value={field.state.value}
+								onBlur={field.handleBlur}
+								onChange={(event) =>
+									field.handleChange(event.target.valueAsNumber)
+								}
+							/>
+						</div>
+					)}
+				</form.Field>
+			</div>
+
+			<form.Field name="isDefault">
+				{(field) => (
+					<div className="flex items-center gap-2">
+						<Checkbox
+							id={field.name}
+							checked={field.state.value}
+							onCheckedChange={(checked) =>
+								field.handleChange(checked === true)
+							}
+						/>
+						<Label htmlFor={field.name}>Default variant</Label>
+					</div>
+				)}
+			</form.Field>
+
+			{variant ? (
+				<form.Field name="isActive">
+					{(field) => (
+						<div className="flex items-center gap-2">
+							<Checkbox
+								id={field.name}
+								checked={field.state.value}
+								onCheckedChange={(checked) =>
+									field.handleChange(checked === true)
+								}
+							/>
+							<Label htmlFor={field.name}>Active</Label>
+						</div>
+					)}
+				</form.Field>
 			) : null}
 
-			{groupedOptions.length > 0 ? (
-				<Controller
-					name="optionValueIds"
-					control={control}
-					render={({ field }) => (
+			<form.Field
+				name="optionValueIds"
+				validators={{
+					// Bug fix (`sdd/ecommerce-product-variants/apply-progress` PR11):
+					// immediate UX feedback BEFORE ever calling the server action — the
+					// real enforcement still happens server-side regardless of this
+					// check. Runs at submit time only, over this field's own current
+					// value (the selected option-value IDs), so it composes naturally
+					// with TanStack Form's own submit-blocking validator contract.
+					onSubmit: ({ value }) => {
+						const missingTypeIds = computeMissingRequiredOptionTypes(
+							requiredOptionTypeIds,
+							value,
+							optionValues,
+						);
+						if (missingTypeIds.length === 0) return undefined;
+						const names = missingTypeIds
+							.map(
+								(typeId) =>
+									optionTypes.find((t) => t.id === typeId)?.name ?? typeId,
+							)
+							.join(", ");
+						return `Select exactly one value for: ${names} — this product already uses ${missingTypeIds.length === 1 ? "that option type" : "these option types"}.`;
+					},
+				}}
+			>
+				{(field) =>
+					groupedOptions.length > 0 ? (
 						<div className="space-y-3">
 							<Label>Options</Label>
 							{groupedOptions.map(({ type, values }) => (
@@ -295,7 +371,7 @@ export function VariantForm({
 									<p className="text-muted-foreground text-sm">{type.name}</p>
 									<div className="flex flex-wrap gap-4">
 										{values.map((value) => {
-											const checked = field.value.includes(value.id);
+											const checked = field.state.value.includes(value.id);
 											const inputId = `option-value-${value.id}`;
 											return (
 												<div
@@ -306,10 +382,12 @@ export function VariantForm({
 														id={inputId}
 														checked={checked}
 														onCheckedChange={(next) => {
-															field.onChange(
+															field.handleChange(
 																next === true
-																	? [...field.value, value.id]
-																	: field.value.filter((id) => id !== value.id),
+																	? [...field.state.value, value.id]
+																	: field.state.value.filter(
+																			(id) => id !== value.id,
+																		),
 															);
 														}}
 													/>
@@ -320,25 +398,29 @@ export function VariantForm({
 									</div>
 								</div>
 							))}
+							{field.state.meta.errors.length > 0 ? (
+								<p className="text-destructive text-sm">
+									{fieldErrorMessage(field.state.meta.errors)}
+								</p>
+							) : null}
 						</div>
-					)}
-				/>
-			) : (
-				<p className="text-muted-foreground text-sm">
-					No option values are available yet — create an option type and its
-					values first (Option types).
-				</p>
-			)}
-			{errors.optionValueIds ? (
-				<p className="text-destructive text-sm">
-					{errors.optionValueIds.message}
-				</p>
-			) : null}
+					) : (
+						<p className="text-muted-foreground text-sm">
+							No option values are available yet — create an option type and its
+							values first (Option types).
+						</p>
+					)
+				}
+			</form.Field>
 
 			<div className="flex gap-2">
-				<Button type="submit" disabled={isPending}>
-					{isPending ? "Saving…" : variant ? "Save changes" : "Create"}
-				</Button>
+				<form.Subscribe selector={(state) => state.isSubmitting}>
+					{(isSubmitting) => (
+						<Button type="submit" disabled={isPending || isSubmitting}>
+							{isPending ? "Saving…" : variant ? "Save changes" : "Create"}
+						</Button>
+					)}
+				</form.Subscribe>
 				<Button
 					type="button"
 					variant="outline"

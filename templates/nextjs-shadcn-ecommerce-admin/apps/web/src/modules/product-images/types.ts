@@ -27,12 +27,9 @@ export const productImageFormSchema = z.object({
 	productId: z.uuid("Must be a valid product ID"),
 	url: z.url("Must be a valid URL"),
 	// Plain `z.number()`, not `z.coerce.number()` — the input's `<Input
-	// type="number">` registers with RHF's own `valueAsNumber: true` option
+	// type="number">` converts via the native `event.target.valueAsNumber`
 	// instead, keeping this schema's input and output types identical
-	// (`number`). `z.coerce.number()` would otherwise make the resolver's
-	// pre-parse (input) type `unknown`, which does not satisfy
-	// `useForm<ProductImageFormValues>`'s generic under ADR 0030's
-	// `exactOptionalPropertyTypes` floor.
+	// (`number`) under ADR 0030's `exactOptionalPropertyTypes` floor.
 	position: z.number().int().min(0).optional(),
 });
 
