@@ -25,6 +25,7 @@ export interface ProductRecord {
 	coverImage: string | null;
 	categoryId: string | null;
 	isActive: boolean;
+	isPublished: boolean;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -41,6 +42,7 @@ export function defaultProductSeed(): ProductRecord[] {
 			coverImage: "https://images.colidevs.com/e2e/oak-dining-chair.jpg",
 			categoryId: "cat-seating",
 			isActive: true,
+			isPublished: true,
 			createdAt: now,
 			updatedAt: now,
 		},
@@ -52,6 +54,7 @@ export function defaultProductSeed(): ProductRecord[] {
 			coverImage: "https://images.colidevs.com/e2e/velvet-sofa.jpg",
 			categoryId: "cat-seating",
 			isActive: true,
+			isPublished: true,
 			createdAt: now,
 			updatedAt: now,
 		},
@@ -63,6 +66,7 @@ export function defaultProductSeed(): ProductRecord[] {
 			coverImage: "https://images.colidevs.com/e2e/brass-floor-lamp.jpg",
 			categoryId: "cat-lighting",
 			isActive: true,
+			isPublished: true,
 			createdAt: now,
 			updatedAt: now,
 		},
@@ -79,6 +83,7 @@ export function defaultProductSeed(): ProductRecord[] {
 			coverImage: "https://images.colidevs.com/e2e/modular-bookshelf.jpg",
 			categoryId: "cat-seating",
 			isActive: true,
+			isPublished: true,
 			createdAt: now,
 			updatedAt: now,
 		},

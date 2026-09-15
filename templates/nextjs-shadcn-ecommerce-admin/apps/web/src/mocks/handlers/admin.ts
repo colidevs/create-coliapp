@@ -214,9 +214,11 @@ export const adminHandlers = [
 
 	// --- admin/products ---
 	// **Retargeted (task 9.3)**: no `code`/`price`/`stock`/`stockMin` here
-	// anymore — a product is created as a draft (design D3, `isActive` never
-	// accepted on create), and every response is projected through
-	// `withDerivedFields()` for its `defaultPrice`/`variantCount`.
+	// anymore — a product is created active (`isActive` never accepted on
+	// create) but as a draft (`isPublished` never accepted on create either —
+	// apply PR22's `isActive`/`isPublished` split), and every response is
+	// projected through `withDerivedFields()` for its `defaultPrice`/
+	// `variantCount`.
 	http.get("*/api/v1/admin/products", ({ request }) => {
 		const url = new URL(request.url);
 		const page = Number(url.searchParams.get("page") ?? "0") || 0;
@@ -238,7 +240,8 @@ export const adminHandlers = [
 			description: (body.description as string) ?? null,
 			coverImage: (body.coverImage as string) ?? null,
 			categoryId: (body.categoryId as string) ?? null,
-			isActive: false,
+			isActive: true,
+			isPublished: false,
 			createdAt: now,
 			updatedAt: now,
 		};
@@ -256,7 +259,16 @@ export const adminHandlers = [
 		const existing = products.find((item) => item.id === params.id);
 		if (!existing) return problem(404, "Not Found", "Product not found.");
 		const body = (await request.json()) as Record<string, unknown>;
-		if (body.isActive === true) {
+		const updated = {
+			...existing,
+			...body,
+			updatedAt: new Date().toISOString(),
+		};
+		// Mirrors `drizzle/0007_products_require_published_variant.sql`'s
+		// extended invariant: publishing (`isPublished: true`) requires the
+		// product to ALSO be active (not soft-deleted) AND have at least one
+		// active variant.
+		if (updated.isPublished === true && updated.isActive === true) {
 			const hasActiveVariant = variants.some(
 				(v) => v.productId === existing.id && v.isActive,
 			);
@@ -264,15 +276,10 @@ export const adminHandlers = [
 				return problem(
 					422,
 					"Unprocessable Entity",
-					"A product needs at least one active variant before it can be published.",
+					"A published, active product must have at least one active variant.",
 				);
 			}
 		}
-		const updated = {
-			...existing,
-			...body,
-			updatedAt: new Date().toISOString(),
-		};
 		products = products.map((item) => (item.id === params.id ? updated : item));
 		return HttpResponse.json(withDerivedFields(updated), { status: 200 });
 	}),

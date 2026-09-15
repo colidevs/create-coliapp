@@ -18,6 +18,7 @@ export interface Product {
 	coverImage: string | null;
 	categoryId: string | null;
 	isActive: boolean;
+	isPublished: boolean;
 	defaultPrice: number | null;
 	/**
 	 * @minimum -9007199254740991

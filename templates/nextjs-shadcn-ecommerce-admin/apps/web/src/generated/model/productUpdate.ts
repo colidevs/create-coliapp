@@ -16,4 +16,5 @@ export interface ProductUpdate {
 	coverImage?: string | null;
 	categoryId?: string | null;
 	isActive?: boolean;
+	isPublished?: boolean;
 }

@@ -43,6 +43,20 @@
       "when": 1789424828453,
       "tag": "0005_variant_rls_and_invariants",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789513448143,
+      "tag": "0006_talented_grey_gargoyle",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789513453056,
+      "tag": "0007_products_require_published_variant",
+      "breakpoints": true
     }
   ]
 }

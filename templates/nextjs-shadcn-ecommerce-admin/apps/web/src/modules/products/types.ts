@@ -41,6 +41,12 @@ export const productFormSchema = z.object({
 	coverImage: z.union([z.literal(""), z.url("Must be a valid URL")]).optional(),
 	categoryId: z.string().optional(),
 	isActive: z.boolean(),
+	/**
+	 * Draft/publish gate, independent of `isActive` (soft-delete only) —
+	 * `sdd/ecommerce-product-variants` apply PR22 fix for the real, confirmed
+	 * conflation bug where both were the same boolean.
+	 */
+	isPublished: z.boolean(),
 });
 
 export type ProductFormValues = z.infer<typeof productFormSchema>;

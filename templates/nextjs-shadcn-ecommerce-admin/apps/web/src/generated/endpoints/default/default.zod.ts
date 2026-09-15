@@ -263,6 +263,7 @@ export const ListProductsResponse = zod
 						zod.null(),
 					]),
 					isActive: zod.boolean(),
+					isPublished: zod.boolean(),
 					defaultPrice: zod.union([zod.number(), zod.null()]),
 					variantCount: zod
 						.int()
@@ -332,6 +333,7 @@ export const CreateProductResponse = zod
 			zod.null(),
 		]),
 		isActive: zod.boolean(),
+		isPublished: zod.boolean(),
 		defaultPrice: zod.union([zod.number(), zod.null()]),
 		variantCount: zod
 			.int()
@@ -379,6 +381,7 @@ export const GetProductByIdResponse = zod
 			zod.null(),
 		]),
 		isActive: zod.boolean(),
+		isPublished: zod.boolean(),
 		defaultPrice: zod.union([zod.number(), zod.null()]),
 		variantCount: zod
 			.int()
@@ -417,6 +420,7 @@ export const UpdateProductBody = zod
 			])
 			.optional(),
 		isActive: zod.boolean().optional(),
+		isPublished: zod.boolean().optional(),
 	})
 	.describe(
 		"Updates a product. Renaming re-derives `slug` from the new `name`.",
@@ -446,6 +450,7 @@ export const UpdateProductResponse = zod
 			zod.null(),
 		]),
 		isActive: zod.boolean(),
+		isPublished: zod.boolean(),
 		defaultPrice: zod.union([zod.number(), zod.null()]),
 		variantCount: zod
 			.int()
