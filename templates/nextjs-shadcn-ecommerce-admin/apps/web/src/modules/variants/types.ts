@@ -50,6 +50,71 @@ export type VariantFormValues = z.infer<typeof variantFormSchema>;
  * to display a variant's selections without a server-side join — the admin
  * `Variant` model only carries raw `optionValueIds`, never resolved labels.
  */
+/**
+ * Bug fix (`sdd/ecommerce-product-variants/apply-progress` PR11) — client
+ * mirror of `apps/api`'s `admin/variants/repository.ts#
+ * resolveEstablishedOptionTypeIds`. This schema has no `product_option_types`
+ * table (`variant_option_types` is global vocabulary shared across every
+ * product), so the only source of "which option types does THIS product
+ * use" is what its OTHER active variants already selected. Returns an empty
+ * array for a brand-new product or a genuinely option-less single-SKU
+ * product — `computeMissingRequiredOptionTypes` below treats that as "no
+ * constraint yet", matching `admin/variants/repository.ts#replaceSelections`'s
+ * own documented allowance. Advisory only (immediate UX feedback) — the real
+ * enforcement is server-side.
+ */
+export function computeRequiredOptionTypeIds(
+	siblingVariants: Variant[],
+	optionValues: VariantOptionValue[],
+	excludeVariantId?: string,
+): string[] {
+	const typeIdByValueId = new Map(
+		optionValues.map((value) => [value.id, value.optionTypeId]),
+	);
+	const typeIds = new Set<string>();
+
+	for (const variant of siblingVariants) {
+		if (!variant.isActive) continue;
+		if (excludeVariantId && variant.id === excludeVariantId) continue;
+		for (const valueId of variant.optionValueIds) {
+			const typeId = typeIdByValueId.get(valueId);
+			if (typeId) typeIds.add(typeId);
+		}
+	}
+
+	return [...typeIds];
+}
+
+/**
+ * Bug fix (`sdd/ecommerce-product-variants/apply-progress` PR11) — pairs
+ * with `computeRequiredOptionTypeIds` above: given the product's own
+ * established option-type set and THIS variant's currently-selected
+ * `optionValueIds`, returns the required type IDs that don't have EXACTLY
+ * one selected value (missing entirely, or more than one for the same
+ * type). An empty result means the current selection satisfies the
+ * product's established option types (or none are established yet).
+ */
+export function computeMissingRequiredOptionTypes(
+	requiredOptionTypeIds: string[],
+	optionValueIds: string[],
+	optionValues: VariantOptionValue[],
+): string[] {
+	if (requiredOptionTypeIds.length === 0) return [];
+
+	const typeIdByValueId = new Map(
+		optionValues.map((value) => [value.id, value.optionTypeId]),
+	);
+	const countByType = new Map<string, number>();
+	for (const valueId of optionValueIds) {
+		const typeId = typeIdByValueId.get(valueId);
+		if (typeId) countByType.set(typeId, (countByType.get(typeId) ?? 0) + 1);
+	}
+
+	return requiredOptionTypeIds.filter(
+		(typeId) => (countByType.get(typeId) ?? 0) !== 1,
+	);
+}
+
 export function resolveVariantOptionLabels(
 	variant: Pick<Variant, "optionValueIds">,
 	optionTypes: VariantOptionType[],

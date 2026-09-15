@@ -41,6 +41,18 @@ export const SIZE_OPTION_TYPE_ID = "00000000-0000-4000-8000-0000000000f2";
 export const NATURAL_VALUE_ID = "00000000-0000-4000-8000-0000000000a1";
 export const WALNUT_VALUE_ID = "00000000-0000-4000-8000-0000000000a2";
 
+/**
+ * `sdd/ecommerce-product-variants/apply-progress` PR11 (bug fix regression
+ * fixture): real `Size` values under the previously-unused
+ * `SIZE_OPTION_TYPE_ID` — needed by `./variants.ts`'s "Modular Bookshelf"
+ * fixture, which deliberately has TWO option types (`Finish` × `Size`) with
+ * an IMPOSSIBLE combination (Walnut/Large has no variant) so
+ * `e2e/checkout-flow.spec.ts` can exercise the storefront's own "buyer
+ * selects a combination matching no real variant" path end to end.
+ */
+export const SMALL_VALUE_ID = "00000000-0000-4000-8000-0000000000a3";
+export const LARGE_VALUE_ID = "00000000-0000-4000-8000-0000000000a4";
+
 export function defaultVariantOptionTypeSeed(): VariantOptionTypeRecord[] {
 	return [
 		{
@@ -83,6 +95,30 @@ export function defaultVariantOptionValueSeed(): VariantOptionValueRecord[] {
 			optionTypeId: FINISH_OPTION_TYPE_ID,
 			value: "Walnut",
 			slug: "walnut",
+			imageUrl: null,
+			description: null,
+			displayOrder: 1,
+			isActive: true,
+			createdAt: NOW,
+			updatedAt: NOW,
+		},
+		{
+			id: SMALL_VALUE_ID,
+			optionTypeId: SIZE_OPTION_TYPE_ID,
+			value: "Small",
+			slug: "small",
+			imageUrl: null,
+			description: null,
+			displayOrder: 0,
+			isActive: true,
+			createdAt: NOW,
+			updatedAt: NOW,
+		},
+		{
+			id: LARGE_VALUE_ID,
+			optionTypeId: SIZE_OPTION_TYPE_ID,
+			value: "Large",
+			slug: "large",
 			imageUrl: null,
 			description: null,
 			displayOrder: 1,

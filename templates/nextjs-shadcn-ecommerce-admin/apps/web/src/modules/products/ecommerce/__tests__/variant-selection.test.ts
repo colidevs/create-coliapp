@@ -170,6 +170,25 @@ describe("resolveVariant", () => {
 		expect(resolveVariant(variants, { color: "green" })).toBeUndefined();
 	});
 
+	/**
+	 * Bug fix regression (`sdd/ecommerce-product-variants/apply-progress`
+	 * PR11): the pure `resolveVariant` predicate itself already returned
+	 * `undefined` correctly for a no-match selection (the test above) — the
+	 * REAL bug was `variant-selector.tsx`'s call site always passing
+	 * `defaultVariant` as a live `fallback`, silently substituting the wrong
+	 * variant instead of surfacing "no match". This test pins the exact
+	 * multi-option-type impossible-combination shape from that bug report
+	 * (color+size both selected, matching no real variant, blue/l doesn't
+	 * exist among `red-s`/`red-l`/`blue-s`) — asserting `resolveVariant`
+	 * never falls back to ANY variant, including the default, when called
+	 * with no `fallback` argument, exactly as the fixed call site now does.
+	 */
+	it("returns undefined for an impossible multi-option-type combination, never the default variant", () => {
+		expect(
+			resolveVariant(variants, { color: "blue", size: "l" }),
+		).toBeUndefined();
+	});
+
 	it("matches the first variant when nothing is selected", () => {
 		expect(resolveVariant(variants, {})).toBe(redSmall);
 	});

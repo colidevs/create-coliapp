@@ -14,6 +14,7 @@ import type { VariantOptionType, VariantOptionValue } from "@/generated/model";
 import { getQueryClient } from "@/lib/query";
 import { createVariantAction, updateVariantAction } from "./actions";
 import {
+	computeMissingRequiredOptionTypes,
 	type Variant,
 	type VariantFormValues,
 	variantFormSchema,
@@ -30,15 +31,26 @@ import {
  * type, mirroring the storefront's own `<VariantSelector>` grouping
  * (`variant-selection.ts#groupVariantOptions`) but for SELECTION rather than
  * single-value matching — a variant can (and typically does) carry exactly
- * one value per option type, but this form does not enforce that itself;
- * `apps/api`'s own `variant_option_selections` composite-PK join has no such
- * constraint either.
+ * one value per option type.
+ *
+ * **Bug fix (`sdd/ecommerce-product-variants/apply-progress` PR11)**: this
+ * form now DOES enforce that, once the product has established real option
+ * types via sibling variants (`requiredOptionTypeIds`, computed by the
+ * calling `add`/`update` page) — a variant left with zero (or a mismatched)
+ * selection silently became unreachable on the storefront (`variant-
+ * selection.ts#resolveVariant`'s every/some predicate can never match a
+ * candidate whose own `options` is empty once any option key is selected).
+ * This is advisory, immediate UX feedback only; `apps/api`'s own
+ * `admin/variants/repository.ts#assertOptionSelectionsSatisfyProduct` is the
+ * real, server-side enforcement (`variant_option_selections`'s composite-PK
+ * join itself still carries no DB-level constraint for this).
  */
 export function VariantForm({
 	variant,
 	defaultProductId,
 	optionTypes,
 	optionValues,
+	requiredOptionTypeIds = [],
 }: {
 	variant?: Variant;
 	// Explicit `| undefined` (ADR 0030 floor) — nested route callers pass this
@@ -47,6 +59,7 @@ export function VariantForm({
 	defaultProductId?: string | undefined;
 	optionTypes: VariantOptionType[];
 	optionValues: VariantOptionValue[];
+	requiredOptionTypeIds?: string[];
 }) {
 	const router = useRouter();
 	const [isPending, setIsPending] = useState(false);
@@ -92,6 +105,27 @@ export function VariantForm({
 		.filter((group) => group.values.length > 0);
 
 	async function onSubmit(values: VariantFormValues) {
+		// Bug fix (`sdd/ecommerce-product-variants/apply-progress` PR11):
+		// immediate UX feedback BEFORE ever calling the server action — the
+		// real enforcement still happens server-side regardless of this check.
+		const missingTypeIds = computeMissingRequiredOptionTypes(
+			requiredOptionTypeIds,
+			values.optionValueIds,
+			optionValues,
+		);
+		if (missingTypeIds.length > 0) {
+			const names = missingTypeIds
+				.map(
+					(typeId) => optionTypes.find((t) => t.id === typeId)?.name ?? typeId,
+				)
+				.join(", ");
+			setError("optionValueIds", {
+				type: "manual",
+				message: `Select exactly one value for: ${names} — this product already uses ${missingTypeIds.length === 1 ? "that option type" : "these option types"}.`,
+			});
+			return;
+		}
+
 		setIsPending(true);
 
 		// Conditionally include each optional field (ADR 0030's
@@ -295,6 +329,11 @@ export function VariantForm({
 					values first (Option types).
 				</p>
 			)}
+			{errors.optionValueIds ? (
+				<p className="text-destructive text-sm">
+					{errors.optionValueIds.message}
+				</p>
+			) : null}
 
 			<div className="flex gap-2">
 				<Button type="submit" disabled={isPending}>

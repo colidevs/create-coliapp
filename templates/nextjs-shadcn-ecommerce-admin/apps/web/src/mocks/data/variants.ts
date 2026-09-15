@@ -1,4 +1,9 @@
-import { NATURAL_VALUE_ID, WALNUT_VALUE_ID } from "./variant-option-types";
+import {
+	LARGE_VALUE_ID,
+	NATURAL_VALUE_ID,
+	SMALL_VALUE_ID,
+	WALNUT_VALUE_ID,
+} from "./variant-option-types";
 
 /**
  * In-memory `product_variants` MSW fixture, matching this template's ACTUAL
@@ -91,6 +96,55 @@ export function defaultVariantSeed(): VariantRecord[] {
 			isActive: true,
 			displayOrder: 0,
 			optionValueIds: [],
+			createdAt: NOW,
+			updatedAt: NOW,
+		},
+		// "Modular Bookshelf" — `Finish` × `Size`, THREE of the four possible
+		// combinations exist (Natural/Small, Natural/Large, Walnut/Small).
+		// Walnut/Large deliberately does NOT exist — bug fix regression
+		// fixture (`sdd/ecommerce-product-variants/apply-progress` PR11).
+		{
+			id: "00000000-0000-4000-8000-000000000041",
+			productId: "00000000-0000-4000-8000-000000000004",
+			code: "SHF-004-NAT-S",
+			altCode: null,
+			price: 89.99,
+			stock: 15,
+			stockMin: 2,
+			isDefault: true,
+			isActive: true,
+			displayOrder: 0,
+			optionValueIds: [NATURAL_VALUE_ID, SMALL_VALUE_ID],
+			createdAt: NOW,
+			updatedAt: NOW,
+		},
+		{
+			id: "00000000-0000-4000-8000-000000000042",
+			productId: "00000000-0000-4000-8000-000000000004",
+			code: "SHF-004-NAT-L",
+			altCode: null,
+			price: 119.99,
+			stock: 8,
+			stockMin: 2,
+			isDefault: false,
+			isActive: true,
+			displayOrder: 1,
+			optionValueIds: [NATURAL_VALUE_ID, LARGE_VALUE_ID],
+			createdAt: NOW,
+			updatedAt: NOW,
+		},
+		{
+			id: "00000000-0000-4000-8000-000000000043",
+			productId: "00000000-0000-4000-8000-000000000004",
+			code: "SHF-004-WAL-S",
+			altCode: null,
+			price: 94.99,
+			stock: 6,
+			stockMin: 2,
+			isDefault: false,
+			isActive: true,
+			displayOrder: 2,
+			optionValueIds: [WALNUT_VALUE_ID, SMALL_VALUE_ID],
 			createdAt: NOW,
 			updatedAt: NOW,
 		},

@@ -1,7 +1,10 @@
 import { and, asc, eq, inArray, ne } from "drizzle-orm";
 import type { Tx } from "@/lib/db";
 import { schema, withPlatformSession } from "@/lib/db";
-import { ProductRequiresActiveVariantHttpError } from "@/v1/res/errors";
+import {
+	ProductRequiresActiveVariantHttpError,
+	VariantOptionSelectionMismatchHttpError,
+} from "@/v1/res/errors";
 import type {
 	GetVariantsParams,
 	Variant,
@@ -9,7 +12,8 @@ import type {
 	VariantUpdate,
 } from "./types";
 
-const { productVariants, variantOptionSelections } = schema;
+const { productVariants, variantOptionSelections, variantOptionValues } =
+	schema;
 
 /**
  * @description `withPlatformSession`, not `withTenantSession` — same
@@ -167,6 +171,150 @@ async function replaceSelections(
 	}
 }
 
+/**
+ * @description Bug fix (`sdd/ecommerce-product-variants/apply-progress`
+ * PR11): resolves the option-type IDs this product has already ESTABLISHED
+ * via its own OTHER active variants' selections — deliberately 3 flat
+ * `.select().from(table).where()` queries (productVariants →
+ * variantOptionSelections → variantOptionValues), never a `.innerJoin()`,
+ * matching the shape every OTHER query in this file already uses. Returns
+ * an empty set for a brand-new product or one whose existing variants are
+ * all option-less (a genuine single-SKU product,
+ * `replaceSelections`'s own documented allowance) —
+ * `assertOptionSelectionsSatisfyProduct` below treats an empty set as "no
+ * constraint yet".
+ */
+async function resolveEstablishedOptionTypeIds(
+	tx: Tx,
+	productId: string,
+	optionValueIds: string[],
+	excludeVariantId?: string,
+): Promise<{
+	establishedTypeIds: Set<string>;
+	typeIdByValueId: Map<string, string>;
+}> {
+	const siblingConditions = [
+		eq(productVariants.productId, productId),
+		eq(productVariants.isActive, true),
+	];
+	if (excludeVariantId) {
+		siblingConditions.push(ne(productVariants.id, excludeVariantId));
+	}
+
+	const siblingRows = await tx
+		.select()
+		.from(productVariants)
+		.where(and(...siblingConditions));
+	const siblingIds = siblingRows.map((row) => row.id);
+
+	const siblingSelectionRows =
+		siblingIds.length > 0
+			? await tx
+					.select()
+					.from(variantOptionSelections)
+					.where(inArray(variantOptionSelections.variantId, siblingIds))
+			: [];
+
+	const establishedValueIds = [
+		...new Set(siblingSelectionRows.map((row) => row.optionValueId)),
+	];
+
+	if (establishedValueIds.length === 0) {
+		return { establishedTypeIds: new Set(), typeIdByValueId: new Map() };
+	}
+
+	const relevantValueIds = [
+		...new Set([...establishedValueIds, ...optionValueIds]),
+	];
+	const valueRows =
+		relevantValueIds.length > 0
+			? await tx
+					.select()
+					.from(variantOptionValues)
+					.where(inArray(variantOptionValues.id, relevantValueIds))
+			: [];
+	const typeIdByValueId = new Map(
+		valueRows.map((row) => [row.id, row.optionTypeId]),
+	);
+
+	const establishedTypeIds = new Set(
+		establishedValueIds
+			.map((id) => typeIdByValueId.get(id))
+			.filter((typeId): typeId is string => typeId !== undefined),
+	);
+
+	return { establishedTypeIds, typeIdByValueId };
+}
+
+/**
+ * @description The actual bug fix: `admin/variants/form.tsx`'s own doc
+ * comment already named this gap ("this form does not enforce that itself;
+ * apps/api's own variant_option_selections composite-PK join has no such
+ * constraint either") — a variant could be created/updated with ZERO
+ * option-value selections even for a product that has already established
+ * real option types via sibling variants, silently orphaning that variant.
+ * Once a product has an established option-type set, every create/update
+ * MUST select exactly one value per established type. A product with no
+ * established set yet is unaffected — see
+ * `resolveEstablishedOptionTypeIds`'s own doc comment.
+ */
+async function assertOptionSelectionsSatisfyProduct(
+	tx: Tx,
+	productId: string,
+	optionValueIds: string[],
+	excludeVariantId?: string,
+): Promise<void> {
+	const { establishedTypeIds, typeIdByValueId } =
+		await resolveEstablishedOptionTypeIds(
+			tx,
+			productId,
+			optionValueIds,
+			excludeVariantId,
+		);
+
+	if (establishedTypeIds.size === 0) {
+		return;
+	}
+
+	const unknownIds = optionValueIds.filter((id) => !typeIdByValueId.has(id));
+	if (unknownIds.length > 0) {
+		throw new VariantOptionSelectionMismatchHttpError([
+			{
+				field: "optionValueIds",
+				message: `Unknown option value id(s): ${unknownIds.join(", ")}`,
+			},
+		]);
+	}
+
+	const countByType = new Map<string, number>();
+	for (const id of optionValueIds) {
+		const typeId = typeIdByValueId.get(id);
+		if (typeId) {
+			countByType.set(typeId, (countByType.get(typeId) ?? 0) + 1);
+		}
+	}
+
+	const errors: Array<{ field: string; message: string }> = [];
+	for (const typeId of establishedTypeIds) {
+		const count = countByType.get(typeId) ?? 0;
+		if (count === 0) {
+			errors.push({
+				field: "optionValueIds",
+				message: `Missing a selected value for required option type ${typeId}`,
+			});
+		} else if (count > 1) {
+			errors.push({
+				field: "optionValueIds",
+				message: `More than one selected value for option type ${typeId} — exactly one is required`,
+			});
+		}
+	}
+
+	if (errors.length > 0) {
+		throw new VariantOptionSelectionMismatchHttpError(errors);
+	}
+}
+
 export interface Repository {
 	get: (params: GetVariantsParams) => Promise<Variant[]>;
 	getById: (id: string) => Promise<Variant | null>;
@@ -225,7 +373,15 @@ function variantRepo(): Repository {
 	async function create(
 		input: VariantCreate,
 	): ReturnType<Repository["create"]> {
+		const optionValueIds = input.optionValueIds ?? [];
+
 		return withPlatformSession(async (tx) => {
+			await assertOptionSelectionsSatisfyProduct(
+				tx,
+				input.productId,
+				optionValueIds,
+			);
+
 			if (input.isDefault) {
 				await clearSiblingDefault(tx, input.productId);
 			}
@@ -248,7 +404,6 @@ function variantRepo(): Repository {
 				})
 				.returning();
 
-			const optionValueIds = input.optionValueIds ?? [];
 			if (optionValueIds.length > 0) {
 				await tx.insert(variantOptionSelections).values(
 					optionValueIds.map((optionValueId) => ({
@@ -299,6 +454,15 @@ function variantRepo(): Repository {
 
 				if (!existing) {
 					return null;
+				}
+
+				if (input.optionValueIds !== undefined) {
+					await assertOptionSelectionsSatisfyProduct(
+						tx,
+						existing.productId,
+						input.optionValueIds,
+						id,
+					);
 				}
 
 				if (input.isDefault === true) {
