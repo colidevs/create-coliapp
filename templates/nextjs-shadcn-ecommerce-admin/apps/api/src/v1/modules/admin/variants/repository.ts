@@ -1,6 +1,6 @@
 import { and, asc, eq, inArray, ne } from "drizzle-orm";
 import type { Tx } from "@/lib/db";
-import { schema, withPlatformSession } from "@/lib/db";
+import { isCheckViolation, schema, withPlatformSession } from "@/lib/db";
 import {
 	ProductRequiresActiveVariantHttpError,
 	VariantOptionSelectionMismatchHttpError,
@@ -48,43 +48,13 @@ function toVariant(
  * deferrable constraint trigger `trg_variant_keeps_product_publishable`
  * (`drizzle/0005_variant_rls_and_invariants.sql`, fires `AFTER UPDATE OR
  * DELETE ON product_variants`) when a variant update/delete leaves an
- * active product with zero active variants. Same `.code` detection shape
- * `admin/products/repository.ts` already uses for the sibling
+ * active product with zero active variants. Detected via the shared
+ * `isCheckViolation` helper (`@/lib/db/pg-error.ts`), same as
+ * `admin/products/repository.ts`'s sibling
  * `trg_product_requires_active_variant` trigger. The trigger does NOT fire
  * on `INSERT` into `product_variants` (adding a variant only ever helps
  * publishability), so `create()` below needs no such catch.
  */
-/**
- * @description Reads the real Postgres error code off a thrown error.
- * `drizzle-orm@0.45.2` wraps every raw `pg` driver error inside its own
- * `DrizzleQueryError`, nesting the original error — the one that actually
- * carries `.code` (e.g. `23505`/`23514`) — under `.cause`, never on the
- * thrown error itself (`drizzle-orm/errors.js`, verified against the
- * installed version). Falls back to `.code` directly in case some other
- * code path throws a raw, unwrapped `pg` error.
- */
-function getPgErrorCode(e: unknown): string | undefined {
-	if (typeof e !== "object" || e === null) {
-		return undefined;
-	}
-	const cause = (e as { cause?: unknown }).cause;
-	if (
-		typeof cause === "object" &&
-		cause !== null &&
-		"code" in cause &&
-		typeof (cause as { code?: unknown }).code === "string"
-	) {
-		return (cause as { code: string }).code;
-	}
-	if ("code" in e && typeof (e as { code?: unknown }).code === "string") {
-		return (e as { code: string }).code;
-	}
-	return undefined;
-}
-
-function isCheckViolation(e: unknown): boolean {
-	return getPgErrorCode(e) === "23514";
-}
 
 /**
  * @description Loads every variant's `optionValueIds` in one query (never

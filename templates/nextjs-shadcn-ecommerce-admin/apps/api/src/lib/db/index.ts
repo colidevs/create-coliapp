@@ -7,5 +7,10 @@
  */
 
 export { schema } from "./client";
+export {
+	getPgErrorCode,
+	isCheckViolation,
+	isUniqueViolation,
+} from "./pg-error";
 export type { TenantCtx, Tx } from "./session";
 export { withPlatformSession, withTenantSession } from "./session";

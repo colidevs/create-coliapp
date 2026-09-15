@@ -1,5 +1,5 @@
 import { asc, eq } from "drizzle-orm";
-import { schema, withPlatformSession } from "@/lib/db";
+import { isUniqueViolation, schema, withPlatformSession } from "@/lib/db";
 import { toSlug } from "@/lib/utils";
 import { DuplicateSlugHttpError } from "@/v1/res/errors";
 import type { Category, CategoryCreate, CategoryUpdate } from "./types";
@@ -22,21 +22,6 @@ function toCategory(row: typeof categories.$inferSelect): Category {
 		createdAt: row.createdAt.toISOString(),
 		updatedAt: row.updatedAt.toISOString(),
 	};
-}
-
-/**
- * @description Duck-types `pg`'s own unique-violation error shape
- * (`code === "23505"`) — the same detection this template's `Dlocal`
- * repository already relies on for its own `23505` handling
- * (`Dlocal/repository.ts#createOrder`).
- */
-function isUniqueViolation(e: unknown): boolean {
-	return (
-		typeof e === "object" &&
-		e !== null &&
-		"code" in e &&
-		(e as { code?: unknown }).code === "23505"
-	);
 }
 
 export interface Repository {
