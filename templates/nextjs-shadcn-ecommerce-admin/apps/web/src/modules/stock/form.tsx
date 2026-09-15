@@ -1,6 +1,13 @@
 "use client";
 
-import { Field, FieldError, FieldGroup, FieldLabel } from "@colidevs/ui/field";
+import {
+	Field,
+	FieldError,
+	FieldGroup,
+	FieldLabel,
+	FieldLegend,
+	FieldSet,
+} from "@colidevs/ui/field";
 import { useForm } from "@tanstack/react-form";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -33,6 +40,11 @@ import {
  * `@colidevs/ui`'s `NumberStepperField` adoption is a separate,
  * already-in-flight concern (`sdd/ecommerce-product-variants/apply-progress`
  * PR18) — not swapped in as part of this structure-only pass.
+ *
+ * **Grouping pass (PR21)**: both fields now sit inside one `FieldSet` +
+ * `FieldLegend` section ("Stock"), matching `modules/variants/form.tsx`'s
+ * own "Stock" section wording — this form has a single logical group, so
+ * there is exactly one `FieldSet` rather than a split.
  */
 export function StockForm({ stock }: { stock: Stock }) {
 	const router = useRouter();
@@ -86,64 +98,67 @@ export function StockForm({ stock }: { stock: Stock }) {
 			className="max-w-md"
 		>
 			<FieldGroup>
-				<form.Field
-					name="stock"
-					validators={{ onChange: stockUpdateFormSchema.shape.stock }}
-				>
-					{(field) => {
-						const isInvalid = field.state.meta.errors.length > 0;
-						return (
-							<Field data-invalid={isInvalid}>
-								<FieldLabel htmlFor={field.name}>Stock</FieldLabel>
-								<Input
-									id={field.name}
-									name={field.name}
-									type="number"
-									value={field.state.value}
-									onBlur={field.handleBlur}
-									onChange={(event) =>
-										field.handleChange(event.target.valueAsNumber)
-									}
-									aria-invalid={isInvalid}
-								/>
-								{isInvalid ? (
-									<FieldError>
-										{fieldErrorMessage(field.state.meta.errors)}
-									</FieldError>
-								) : null}
-							</Field>
-						);
-					}}
-				</form.Field>
-				<form.Field
-					name="stockMin"
-					validators={{ onChange: stockUpdateFormSchema.shape.stockMin }}
-				>
-					{(field) => {
-						const isInvalid = field.state.meta.errors.length > 0;
-						return (
-							<Field data-invalid={isInvalid}>
-								<FieldLabel htmlFor={field.name}>Minimum stock</FieldLabel>
-								<Input
-									id={field.name}
-									name={field.name}
-									type="number"
-									value={field.state.value}
-									onBlur={field.handleBlur}
-									onChange={(event) =>
-										field.handleChange(event.target.valueAsNumber)
-									}
-									aria-invalid={isInvalid}
-								/>
-								{isInvalid ? (
-									<FieldError>
-										{fieldErrorMessage(field.state.meta.errors)}
-									</FieldError>
-								) : null}
-							</Field>
-						);
-					}}
-				</form.Field>
+				<FieldSet>
+					<FieldLegend>Stock</FieldLegend>
+					<form.Field
+						name="stock"
+						validators={{ onChange: stockUpdateFormSchema.shape.stock }}
+					>
+						{(field) => {
+							const isInvalid = field.state.meta.errors.length > 0;
+							return (
+								<Field data-invalid={isInvalid}>
+									<FieldLabel htmlFor={field.name}>Stock</FieldLabel>
+									<Input
+										id={field.name}
+										name={field.name}
+										type="number"
+										value={field.state.value}
+										onBlur={field.handleBlur}
+										onChange={(event) =>
+											field.handleChange(event.target.valueAsNumber)
+										}
+										aria-invalid={isInvalid}
+									/>
+									{isInvalid ? (
+										<FieldError>
+											{fieldErrorMessage(field.state.meta.errors)}
+										</FieldError>
+									) : null}
+								</Field>
+							);
+						}}
+					</form.Field>
+					<form.Field
+						name="stockMin"
+						validators={{ onChange: stockUpdateFormSchema.shape.stockMin }}
+					>
+						{(field) => {
+							const isInvalid = field.state.meta.errors.length > 0;
+							return (
+								<Field data-invalid={isInvalid}>
+									<FieldLabel htmlFor={field.name}>Minimum stock</FieldLabel>
+									<Input
+										id={field.name}
+										name={field.name}
+										type="number"
+										value={field.state.value}
+										onBlur={field.handleBlur}
+										onChange={(event) =>
+											field.handleChange(event.target.valueAsNumber)
+										}
+										aria-invalid={isInvalid}
+									/>
+									{isInvalid ? (
+										<FieldError>
+											{fieldErrorMessage(field.state.meta.errors)}
+										</FieldError>
+									) : null}
+								</Field>
+							);
+						}}
+					</form.Field>
+				</FieldSet>
 				<div className="flex gap-2">
 					<Button
 						type="button"

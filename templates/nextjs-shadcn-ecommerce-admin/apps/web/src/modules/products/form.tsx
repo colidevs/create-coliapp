@@ -1,6 +1,13 @@
 "use client";
 
-import { Field, FieldError, FieldGroup, FieldLabel } from "@colidevs/ui/field";
+import {
+	Field,
+	FieldError,
+	FieldGroup,
+	FieldLabel,
+	FieldLegend,
+	FieldSet,
+} from "@colidevs/ui/field";
 import { CheckboxField, SelectField } from "@colidevs/ui/form-fields";
 import { useForm } from "@tanstack/react-form";
 import { useRouter } from "next/navigation";
@@ -73,6 +80,14 @@ import {
  * line, overflowing outside the field box. That is a bug in
  * `@colidevs/ui@0.1.0`'s shipped primitives (or their interaction with
  * nested `Field` containers), not something to work around here.
+ *
+ * **Grouping pass (PR21)**: the two columns are now `FieldSet` + `FieldLegend`
+ * sections — "Basic info" (`name`, `description`) and "Catalog"
+ * (`coverImage`, `categoryId`) — instead of two bare `Field` columns with no
+ * section heading, mirroring `modules/variants/form.tsx`'s own grouping
+ * convention. The edit-only `isActive` checkbox stays exactly as before
+ * (same `CheckboxField`, same position outside both sections, same
+ * behavior) — this pass is structural grouping only, not a status-UI change.
  */
 export function ProductForm({
 	product,
@@ -164,7 +179,8 @@ export function ProductForm({
 		>
 			<FieldGroup>
 				<Field className="flex flex-col gap-8 lg:flex-row">
-					<Field>
+					<FieldSet className="flex-1">
+						<FieldLegend>Basic info</FieldLegend>
 						<form.Field
 							name="name"
 							validators={{ onChange: productFormSchema.shape.name }}
@@ -208,8 +224,9 @@ export function ProductForm({
 								</Field>
 							)}
 						</form.Field>
-					</Field>
-					<Field>
+					</FieldSet>
+					<FieldSet className="flex-1">
+						<FieldLegend>Catalog</FieldLegend>
 						<Field orientation="responsive" className="*:flex-1">
 							<form.Field
 								name="coverImage"
@@ -262,7 +279,7 @@ export function ProductForm({
 								)}
 							</form.Field>
 						</Field>
-					</Field>
+					</FieldSet>
 				</Field>
 
 				{product ? (
