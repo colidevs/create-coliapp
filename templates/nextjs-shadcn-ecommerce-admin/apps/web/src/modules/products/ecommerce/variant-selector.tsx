@@ -25,6 +25,22 @@ import {
  * option-value selections) renders no picker UI at all — just the resolved
  * (only) variant's price/stock, matching a plain non-variant product's prior
  * look.
+ *
+ * **Bug fix (`sdd/ecommerce-product-variants/apply-progress` PR11)**:
+ * `defaultVariant` is used ONLY to seed the initial `selected` state below —
+ * it must NEVER be passed as `resolveVariant`'s own `fallback` argument for
+ * the LIVE render. Passing it there (the original bug) meant a buyer
+ * selecting an option combination that matches NO real variant (e.g. this
+ * product has S/Black, M/Black, L/White but not M/White) silently resolved
+ * to the DEFAULT variant instead — the option buttons visually showed the
+ * buyer's actual (impossible) selection highlighted, but `AddToCartButton`
+ * received a DIFFERENT variant than what was shown, so the wrong item
+ * silently entered the cart with zero warning. `resolveVariant` with no
+ * fallback correctly returns `undefined` for a live selection matching no
+ * variant — `AddToCartButton` already handles `undefined` (disabled,
+ * "Out of stock"); the block below distinguishes that case from a real
+ * zero-stock variant with its own "Not available in this combination"
+ * message.
  */
 export function VariantSelector({ product }: { product: PublicProduct }) {
 	const { variants } = product;
@@ -35,7 +51,7 @@ export function VariantSelector({ product }: { product: PublicProduct }) {
 		initialSelectedOptions(defaultVariant),
 	);
 
-	const resolved = resolveVariant(variants, selected, defaultVariant);
+	const resolved = resolveVariant(variants, selected);
 
 	return (
 		<div className="space-y-6">
@@ -84,7 +100,11 @@ export function VariantSelector({ product }: { product: PublicProduct }) {
 						<Price price={resolved.price} />
 					</span>
 				) : null}
-				{!resolved || resolved.stock === 0 ? (
+				{!resolved ? (
+					<Badge variant="outline" className="rounded-none uppercase">
+						Not available in this combination
+					</Badge>
+				) : resolved.stock === 0 ? (
 					<Badge variant="outline" className="rounded-none uppercase">
 						Out of stock
 					</Badge>

@@ -66,6 +66,22 @@ export function defaultProductSeed(): ProductRecord[] {
 			createdAt: now,
 			updatedAt: now,
 		},
+		{
+			// `sdd/ecommerce-product-variants/apply-progress` PR11 (bug fix
+			// regression fixture): TWO option types (`Finish` × `Size`,
+			// `./variants.ts`) with a deliberately IMPOSSIBLE combination
+			// (Walnut/Large) — reproduces the "buyer selects a combination
+			// matching no real variant" storefront bug end to end.
+			id: "00000000-0000-4000-8000-000000000004",
+			name: "Modular Bookshelf",
+			slug: "modular-bookshelf",
+			description: "Stackable oak bookshelf module, available in two sizes.",
+			coverImage: "https://images.colidevs.com/e2e/modular-bookshelf.jpg",
+			categoryId: "cat-seating",
+			isActive: true,
+			createdAt: now,
+			updatedAt: now,
+		},
 	];
 }
 
