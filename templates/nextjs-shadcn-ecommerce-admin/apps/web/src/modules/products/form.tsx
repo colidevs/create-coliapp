@@ -1,21 +1,14 @@
 "use client";
 
+import { CheckboxField, SelectField } from "@colidevs/ui/form-fields";
 import { useForm } from "@tanstack/react-form";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { Category } from "@/generated/model";
 import { getQueryClient } from "@/lib/query";
@@ -50,6 +43,17 @@ import {
  * `org-jaulasvacias`, exclusively uses TanStack Form, never React Hook
  * Form). Only the pre-submit client-side validation layer changed — the
  * `toActionState()` server round-trip below is untouched.
+ *
+ * **`@colidevs/ui` adoption**: `categoryId`/`isActive` now use the shared
+ * `SelectField`/`CheckboxField` composed-form-fields layer
+ * (`sdd/ecommerce-product-variants/apply-progress` PR18). Safe here — each
+ * renders at most once on this page; both carry a hardcoded, non-`field.name`
+ * DOM id internally (`framework/packages/ui/src/form-fields.tsx`), so a
+ * second instance of either on the same page would collide (see
+ * `modules/variant-option-values/form.tsx`'s identical note for the one case
+ * where that constraint blocked a swap). `name`/`coverImage`/`description`
+ * stay hand-rolled — `InputField`/`TextareaField` carry the same hardcoded-id
+ * bug and this page has multiple plain-text inputs.
  */
 export function ProductForm({
 	product,
@@ -190,27 +194,16 @@ export function ProductForm({
 				</form.Field>
 				<form.Field name="categoryId">
 					{(field) => (
-						<div className="space-y-1">
-							<Label>Category</Label>
-							{/* Conditionally spread `value` (ADR 0030 floor) — `field.state.value`
-							 is `string | undefined` (unselected), but `Select`'s own
-							 `value?` prop type has no explicit `| undefined`. */}
-							<Select
-								{...(field.state.value ? { value: field.state.value } : {})}
-								onValueChange={field.handleChange}
-							>
-								<SelectTrigger className="w-full">
-									<SelectValue placeholder="No category" />
-								</SelectTrigger>
-								<SelectContent>
-									{categories.map((category) => (
-										<SelectItem key={category.id} value={category.id}>
-											{category.name}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-						</div>
+						<SelectField
+							field={field}
+							title="Category"
+							placeholder="No category"
+							options={categories.map((category) => ({
+								id: category.id,
+								label: category.name,
+								value: category.id,
+							}))}
+						/>
 					)}
 				</form.Field>
 			</div>
@@ -231,18 +224,7 @@ export function ProductForm({
 			</form.Field>
 			{product ? (
 				<form.Field name="isActive">
-					{(field) => (
-						<div className="flex items-center gap-2">
-							<Checkbox
-								id={field.name}
-								checked={field.state.value}
-								onCheckedChange={(checked) =>
-									field.handleChange(checked === true)
-								}
-							/>
-							<Label htmlFor={field.name}>Active</Label>
-						</div>
-					)}
+					{(field) => <CheckboxField field={field} title="Active" />}
 				</form.Field>
 			) : null}
 			<div className="flex gap-2">

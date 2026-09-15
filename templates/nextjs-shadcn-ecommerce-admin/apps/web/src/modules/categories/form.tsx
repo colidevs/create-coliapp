@@ -1,12 +1,12 @@
 "use client";
 
+import { CheckboxField } from "@colidevs/ui/form-fields";
 import { useForm } from "@tanstack/react-form";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getQueryClient } from "@/lib/query";
@@ -29,6 +29,12 @@ import {
  * feeds a per-field `errorMap.onSubmit`, composing client-side validation
  * with the server's authoritative result exactly as `console-golden-path.md`
  * describes, unchanged by this migration.
+ *
+ * **`@colidevs/ui` adoption**: `isActive` now uses the shared `CheckboxField`
+ * composed-form-fields layer (`sdd/ecommerce-product-variants/apply-progress`
+ * PR18) — safe here since this page has exactly one checkbox instance (see
+ * `modules/variant-option-values/form.tsx`'s note on the hardcoded-id
+ * constraint this relies on).
  */
 export function CategoryForm({
 	category,
@@ -118,18 +124,7 @@ export function CategoryForm({
 
 			{category ? (
 				<form.Field name="isActive">
-					{(field) => (
-						<div className="flex items-center gap-2">
-							<Checkbox
-								id={field.name}
-								checked={field.state.value}
-								onCheckedChange={(checked) =>
-									field.handleChange(checked === true)
-								}
-							/>
-							<Label htmlFor={field.name}>Active</Label>
-						</div>
-					)}
+					{(field) => <CheckboxField field={field} title="Active" />}
 				</form.Field>
 			) : null}
 
