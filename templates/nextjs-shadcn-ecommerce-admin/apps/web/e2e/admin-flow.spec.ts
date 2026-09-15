@@ -33,10 +33,16 @@ import { MOCK_BEARER_TOKEN, MOCK_SESSION } from "../src/mocks/data/auth";
  * exact token the server-side session check later validates.
  *
  * Product/stock/order ids below are the exact, stable seed ids from
- * `src/mocks/data/{products,orders}.ts` (`prod-oak-chair`, `order-e2e-001`)
- * — navigated to directly rather than via row-click, since this suite tests
- * the admin CRUD flow itself, not `DataTable`'s own row-action affordances
- * (already exercised, structurally, in every other module's own precedent).
+ * `src/mocks/data/{products,variants,orders}.ts` (Oak Dining Chair's own
+ * Natural variant, `order-e2e-001`) — navigated to directly rather than via
+ * row-click, since this suite tests the admin CRUD flow itself, not
+ * `DataTable`'s own row-action affordances (already exercised, structurally,
+ * in every other module's own precedent).
+ *
+ * **Retargeted (`sdd/ecommerce-product-variants`, task 9.4)**: `admin/stock`
+ * is now keyed by VARIANT id, not product id (design's own retarget,
+ * PR5) — the stock test below navigates to Oak Dining Chair's own Natural
+ * variant id instead of the product id it used before this change.
  */
 test.beforeEach(async ({ page }) => {
 	// Stateful, per-test flag — `GuestGuard` (`/auth/login`) calls
@@ -90,6 +96,14 @@ test("admin logs in and lands on the admin dashboard", async ({ page }) => {
 	await expect(page.getByRole("heading", { name: "Admin" })).toBeVisible();
 });
 
+/**
+ * **Retargeted (`sdd/ecommerce-product-variants`, task 9.2)**: `ProductForm`
+ * no longer manages `price`/`stock`/`code`/`altCode` — a product is created
+ * as catalog metadata only (draft, `isActive: false`), publishing it
+ * requires at least one active variant (design's own publish invariant).
+ * This test now only exercises the metadata fields; a variant is created
+ * separately in the "creates a variant" test below.
+ */
 test("admin creates a product, then views and edits it", async ({ page }) => {
 	await login(page);
 
@@ -102,7 +116,6 @@ test("admin creates a product, then views and edits it", async ({ page }) => {
 	await expect(page).toHaveURL("/admin/products/add");
 
 	await page.getByLabel("Name").fill("E2E Test Stool");
-	await page.getByLabel("Price").fill("49.99");
 	await page.getByRole("button", { name: "Create" }).click();
 
 	await expect(page).toHaveURL("/admin/products");
@@ -114,12 +127,23 @@ test("admin creates a product, then views and edits it", async ({ page }) => {
 	await expect(
 		page.getByRole("heading", { name: "E2E Test Stool" }),
 	).toBeVisible();
+	// Freshly created, zero variants yet — the derived "from price" has
+	// nothing to derive from (design D4).
+	await expect(page.getByText("No variants yet")).toBeVisible();
 });
 
-test("admin adjusts a product's stock level", async ({ page }) => {
+/**
+ * **Retargeted (`sdd/ecommerce-product-variants`, task 9.4)**: `admin/stock`
+ * is now keyed by VARIANT id — Oak Dining Chair's own seeded Natural variant
+ * (`mocks/data/variants.ts`), not the product id this test navigated to
+ * before this change.
+ */
+test("admin adjusts a variant's stock level", async ({ page }) => {
 	await login(page);
 
-	await page.goto("/admin/stock/prod-oak-chair/update");
+	const naturalVariantId = "00000000-0000-4000-8000-000000000011";
+
+	await page.goto(`/admin/stock/${naturalVariantId}/update`);
 	await expect(page.getByRole("heading", { name: "Edit stock" })).toBeVisible();
 
 	await page.getByLabel("Stock", { exact: true }).fill("25");
@@ -127,8 +151,41 @@ test("admin adjusts a product's stock level", async ({ page }) => {
 
 	await expect(page).toHaveURL("/admin/stock");
 
-	await page.goto("/admin/stock/prod-oak-chair");
+	await page.goto(`/admin/stock/${naturalVariantId}`);
 	await expect(page.getByText("25")).toBeVisible();
+});
+
+/**
+ * NEW (`sdd/ecommerce-product-variants`, task 9.4): an admin creates a new
+ * variant for an existing product, assigns an option-value selection to it
+ * (Velvet Sofa's own — a product with a single, option-less default variant
+ * before this test runs), and confirms it appears in that product's own
+ * variants list — exercising the sub-resource nesting
+ * (`admin/products/[id]/variants`) and the option-value picker
+ * (`modules/variants/form.tsx`).
+ */
+test("admin creates a variant with an option-value selection", async ({
+	page,
+}) => {
+	await login(page);
+
+	const velvetSofaId = "00000000-0000-4000-8000-000000000002";
+
+	await page.goto(`/admin/products/${velvetSofaId}/variants`);
+	await expect(page.getByRole("heading", { name: "Variants" })).toBeVisible();
+	// The seeded default variant, no options.
+	await expect(page.getByRole("cell", { name: "SOF-002" })).toBeVisible();
+
+	await page.getByRole("button", { name: "Nuevo registro" }).click();
+	await expect(page).toHaveURL(`/admin/products/${velvetSofaId}/variants/add`);
+
+	await page.getByLabel("Code", { exact: true }).fill("SOF-002-WAL");
+	await page.getByLabel("Price").fill("949.00");
+	await page.getByLabel("Natural").check();
+	await page.getByRole("button", { name: "Create" }).click();
+
+	await expect(page).toHaveURL(`/admin/products/${velvetSofaId}/variants`);
+	await expect(page.getByRole("cell", { name: "SOF-002-WAL" })).toBeVisible();
 });
 
 test("admin views an order's status (read-only)", async ({ page }) => {
@@ -152,9 +209,16 @@ test("admin views an order's status (read-only)", async ({ page }) => {
  * it, then confirms the value only appears when filtered by that option
  * type — exercising `modules/variant-option-types`/`variant-option-values`'s
  * own scoped-by-`optionTypeId` convention (mirroring `admin/product-images`'s
- * `?productId=` precedent). `handlers/admin.ts` seeds both collections empty
- * (Phase 9's own task 9.3 owns real fixture data), so this test's own writes
- * are the sole source of both rows.
+ * `?productId=` precedent).
+ *
+ * **Retargeted (`sdd/ecommerce-product-variants`, task 9.3)**: `handlers/
+ * admin.ts` now seeds real "Finish"/"Size" option types (and "Natural"/
+ * "Walnut" values under "Finish") — PR8's own literal test names ("Finish"/
+ * "Walnut") would collide with that seed data (a duplicate-slug 409 on
+ * create, and a false-negative on the "invisible when unscoped" assertion,
+ * since a pre-existing "Walnut" row would already be in the unscoped list
+ * regardless of this test's own writes). Renamed to "Material"/"Mahogany",
+ * names that don't collide with anything in `mocks/data/variant-option-types.ts`.
  */
 test("admin creates an option type, then adds a scoped value to it", async ({
 	page,
@@ -165,14 +229,14 @@ test("admin creates an option type, then adds a scoped value to it", async ({
 	await page.getByRole("button", { name: "Nuevo registro" }).click();
 	await expect(page).toHaveURL("/admin/variant-option-types/add");
 
-	await page.getByLabel("Name").fill("Finish");
+	await page.getByLabel("Name").fill("Material");
 	await page.getByRole("button", { name: "Create" }).click();
 
 	await expect(page).toHaveURL("/admin/variant-option-types");
-	await expect(page.getByRole("link", { name: "Finish" })).toBeVisible();
+	await expect(page.getByRole("link", { name: "Material" })).toBeVisible();
 
-	await page.getByRole("link", { name: "Finish" }).click();
-	await expect(page.getByRole("heading", { name: "Finish" })).toBeVisible();
+	await page.getByRole("link", { name: "Material" }).click();
+	await expect(page.getByRole("heading", { name: "Material" })).toBeVisible();
 	const optionTypeUrl = page.url();
 	const optionTypeId = optionTypeUrl.split("/").pop();
 	if (!optionTypeId) throw new Error("Could not resolve option type id");
@@ -188,18 +252,18 @@ test("admin creates an option type, then adds a scoped value to it", async ({
 		`/admin/variant-option-values/add?optionTypeId=${optionTypeId}`,
 	);
 
-	await page.getByLabel("Value").fill("Walnut");
+	await page.getByLabel("Value").fill("Mahogany");
 	await page.getByRole("button", { name: "Create" }).click();
 
 	await expect(page).toHaveURL(
 		`/admin/variant-option-values?optionTypeId=${optionTypeId}`,
 	);
-	await expect(page.getByRole("cell", { name: "Walnut" })).toBeVisible();
+	await expect(page.getByRole("cell", { name: "Mahogany" })).toBeVisible();
 
 	// Scoped-list guarantee: the value is invisible when the list is loaded
 	// without (or with a different) `optionTypeId` filter.
 	await page.goto("/admin/variant-option-values");
-	await expect(page.getByRole("cell", { name: "Walnut" })).not.toBeVisible();
+	await expect(page.getByRole("cell", { name: "Mahogany" })).not.toBeVisible();
 });
 
 /**
