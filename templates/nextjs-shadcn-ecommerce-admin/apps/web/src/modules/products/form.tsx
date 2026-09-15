@@ -1,5 +1,6 @@
 "use client";
 
+import { Field, FieldError, FieldGroup, FieldLabel } from "@colidevs/ui/field";
 import { CheckboxField, SelectField } from "@colidevs/ui/form-fields";
 import { useForm } from "@tanstack/react-form";
 import { useRouter } from "next/navigation";
@@ -8,7 +9,6 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { Category } from "@/generated/model";
 import { getQueryClient } from "@/lib/query";
@@ -54,6 +54,25 @@ import {
  * where that constraint blocked a swap). `name`/`coverImage`/`description`
  * stay hand-rolled — `InputField`/`TextareaField` carry the same hardcoded-id
  * bug and this page has multiple plain-text inputs.
+ *
+ * **Structure pass (munod parity, hefesto `design-to-code`)**: body now
+ * mirrors munod's real two-column product-form layout — left column stacks
+ * `name` above `description`, right column pairs `coverImage`+`categoryId`
+ * in a `Field orientation="responsive"` row (side-by-side on desktop,
+ * stacked on mobile), via `@colidevs/ui`'s `Field`/`FieldGroup` composition
+ * instead of a bare `grid gap-4 sm:grid-cols-2` div. The three hand-rolled
+ * fields now compose `Field`/`FieldLabel`/`FieldError` instead of a
+ * `space-y-1` div + `<Label>` + ad hoc `<p>`. Button order fixed to
+ * outline-then-primary; "Manage variants" stays a third, distinct action
+ * after the primary button, not part of the cancel/submit pair.
+ * `description` deliberately stays a hand-rolled `<Textarea>`, not
+ * `@colidevs/ui`'s `TextareaField` — verified live in the pilot rebuild
+ * this template feeds (`pilot-cumbre`): `TextareaField`'s underlying
+ * `InputGroup`/`InputGroupTextarea` primitives collapse to near-zero width
+ * inside a two-column `Field` layout, rendering the value one character per
+ * line, overflowing outside the field box. That is a bug in
+ * `@colidevs/ui@0.1.0`'s shipped primitives (or their interaction with
+ * nested `Field` containers), not something to work around here.
  */
 export function ProductForm({
 	product,
@@ -141,119 +160,145 @@ export function ProductForm({
 				event.stopPropagation();
 				void form.handleSubmit();
 			}}
-			className="max-w-2xl space-y-4"
+			className="max-w-2xl"
 		>
-			<div className="grid gap-4 sm:grid-cols-2">
-				<form.Field
-					name="name"
-					validators={{ onChange: productFormSchema.shape.name }}
-				>
-					{(field) => (
-						<div className="space-y-1">
-							<Label htmlFor={field.name}>Name</Label>
-							<Input
-								id={field.name}
-								name={field.name}
-								value={field.state.value}
-								onBlur={field.handleBlur}
-								onChange={(event) => field.handleChange(event.target.value)}
-							/>
-							{field.state.meta.errors.length > 0 ? (
-								<p className="text-destructive text-sm">
-									{fieldErrorMessage(field.state.meta.errors)}
-								</p>
-							) : null}
-						</div>
-					)}
-				</form.Field>
-				<form.Field
-					name="coverImage"
-					// `.unwrap()` — the field's own value type is always `string`
-					// (defaulted to `""`, never `undefined`), so the validator must be
-					// the schema's inner, non-optional shape for TanStack Form's
-					// Standard Schema input type to line up.
-					validators={{ onChange: productFormSchema.shape.coverImage.unwrap() }}
-				>
-					{(field) => (
-						<div className="space-y-1">
-							<Label htmlFor={field.name}>Cover image URL</Label>
-							<Input
-								id={field.name}
-								name={field.name}
-								value={field.state.value}
-								onBlur={field.handleBlur}
-								onChange={(event) => field.handleChange(event.target.value)}
-							/>
-							{field.state.meta.errors.length > 0 ? (
-								<p className="text-destructive text-sm">
-									{fieldErrorMessage(field.state.meta.errors)}
-								</p>
-							) : null}
-						</div>
-					)}
-				</form.Field>
-				<form.Field name="categoryId">
-					{(field) => (
-						<SelectField
-							field={field}
-							title="Category"
-							placeholder="No category"
-							options={categories.map((category) => ({
-								id: category.id,
-								label: category.name,
-								value: category.id,
-							}))}
-						/>
-					)}
-				</form.Field>
-			</div>
-			<form.Field name="description">
-				{(field) => (
-					<div className="space-y-1">
-						<Label htmlFor={field.name}>Description</Label>
-						<Textarea
-							id={field.name}
-							name={field.name}
-							rows={4}
-							value={field.state.value}
-							onBlur={field.handleBlur}
-							onChange={(event) => field.handleChange(event.target.value)}
-						/>
-					</div>
-				)}
-			</form.Field>
-			{product ? (
-				<form.Field name="isActive">
-					{(field) => <CheckboxField field={field} title="Active" />}
-				</form.Field>
-			) : null}
-			<div className="flex gap-2">
-				<form.Subscribe selector={(state) => state.isSubmitting}>
-					{(isSubmitting) => (
-						<Button type="submit" disabled={isPending || isSubmitting}>
-							{isPending ? "Saving…" : product ? "Save changes" : "Create"}
-						</Button>
-					)}
-				</form.Subscribe>
-				<Button
-					type="button"
-					variant="outline"
-					onClick={() => router.push("/admin/products")}
-				>
-					Cancel
-				</Button>
+			<FieldGroup>
+				<Field className="flex flex-col gap-8 lg:flex-row">
+					<Field>
+						<form.Field
+							name="name"
+							validators={{ onChange: productFormSchema.shape.name }}
+						>
+							{(field) => {
+								const isInvalid = field.state.meta.errors.length > 0;
+								return (
+									<Field data-invalid={isInvalid}>
+										<FieldLabel htmlFor={field.name}>Name</FieldLabel>
+										<Input
+											id={field.name}
+											name={field.name}
+											value={field.state.value}
+											onBlur={field.handleBlur}
+											onChange={(event) =>
+												field.handleChange(event.target.value)
+											}
+											aria-invalid={isInvalid}
+										/>
+										{isInvalid ? (
+											<FieldError>
+												{fieldErrorMessage(field.state.meta.errors)}
+											</FieldError>
+										) : null}
+									</Field>
+								);
+							}}
+						</form.Field>
+						<form.Field name="description">
+							{(field) => (
+								<Field>
+									<FieldLabel htmlFor={field.name}>Description</FieldLabel>
+									<Textarea
+										id={field.name}
+										name={field.name}
+										rows={4}
+										value={field.state.value}
+										onBlur={field.handleBlur}
+										onChange={(event) => field.handleChange(event.target.value)}
+									/>
+								</Field>
+							)}
+						</form.Field>
+					</Field>
+					<Field>
+						<Field orientation="responsive" className="*:flex-1">
+							<form.Field
+								name="coverImage"
+								// `.unwrap()` — the field's own value type is always `string`
+								// (defaulted to `""`, never `undefined`), so the validator must
+								// be the schema's inner, non-optional shape for TanStack
+								// Form's Standard Schema input type to line up.
+								validators={{
+									onChange: productFormSchema.shape.coverImage.unwrap(),
+								}}
+							>
+								{(field) => {
+									const isInvalid = field.state.meta.errors.length > 0;
+									return (
+										<Field data-invalid={isInvalid}>
+											<FieldLabel htmlFor={field.name}>
+												Cover image URL
+											</FieldLabel>
+											<Input
+												id={field.name}
+												name={field.name}
+												value={field.state.value}
+												onBlur={field.handleBlur}
+												onChange={(event) =>
+													field.handleChange(event.target.value)
+												}
+												aria-invalid={isInvalid}
+											/>
+											{isInvalid ? (
+												<FieldError>
+													{fieldErrorMessage(field.state.meta.errors)}
+												</FieldError>
+											) : null}
+										</Field>
+									);
+								}}
+							</form.Field>
+							<form.Field name="categoryId">
+								{(field) => (
+									<SelectField
+										field={field}
+										title="Category"
+										placeholder="No category"
+										options={categories.map((category) => ({
+											id: category.id,
+											label: category.name,
+											value: category.id,
+										}))}
+									/>
+								)}
+							</form.Field>
+						</Field>
+					</Field>
+				</Field>
+
 				{product ? (
+					<form.Field name="isActive">
+						{(field) => <CheckboxField field={field} title="Active" />}
+					</form.Field>
+				) : null}
+
+				<div className="flex gap-2">
 					<Button
 						type="button"
-						variant="secondary"
-						onClick={() =>
-							router.push(`/admin/products/${product.id}/variants`)
-						}
+						variant="outline"
+						onClick={() => router.push("/admin/products")}
 					>
-						Manage variants ({product.variantCount})
+						Cancel
 					</Button>
-				) : null}
-			</div>
+					<form.Subscribe selector={(state) => state.isSubmitting}>
+						{(isSubmitting) => (
+							<Button type="submit" disabled={isPending || isSubmitting}>
+								{isPending ? "Saving…" : product ? "Save changes" : "Create"}
+							</Button>
+						)}
+					</form.Subscribe>
+					{product ? (
+						<Button
+							type="button"
+							variant="secondary"
+							onClick={() =>
+								router.push(`/admin/products/${product.id}/variants`)
+							}
+						>
+							Manage variants ({product.variantCount})
+						</Button>
+					) : null}
+				</div>
+			</FieldGroup>
 		</form>
 	);
 }

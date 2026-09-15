@@ -1,5 +1,6 @@
 "use client";
 
+import { Field, FieldError, FieldGroup, FieldLabel } from "@colidevs/ui/field";
 import { CheckboxField, NumberStepperField } from "@colidevs/ui/form-fields";
 import { useForm } from "@tanstack/react-form";
 import { useRouter } from "next/navigation";
@@ -8,7 +9,6 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { getQueryClient } from "@/lib/query";
 import { fieldErrorMessage } from "@/lib/utils";
 import {
@@ -36,6 +36,12 @@ import {
  * `modules/variant-option-values/form.tsx`'s note on the hardcoded-id
  * constraint); `NumberStepperField` derives its id from `field.name` and
  * carries no such constraint.
+ *
+ * **Structure pass (munod parity, hefesto `design-to-code`)**: grouping now
+ * uses `@colidevs/ui`'s `FieldGroup` instead of a bare `space-y-4` div.
+ * `name` composes `Field`/`FieldLabel`/`FieldError` instead of a
+ * `space-y-1` div + `<Label>` + ad hoc `<p>`. Button order fixed to
+ * outline-then-primary.
  */
 export function VariantOptionTypeForm({
 	optionType,
@@ -121,56 +127,64 @@ export function VariantOptionTypeForm({
 				event.stopPropagation();
 				void form.handleSubmit();
 			}}
-			className="max-w-md space-y-4"
+			className="max-w-md"
 		>
-			<form.Field
-				name="name"
-				validators={{ onChange: variantOptionTypeFormSchema.shape.name }}
-			>
-				{(field) => (
-					<div className="space-y-1">
-						<Label htmlFor={field.name}>Name</Label>
-						<Input
-							id={field.name}
-							name={field.name}
-							value={field.state.value}
-							onBlur={field.handleBlur}
-							onChange={(event) => field.handleChange(event.target.value)}
-						/>
-						{field.state.meta.errors.length > 0 ? (
-							<p className="text-destructive text-sm">
-								{fieldErrorMessage(field.state.meta.errors)}
-							</p>
-						) : null}
-					</div>
-				)}
-			</form.Field>
-			<form.Field name="displayOrder">
-				{(field) => <NumberStepperField field={field} title="Display order" />}
-			</form.Field>
-
-			{optionType ? (
-				<form.Field name="isActive">
-					{(field) => <CheckboxField field={field} title="Active" />}
-				</form.Field>
-			) : null}
-
-			<div className="flex gap-2">
-				<form.Subscribe selector={(state) => state.isSubmitting}>
-					{(isSubmitting) => (
-						<Button type="submit" disabled={isPending || isSubmitting}>
-							{isPending ? "Saving…" : optionType ? "Save changes" : "Create"}
-						</Button>
-					)}
-				</form.Subscribe>
-				<Button
-					type="button"
-					variant="outline"
-					onClick={() => router.push(redirectTo)}
+			<FieldGroup>
+				<form.Field
+					name="name"
+					validators={{ onChange: variantOptionTypeFormSchema.shape.name }}
 				>
-					Cancel
-				</Button>
-			</div>
+					{(field) => {
+						const isInvalid = field.state.meta.errors.length > 0;
+						return (
+							<Field data-invalid={isInvalid}>
+								<FieldLabel htmlFor={field.name}>Name</FieldLabel>
+								<Input
+									id={field.name}
+									name={field.name}
+									value={field.state.value}
+									onBlur={field.handleBlur}
+									onChange={(event) => field.handleChange(event.target.value)}
+									aria-invalid={isInvalid}
+								/>
+								{isInvalid ? (
+									<FieldError>
+										{fieldErrorMessage(field.state.meta.errors)}
+									</FieldError>
+								) : null}
+							</Field>
+						);
+					}}
+				</form.Field>
+				<form.Field name="displayOrder">
+					{(field) => (
+						<NumberStepperField field={field} title="Display order" />
+					)}
+				</form.Field>
+
+				{optionType ? (
+					<form.Field name="isActive">
+						{(field) => <CheckboxField field={field} title="Active" />}
+					</form.Field>
+				) : null}
+
+				<div className="flex gap-2">
+					<Button
+						type="button"
+						variant="outline"
+						onClick={() => router.push(redirectTo)}
+					>
+						Cancel
+					</Button>
+					<form.Subscribe selector={(state) => state.isSubmitting}>
+						{(isSubmitting) => (
+							<Button type="submit" disabled={isPending || isSubmitting}>
+								{isPending ? "Saving…" : optionType ? "Save changes" : "Create"}
+							</Button>
+						)}
+					</form.Subscribe>
+				</div>
+			</FieldGroup>
 		</form>
 	);
 }
