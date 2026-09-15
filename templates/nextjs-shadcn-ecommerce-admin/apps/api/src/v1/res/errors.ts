@@ -272,3 +272,32 @@ export class ProductRequiresActiveVariantHttpError extends HttpError {
 		);
 	}
 }
+
+/**
+ * @description `variant-options` domain (bug fix,
+ * `sdd/ecommerce-product-variants/apply-progress` PR11). 422 — once a
+ * product has ESTABLISHED which variant-option types it uses (inferred from
+ * its own OTHER active variants' selections — this schema has no
+ * `product_option_types` table; `variant_option_types` is global vocabulary
+ * shared across every product, so the only real source of "which option
+ * types does THIS product use" is what its sibling variants already
+ * selected), every create/update of a variant for that product must select
+ * EXACTLY one value per established option type — never zero (the variant
+ * becomes unreachable: `variant-selection.ts#resolveVariant`'s every/some
+ * predicate can never match a candidate whose own `options` is empty once
+ * ANY option key is selected), never two-plus for the same type (ambiguous
+ * matching). A brand-new product with no established option-type usage yet,
+ * or a genuinely option-less single-SKU product, is unaffected — matches
+ * `admin/variants/repository.ts#replaceSelections`'s own documented "a
+ * variant may legitimately have zero option-value selections" allowance.
+ */
+export class VariantOptionSelectionMismatchHttpError extends HttpError {
+	constructor(errors: Array<{ field: string; message: string }>) {
+		super(
+			422,
+			"Variant option-value selections do not match this product's established option types",
+			"https://coli.dev/errors/variant-option-selection-mismatch",
+			errors,
+		);
+	}
+}

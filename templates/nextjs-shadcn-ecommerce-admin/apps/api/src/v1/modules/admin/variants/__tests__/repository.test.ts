@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ProductRequiresActiveVariantHttpError } from "@/v1/res/errors";
+import {
+	ProductRequiresActiveVariantHttpError,
+	VariantOptionSelectionMismatchHttpError,
+} from "@/v1/res/errors";
 
 /**
  * @description Unit tests for `./repository.ts`'s DB-transaction-level
@@ -36,7 +39,8 @@ vi.doMock("@/lib/db", async () => {
 });
 
 const dbActual = await vi.importActual<typeof import("@/lib/db")>("@/lib/db");
-const { productVariants, variantOptionSelections } = dbActual.schema;
+const { productVariants, variantOptionSelections, variantOptionValues } =
+	dbActual.schema;
 const { createVariantRepository } = await import("../repository");
 const repo = createVariantRepository();
 
@@ -86,13 +90,20 @@ type CallRecord =
  * `productVariants` and `variantOptionSelections` in the same test.
  */
 function createFakeTx(script: {
-	selectFor?: (table: unknown) => unknown[];
+	// `callIndex` is 0 for the FIRST select against this exact table, 1 for
+	// the second, etc. — lets a test disambiguate two different selects
+	// against the SAME table (e.g. update()'s own `existing` self-lookup vs.
+	// `assertOptionSelectionsSatisfyProduct`'s sibling lookup, both against
+	// `productVariants`). Existing single-argument scripts ignore the extra
+	// parameter and keep working unchanged.
+	selectFor?: (table: unknown, callIndex: number) => unknown[];
 	insertReturning?: (table: unknown) => unknown[];
 	updateReturning?: (table: unknown) => unknown[];
 	deleteReturning?: (table: unknown) => unknown[];
 	throwOn?: { op: "insert" | "update" | "delete"; table: unknown };
 }) {
 	const calls: CallRecord[] = [];
+	const selectCallCounts = new Map<unknown, number>();
 
 	function thenableRows(rows: unknown[]) {
 		return Object.assign(Promise.resolve(rows), {
@@ -105,7 +116,9 @@ function createFakeTx(script: {
 			from: vi.fn((table: unknown) => ({
 				where: vi.fn(() => {
 					calls.push({ op: "select", table });
-					return Promise.resolve(script.selectFor?.(table) ?? []);
+					const callIndex = selectCallCounts.get(table) ?? 0;
+					selectCallCounts.set(table, callIndex + 1);
+					return Promise.resolve(script.selectFor?.(table, callIndex) ?? []);
 				}),
 			})),
 		})),
@@ -407,5 +420,137 @@ describe("admin/variants repository — published-product invariant (23514)", ()
 		await expect(
 			repo.create({ productId: EXISTING_VARIANT.productId, price: 29.99 }),
 		).rejects.toMatchObject({ code: "23514" });
+	});
+});
+
+/**
+ * @description Bug fix (`sdd/ecommerce-product-variants/apply-progress`
+ * PR11): `admin/variants/form.tsx`'s own doc comment already named this
+ * gap — a variant could be created/updated with ZERO option-value
+ * selections even for a product that already established real option
+ * types via sibling variants, silently orphaning it on the storefront.
+ * `assertOptionSelectionsSatisfyProduct` deliberately issues 3 flat
+ * `.select().from(table).where()` queries (never `.innerJoin()`), matching
+ * this fake `Tx`'s own supported chain shape — see `createFakeTx`'s own
+ * `selectFor` doc comment for how these tests disambiguate two different
+ * selects against the SAME `productVariants` table by call order.
+ */
+describe("admin/variants repository — option-value selection must match established option types (bug fix PR11)", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	const SIBLING_VARIANT: FakeVariantRow = {
+		...EXISTING_VARIANT,
+		id: "22222222-2222-4222-8222-222222222222",
+	};
+	const SIZE_VALUE_ID = "33333333-3333-4333-8333-333333333333";
+	const SIZE_TYPE_ID = "44444444-4444-4444-8444-444444444444";
+
+	function scriptEstablishedSize(
+		table: unknown,
+		callIndex: number,
+		selfLookupRow?: FakeVariantRow,
+	): unknown[] {
+		if (table === productVariants) {
+			if (selfLookupRow && callIndex === 0) return [selfLookupRow];
+			return [SIBLING_VARIANT];
+		}
+		if (table === variantOptionSelections) {
+			return [{ variantId: SIBLING_VARIANT.id, optionValueId: SIZE_VALUE_ID }];
+		}
+		if (table === variantOptionValues) {
+			return [{ id: SIZE_VALUE_ID, optionTypeId: SIZE_TYPE_ID }];
+		}
+		return [];
+	}
+
+	it("create() allows zero option-value selections when the product has no established option types yet", async () => {
+		const insertedRow: FakeVariantRow = { ...EXISTING_VARIANT };
+		const { tx } = createFakeTx({
+			selectFor: () => [],
+			insertReturning: (table) =>
+				table === productVariants ? [insertedRow] : [],
+		});
+		currentTx = tx;
+
+		await expect(
+			repo.create({ productId: EXISTING_VARIANT.productId, price: 29.99 }),
+		).resolves.toMatchObject({ optionValueIds: [] });
+	});
+
+	it("create() rejects zero option-value selections once a sibling variant has established a real option type", async () => {
+		const { tx } = createFakeTx({
+			selectFor: (table, callIndex) => scriptEstablishedSize(table, callIndex),
+		});
+		currentTx = tx;
+
+		await expect(
+			repo.create({
+				productId: EXISTING_VARIANT.productId,
+				price: 29.99,
+				optionValueIds: [],
+			}),
+		).rejects.toBeInstanceOf(VariantOptionSelectionMismatchHttpError);
+	});
+
+	it("create() allows a selection covering exactly one value per established option type", async () => {
+		const insertedRow: FakeVariantRow = { ...EXISTING_VARIANT };
+		const { tx } = createFakeTx({
+			selectFor: (table, callIndex) => scriptEstablishedSize(table, callIndex),
+			insertReturning: (table) =>
+				table === productVariants ? [insertedRow] : [],
+		});
+		currentTx = tx;
+
+		await expect(
+			repo.create({
+				productId: EXISTING_VARIANT.productId,
+				price: 29.99,
+				optionValueIds: [SIZE_VALUE_ID],
+			}),
+		).resolves.toMatchObject({ optionValueIds: [SIZE_VALUE_ID] });
+	});
+
+	it("update() rejects replacing the selection set with zero values once a sibling has established a real option type", async () => {
+		const { tx } = createFakeTx({
+			selectFor: (table, callIndex) =>
+				scriptEstablishedSize(table, callIndex, EXISTING_VARIANT),
+		});
+		currentTx = tx;
+
+		await expect(
+			repo.update(EXISTING_VARIANT.id, { optionValueIds: [] }),
+		).rejects.toBeInstanceOf(VariantOptionSelectionMismatchHttpError);
+	});
+
+	it("update() rejects selecting two values for the same established option type", async () => {
+		const OTHER_SIZE_VALUE_ID = "55555555-5555-4555-8555-555555555555";
+		const { tx } = createFakeTx({
+			selectFor: (table, callIndex) => {
+				if (table === productVariants) {
+					return callIndex === 0 ? [EXISTING_VARIANT] : [SIBLING_VARIANT];
+				}
+				if (table === variantOptionSelections) {
+					return [
+						{ variantId: SIBLING_VARIANT.id, optionValueId: SIZE_VALUE_ID },
+					];
+				}
+				if (table === variantOptionValues) {
+					return [
+						{ id: SIZE_VALUE_ID, optionTypeId: SIZE_TYPE_ID },
+						{ id: OTHER_SIZE_VALUE_ID, optionTypeId: SIZE_TYPE_ID },
+					];
+				}
+				return [];
+			},
+		});
+		currentTx = tx;
+
+		await expect(
+			repo.update(EXISTING_VARIANT.id, {
+				optionValueIds: [SIZE_VALUE_ID, OTHER_SIZE_VALUE_ID],
+			}),
+		).rejects.toBeInstanceOf(VariantOptionSelectionMismatchHttpError);
 	});
 });
