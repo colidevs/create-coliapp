@@ -5,17 +5,26 @@ import { defaultCategorySeed } from "@/mocks/data/categories";
 import { defaultOrderSeed } from "@/mocks/data/orders";
 import { defaultProductImageSeed } from "@/mocks/data/product-images";
 import { defaultProductSeed } from "@/mocks/data/products";
+import {
+	defaultVariantOptionTypeSeed,
+	defaultVariantOptionValueSeed,
+	type VariantOptionTypeRecord,
+	type VariantOptionValueRecord,
+} from "@/mocks/data/variant-option-types";
+import { defaultVariantSeed, type VariantRecord } from "@/mocks/data/variants";
 
 /**
  * Hand-written MSW handler set for the ADMIN surface (Phase 7b) — mirrors
  * `handlers/storefront.ts`'s own posture (per-module fixtures, composed into
  * `src/mocks/node.ts`), extended to cover every admin entity
- * (`categories`/`products`/`product-images`/`stock`/`orders`) plus the one
- * server-side auth call the admin route group's own gate depends on
- * (`getServerSession()`'s `GET /api/auth/get-session`).
+ * (`categories`/`products`/`variants`/`variant-option-{types,values}`/
+ * `product-images`/`stock`/`orders`) plus the one server-side auth call the
+ * admin route group's own gate depends on (`getServerSession()`'s
+ * `GET /api/auth/get-session`).
  *
  * **In-memory, mutable state, reset per process** — module-scope arrays
- * (`categories`/`products`/`productImages`), not `handlers/storefront.ts`'s
+ * (`categories`/`products`/`variants`/`productImages`/
+ * `variantOptionTypes`/`variantOptionValues`), not `handlers/storefront.ts`'s
  * frozen, read-only fixtures — because this admin surface's own CRUD writes
  * need to actually persist across requests within one `next dev`/E2E run for
  * the flow to be exercisable at all. Never shared with real Drizzle-backed
@@ -29,49 +38,88 @@ import { defaultProductSeed } from "@/mocks/data/products";
  * mock that accepted a POST/DELETE those real routes reject would
  * misrepresent the actual API surface this template ships.
  *
- * **`variantOptionTypes`/`variantOptionValues` (PR8) are seeded EMPTY, not
- * from a `mocks/data/*` fixture module** — deliberately, same posture as
- * PR7's own local `toPublicProduct` projection in `handlers/storefront.ts`:
- * a shared `mocks/data/variant-option-types.ts` fixture is Phase 9's own
- * task 9.3 scope, not pre-empted here. An empty admin-managed vocabulary is
- * also the realistic starting state the spec itself describes ("GIVEN an
- * admin wants a 'flavor' option type... WHEN they create it via the admin
- * UI... THEN it becomes usable... with no deploy or migration").
+ * **`variantOptionTypes`/`variantOptionValues` (PR8 seeded these empty;
+ * task 9.3 replaces that with real, shared fixture data)** — imported from
+ * `mocks/data/variant-option-types.ts` now, same real (unprefixed UUID)
+ * ids `variants.ts`'s own `optionValueIds` reference.
  */
 let categories = defaultCategorySeed();
 let products = defaultProductSeed();
+let variants = defaultVariantSeed();
 let productImages = defaultProductImageSeed();
 const orders = defaultOrderSeed();
-
-interface VariantOptionTypeRecord {
-	id: string;
-	name: string;
-	slug: string;
-	displayOrder: number;
-	isActive: boolean;
-	createdAt: string;
-	updatedAt: string;
-}
-
-interface VariantOptionValueRecord {
-	id: string;
-	optionTypeId: string;
-	value: string;
-	slug: string;
-	imageUrl: string | null;
-	description: string | null;
-	displayOrder: number;
-	isActive: boolean;
-	createdAt: string;
-	updatedAt: string;
-}
 
 function toSlug(value: string) {
 	return value.toLowerCase().replace(/\s+/g, "-");
 }
 
-let variantOptionTypes: VariantOptionTypeRecord[] = [];
-let variantOptionValues: VariantOptionValueRecord[] = [];
+/**
+ * A product's derived `defaultPrice`/`variantCount` — the SAME projection
+ * `admin/products/repository.ts#toProduct()` computes at read time from a
+ * join to `product_variants` (design D4: "no stored rollup price/stock
+ * column"). Mirrored here rather than stored on `ProductRecord` itself.
+ */
+function withDerivedFields(product: (typeof products)[number]) {
+	const productVariants = variants.filter((v) => v.productId === product.id);
+	const defaultVariant =
+		productVariants.find((v) => v.isDefault) ?? productVariants[0];
+	return {
+		...product,
+		defaultPrice: defaultVariant?.price ?? null,
+		variantCount: productVariants.length,
+	};
+}
+
+let variantOptionTypes = defaultVariantOptionTypeSeed();
+let variantOptionValues = defaultVariantOptionValueSeed();
+
+/**
+ * Resolves a variant's `optionValueIds` into a joined, human-readable
+ * `variantLabel` (e.g. `"Natural"`, `"Red / M"`), `null` when the variant
+ * has zero selections — the SAME `variant_option_types.display_order` then
+ * `variant_option_values.display_order`, `" / "`-joined convention
+ * confirmed for `admin/stock`/`Dlocal`/the storefront selector (see
+ * `modules/variants/types.ts#resolveVariantOptionLabels`'s own admin-side
+ * equivalent).
+ */
+function resolveVariantLabel(variant: VariantRecord): string | null {
+	if (variant.optionValueIds.length === 0) return null;
+	const labels = variant.optionValueIds
+		.map((id) => variantOptionValues.find((v) => v.id === id))
+		.filter((v): v is (typeof variantOptionValues)[number] => v !== undefined)
+		.map((value) => ({
+			value,
+			type: variantOptionTypes.find((t) => t.id === value.optionTypeId),
+		}))
+		.sort((a, b) => {
+			const typeOrder =
+				(a.type?.displayOrder ?? 0) - (b.type?.displayOrder ?? 0);
+			if (typeOrder !== 0) return typeOrder;
+			return a.value.displayOrder - b.value.displayOrder;
+		})
+		.map(({ value }) => value.value);
+	return labels.length > 0 ? labels.join(" / ") : null;
+}
+
+/**
+ * `admin/stock`'s projection over `product_variants` joined to its parent
+ * `products` row (`id` is the VARIANT id — design's own retarget).
+ */
+function toStockItem(variant: VariantRecord) {
+	const product = products.find((p) => p.id === variant.productId);
+	return {
+		id: variant.id,
+		productId: variant.productId,
+		name: product?.name ?? "",
+		slug: product?.slug ?? "",
+		variantLabel: resolveVariantLabel(variant),
+		stock: variant.stock,
+		stockMin: variant.stockMin,
+		code: variant.code,
+		altCode: variant.altCode,
+		coverImage: product?.coverImage ?? null,
+	};
+}
 
 function problem(status: number, title: string, detail?: string) {
 	return HttpResponse.json(
@@ -165,60 +213,172 @@ export const adminHandlers = [
 	}),
 
 	// --- admin/products ---
+	// **Retargeted (task 9.3)**: no `code`/`price`/`stock`/`stockMin` here
+	// anymore — a product is created as a draft (design D3, `isActive` never
+	// accepted on create), and every response is projected through
+	// `withDerivedFields()` for its `defaultPrice`/`variantCount`.
 	http.get("*/api/v1/admin/products", ({ request }) => {
 		const url = new URL(request.url);
 		const page = Number(url.searchParams.get("page") ?? "0") || 0;
 		const size = Number(url.searchParams.get("size") ?? "10") || 10;
 		const { items, pagination } = paginate(products, page, size);
-		return HttpResponse.json({ items, pagination }, { status: 200 });
+		return HttpResponse.json(
+			{ items: items.map(withDerivedFields), pagination },
+			{ status: 200 },
+		);
 	}),
 
 	http.post("*/api/v1/admin/products", async ({ request }) => {
 		const body = (await request.json()) as Record<string, unknown>;
 		const now = new Date().toISOString();
 		const product = {
-			id: `prod-${crypto.randomUUID()}`,
+			id: crypto.randomUUID(),
 			name: body.name as string,
 			slug: String(body.name).toLowerCase().replace(/\s+/g, "-"),
-			code: (body.code as string) ?? null,
-			altCode: (body.altCode as string) ?? null,
 			description: (body.description as string) ?? null,
-			price: body.price as number,
-			stock: (body.stock as number) ?? 0,
-			stockMin: (body.stockMin as number) ?? 0,
 			coverImage: (body.coverImage as string) ?? null,
 			categoryId: (body.categoryId as string) ?? null,
-			isActive: (body.isActive as boolean) ?? true,
+			isActive: false,
 			createdAt: now,
 			updatedAt: now,
 		};
 		products = [...products, product];
-		return HttpResponse.json(product, { status: 201 });
+		return HttpResponse.json(withDerivedFields(product), { status: 201 });
 	}),
 
 	http.get("*/api/v1/admin/products/:id", ({ params }) => {
 		const product = products.find((item) => item.id === params.id);
 		if (!product) return problem(404, "Not Found", "Product not found.");
-		return HttpResponse.json(product, { status: 200 });
+		return HttpResponse.json(withDerivedFields(product), { status: 200 });
 	}),
 
 	http.patch("*/api/v1/admin/products/:id", async ({ params, request }) => {
 		const existing = products.find((item) => item.id === params.id);
 		if (!existing) return problem(404, "Not Found", "Product not found.");
 		const body = (await request.json()) as Record<string, unknown>;
+		if (body.isActive === true) {
+			const hasActiveVariant = variants.some(
+				(v) => v.productId === existing.id && v.isActive,
+			);
+			if (!hasActiveVariant) {
+				return problem(
+					422,
+					"Unprocessable Entity",
+					"A product needs at least one active variant before it can be published.",
+				);
+			}
+		}
 		const updated = {
 			...existing,
 			...body,
 			updatedAt: new Date().toISOString(),
 		};
 		products = products.map((item) => (item.id === params.id ? updated : item));
-		return HttpResponse.json(updated, { status: 200 });
+		return HttpResponse.json(withDerivedFields(updated), { status: 200 });
 	}),
 
 	http.delete("*/api/v1/admin/products/:id", ({ params }) => {
 		const exists = products.some((item) => item.id === params.id);
 		if (!exists) return problem(404, "Not Found", "Product not found.");
 		products = products.filter((item) => item.id !== params.id);
+		return new HttpResponse(null, { status: 204 });
+	}),
+
+	// --- admin/variants (scoped by `?productId=`) ---
+	http.get("*/api/v1/admin/variants", ({ request }) => {
+		const url = new URL(request.url);
+		const productId = url.searchParams.get("productId");
+		const items = productId
+			? variants.filter((item) => item.productId === productId)
+			: variants;
+		return HttpResponse.json(items, { status: 200 });
+	}),
+
+	http.post("*/api/v1/admin/variants", async ({ request }) => {
+		const body = (await request.json()) as {
+			productId: string;
+			code?: string;
+			altCode?: string;
+			price: number;
+			stock?: number;
+			stockMin?: number;
+			isDefault?: boolean;
+			displayOrder?: number;
+			optionValueIds?: string[];
+		};
+		const now = new Date().toISOString();
+		const isDefault = body.isDefault ?? false;
+		// Clear any sibling default, same "swap inside one transaction"
+		// invariant as the real `admin/variants` module (design D7).
+		if (isDefault) {
+			variants = variants.map((item) =>
+				item.productId === body.productId
+					? { ...item, isDefault: false }
+					: item,
+			);
+		}
+		const variant: VariantRecord = {
+			id: crypto.randomUUID(),
+			productId: body.productId,
+			code: body.code ?? null,
+			altCode: body.altCode ?? null,
+			price: body.price,
+			stock: body.stock ?? 0,
+			stockMin: body.stockMin ?? 0,
+			isDefault,
+			isActive: true,
+			displayOrder: body.displayOrder ?? 0,
+			optionValueIds: body.optionValueIds ?? [],
+			createdAt: now,
+			updatedAt: now,
+		};
+		variants = [...variants, variant];
+		return HttpResponse.json(variant, { status: 201 });
+	}),
+
+	http.get("*/api/v1/admin/variants/:id", ({ params }) => {
+		const variant = variants.find((item) => item.id === params.id);
+		if (!variant) return problem(404, "Not Found", "Variant not found.");
+		return HttpResponse.json(variant, { status: 200 });
+	}),
+
+	http.patch("*/api/v1/admin/variants/:id", async ({ params, request }) => {
+		const existing = variants.find((item) => item.id === params.id);
+		if (!existing) return problem(404, "Not Found", "Variant not found.");
+		const body = (await request.json()) as Partial<{
+			code: string | null;
+			altCode: string | null;
+			price: number;
+			stock: number;
+			stockMin: number;
+			isDefault: boolean;
+			isActive: boolean;
+			displayOrder: number;
+			optionValueIds: string[];
+		}>;
+		if (body.isDefault === true) {
+			variants = variants.map((item) =>
+				item.productId === existing.productId && item.id !== existing.id
+					? { ...item, isDefault: false }
+					: item,
+			);
+		}
+		const updated = {
+			...existing,
+			...body,
+			updatedAt: new Date().toISOString(),
+		};
+		variants = variants.map((item) => (item.id === params.id ? updated : item));
+		return HttpResponse.json(updated, { status: 200 });
+	}),
+
+	// Hard delete, matching `apps/api`'s own `admin/variants` module — unlike
+	// `variant-option-types`/`-values`, a variant is never soft-deleted
+	// (design D6 applies to the vocabulary, not to variants themselves).
+	http.delete("*/api/v1/admin/variants/:id", ({ params }) => {
+		const exists = variants.some((item) => item.id === params.id);
+		if (!exists) return problem(404, "Not Found", "Variant not found.");
+		variants = variants.filter((item) => item.id !== params.id);
 		return new HttpResponse(null, { status: 204 });
 	}),
 
@@ -458,45 +618,25 @@ export const adminHandlers = [
 		return new HttpResponse(null, { status: 204 });
 	}),
 
-	// --- admin/stock (projection over `products` — read + update only) ---
+	// --- admin/stock (projection over `product_variants`, `id` is the
+	// VARIANT id — read + update only, retargeted per task 9.3/9.4) ---
 	http.get("*/api/v1/admin/stock", ({ request }) => {
 		const url = new URL(request.url);
 		const page = Number(url.searchParams.get("page") ?? "0") || 0;
 		const size = Number(url.searchParams.get("size") ?? "10") || 10;
 		const start = page * size;
-		const items = products.slice(start, start + size).map((product) => ({
-			id: product.id,
-			name: product.name,
-			slug: product.slug,
-			stock: product.stock,
-			stockMin: product.stockMin,
-			code: product.code,
-			altCode: product.altCode,
-			coverImage: product.coverImage,
-		}));
+		const items = variants.slice(start, start + size).map(toStockItem);
 		return HttpResponse.json(items, { status: 200 });
 	}),
 
 	http.get("*/api/v1/admin/stock/:id", ({ params }) => {
-		const product = products.find((item) => item.id === params.id);
-		if (!product) return problem(404, "Not Found", "Stock item not found.");
-		return HttpResponse.json(
-			{
-				id: product.id,
-				name: product.name,
-				slug: product.slug,
-				stock: product.stock,
-				stockMin: product.stockMin,
-				code: product.code,
-				altCode: product.altCode,
-				coverImage: product.coverImage,
-			},
-			{ status: 200 },
-		);
+		const variant = variants.find((item) => item.id === params.id);
+		if (!variant) return problem(404, "Not Found", "Stock item not found.");
+		return HttpResponse.json(toStockItem(variant), { status: 200 });
 	}),
 
 	http.patch("*/api/v1/admin/stock/:id", async ({ params, request }) => {
-		const existing = products.find((item) => item.id === params.id);
+		const existing = variants.find((item) => item.id === params.id);
 		if (!existing) return problem(404, "Not Found", "Stock item not found.");
 		const body = (await request.json()) as { stock: number; stockMin: number };
 		const updated = {
@@ -505,20 +645,8 @@ export const adminHandlers = [
 			stockMin: body.stockMin,
 			updatedAt: new Date().toISOString(),
 		};
-		products = products.map((item) => (item.id === params.id ? updated : item));
-		return HttpResponse.json(
-			{
-				id: updated.id,
-				name: updated.name,
-				slug: updated.slug,
-				stock: updated.stock,
-				stockMin: updated.stockMin,
-				code: updated.code,
-				altCode: updated.altCode,
-				coverImage: updated.coverImage,
-			},
-			{ status: 200 },
-		);
+		variants = variants.map((item) => (item.id === params.id ? updated : item));
+		return HttpResponse.json(toStockItem(updated), { status: 200 });
 	}),
 
 	// --- admin/orders (read-only — no create/update/delete route exists) ---

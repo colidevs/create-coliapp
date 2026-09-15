@@ -19,21 +19,21 @@ export function defaultProductImageSeed(): ProductImageRecord[] {
 	return [
 		{
 			id: "img-oak-chair-1",
-			productId: "prod-oak-chair",
+			productId: "00000000-0000-4000-8000-000000000001",
 			url: "https://images.colidevs.com/e2e/oak-dining-chair-1.jpg",
 			position: 0,
 			createdAt: now,
 		},
 		{
 			id: "img-oak-chair-2",
-			productId: "prod-oak-chair",
+			productId: "00000000-0000-4000-8000-000000000001",
 			url: "https://images.colidevs.com/e2e/oak-dining-chair-2.jpg",
 			position: 1,
 			createdAt: now,
 		},
 		{
 			id: "img-velvet-sofa-1",
-			productId: "prod-velvet-sofa",
+			productId: "00000000-0000-4000-8000-000000000002",
 			url: "https://images.colidevs.com/e2e/velvet-sofa-1.jpg",
 			position: 0,
 			createdAt: now,

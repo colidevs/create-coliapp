@@ -1,18 +1,27 @@
 /**
  * In-memory `products` MSW fixture, matching this template's ACTUAL
- * generated `Product`/`ProductOutput` shape (`@/generated/model`) — mirrors
- * `nextjs-kumo-console`'s own `src/mocks/data/orders.ts` shape/posture.
+ * generated `Product`/`ProductOutput` shape (`@/generated/model`).
+ *
+ * **Retargeted (`sdd/ecommerce-product-variants`, design D3/D4, task 9.3)**:
+ * `code`/`altCode`/`price`/`stock`/`stockMin` are DROPPED — those moved to
+ * `product_variants` (`./variants.ts`). `defaultPrice`/`variantCount` are
+ * derived at read time by `handlers/admin.ts`/`handlers/storefront.ts` from
+ * `variantsFixture`, never stored here — same "no stored rollup" invariant
+ * the real API enforces (design D4).
+ *
+ * **IDs are real (unprefixed) UUIDs, not the `prod-`-prefixed convention
+ * this fixture used before this change** — `variantFormSchema.productId`
+ * (`modules/variants/types.ts`) validates as `z.uuid()`, same footgun PR8
+ * found for `optionTypeId`. Kept deterministic/readable for tests via a
+ * `00000000-0000-4000-8000-...` pattern rather than `crypto.randomUUID()`,
+ * so `variants.ts`/`variant-option-types.ts`/E2E specs can reference them
+ * as stable literals.
  */
 export interface ProductRecord {
 	id: string;
 	name: string;
 	slug: string;
-	code: string | null;
-	altCode: string | null;
 	description: string | null;
-	price: number;
-	stock: number;
-	stockMin: number;
 	coverImage: string | null;
 	categoryId: string | null;
 	isActive: boolean;
@@ -25,15 +34,10 @@ export function defaultProductSeed(): ProductRecord[] {
 
 	return [
 		{
-			id: "prod-oak-chair",
+			id: "00000000-0000-4000-8000-000000000001",
 			name: "Oak Dining Chair",
 			slug: "oak-dining-chair",
-			code: "CHR-001",
-			altCode: null,
 			description: "Solid oak dining chair with a woven seat.",
-			price: 129.99,
-			stock: 12,
-			stockMin: 2,
 			coverImage: "https://images.colidevs.com/e2e/oak-dining-chair.jpg",
 			categoryId: "cat-seating",
 			isActive: true,
@@ -41,15 +45,10 @@ export function defaultProductSeed(): ProductRecord[] {
 			updatedAt: now,
 		},
 		{
-			id: "prod-velvet-sofa",
+			id: "00000000-0000-4000-8000-000000000002",
 			name: "Velvet Sofa",
 			slug: "velvet-sofa",
-			code: "SOF-002",
-			altCode: null,
 			description: "Three-seat sofa upholstered in emerald velvet.",
-			price: 899.0,
-			stock: 4,
-			stockMin: 1,
 			coverImage: "https://images.colidevs.com/e2e/velvet-sofa.jpg",
 			categoryId: "cat-seating",
 			isActive: true,
@@ -57,15 +56,10 @@ export function defaultProductSeed(): ProductRecord[] {
 			updatedAt: now,
 		},
 		{
-			id: "prod-brass-lamp",
+			id: "00000000-0000-4000-8000-000000000003",
 			name: "Brass Floor Lamp",
 			slug: "brass-floor-lamp",
-			code: "LMP-003",
-			altCode: null,
 			description: "Adjustable brass floor lamp with a linen shade.",
-			price: 219.5,
-			stock: 0,
-			stockMin: 2,
 			coverImage: "https://images.colidevs.com/e2e/brass-floor-lamp.jpg",
 			categoryId: "cat-lighting",
 			isActive: true,

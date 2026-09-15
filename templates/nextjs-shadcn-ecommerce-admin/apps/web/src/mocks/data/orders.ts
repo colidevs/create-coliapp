@@ -6,6 +6,10 @@
  * mutated by `src/mocks/handlers/admin.ts` — status only ever changes via
  * the (separately mocked, `handlers/storefront.ts`) dLocal webhook flow in a
  * real deployment.
+ *
+ * **Retargeted (`sdd/ecommerce-product-variants`, tasks item 9.5)**:
+ * `buyerProducts` items are keyed by `variantId` (was `productId`), with a
+ * `variantLabel`, matching `OrderItemSchema`'s own retarget in the same PR.
  */
 export interface OrderRecord {
 	id: string;
@@ -19,8 +23,9 @@ export interface OrderRecord {
 	} | null;
 	dlocalId: string | null;
 	buyerProducts: Array<{
-		productId: string;
+		variantId: string;
 		slug: string;
+		variantLabel: string | null;
 		quantity: number;
 		unitPrice: number;
 		lineTotal: number;
@@ -46,8 +51,9 @@ export function defaultOrderSeed(): OrderRecord[] {
 			dlocalId: "D-4-mock-order-2026-000123",
 			buyerProducts: [
 				{
-					productId: "prod-oak-chair",
+					variantId: "00000000-0000-4000-8000-000000000011",
 					slug: "oak-dining-chair",
+					variantLabel: "Natural",
 					quantity: 2,
 					unitPrice: 129.99,
 					lineTotal: 259.98,
@@ -69,8 +75,9 @@ export function defaultOrderSeed(): OrderRecord[] {
 			dlocalId: "D-4-mock-order-2026-000124",
 			buyerProducts: [
 				{
-					productId: "prod-velvet-sofa",
+					variantId: "00000000-0000-4000-8000-000000000021",
 					slug: "velvet-sofa",
+					variantLabel: null,
 					quantity: 1,
 					unitPrice: 899.0,
 					lineTotal: 899.0,
