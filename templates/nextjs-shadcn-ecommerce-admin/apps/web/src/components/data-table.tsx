@@ -32,6 +32,7 @@ import {
 	ChevronsUpDown,
 	EyeOff,
 	File,
+	ImageOff,
 	Loader2,
 	MoreHorizontal,
 	Package,
@@ -179,7 +180,10 @@ export function ImageCell({ url }: { url: string | undefined }) {
 			<ImageModal url={url} className="size-32" />
 		</div>
 	) : (
-		<Fragment>⚠️ No image</Fragment>
+		<div className="flex size-32 flex-col items-center justify-center gap-1 rounded bg-muted text-muted-foreground text-xs">
+			<ImageOff className="size-6" aria-hidden />
+			No image
+		</div>
 	);
 }
 
