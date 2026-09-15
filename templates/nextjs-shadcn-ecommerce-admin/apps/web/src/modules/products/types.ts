@@ -27,20 +27,17 @@ export type PublicVariant = PublicVariantOutput;
  * `zodResolver`) — mirrors `apps/api`'s `ProductCreateSchema`/
  * `ProductUpdateSchema` (`admin/products/types.ts`), authored independently
  * per the same reasoning as `modules/categories/types.ts`.
+ *
+ * **Retargeted (`sdd/ecommerce-product-variants`, design D3/D4)**:
+ * `code`/`altCode`/`price`/`stock`/`stockMin` are DROPPED — those moved to
+ * `product_variants`. A product is now catalog metadata only (name, slug,
+ * description, cover image, category); its price/stock are derived,
+ * read-only projections of its `isDefault` variant (`defaultPrice`/
+ * `variantCount` on `ProductOutput`), never edited from this form.
  */
 export const productFormSchema = z.object({
 	name: z.string().min(1, "Name is required"),
-	code: z.string().optional(),
-	altCode: z.string().optional(),
 	description: z.string().optional(),
-	// Plain `z.number()`, not `z.coerce.number()` — see
-	// `modules/product-images/types.ts`'s identical note: keeps input/output
-	// types identical so `useForm<ProductFormValues>` type-checks under
-	// ADR 0030's `exactOptionalPropertyTypes` floor. Numeric `<Input>`s
-	// register with RHF's own `valueAsNumber: true` instead.
-	price: z.number().positive("Price must be greater than 0"),
-	stock: z.number().int().min(0).optional(),
-	stockMin: z.number().int().min(0).optional(),
 	coverImage: z.union([z.literal(""), z.url("Must be a valid URL")]).optional(),
 	categoryId: z.string().optional(),
 	isActive: z.boolean(),

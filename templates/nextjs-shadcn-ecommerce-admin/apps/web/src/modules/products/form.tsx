@@ -30,13 +30,20 @@ import {
 /**
  * NOT a port of munod's real `products/form.tsx` — that form is built on
  * `@tanstack/react-form` plus minio image upload, dimensions, tags,
- * product-type, discount, home-image fields (`code/description/price/
- * unit_price/...`), none of which this template's actual generated
- * `Product`/`ProductCreate` schema carries (confirmed against
- * `apps/api/src/v1/modules/admin/products/types.ts` directly — this
- * template's own product is flat: name/code/altCode/description/price/
- * stock/stockMin/coverImage(a URL string)/categoryId/isActive). React Hook
- * Form + `zodResolver`, same as `modules/categories/form.tsx`.
+ * product-type, discount, home-image fields, none of which this template's
+ * actual generated `Product`/`ProductCreate` schema carries.
+ *
+ * **Retargeted (`sdd/ecommerce-product-variants`, design D3/D4)**: this form
+ * manages catalog metadata only — `code`/`altCode`/`price`/`stock`/
+ * `stockMin` moved to `product_variants` and are no longer editable here.
+ * A product is created as a draft (`isActive: false`); publishing it is
+ * gated server-side by a deferrable constraint trigger requiring at least
+ * one active variant (design's own publish invariant) — this form does not
+ * enforce that itself, it only surfaces the resulting error via
+ * `toActionState()` like any other server-side rejection. `isActive` stays
+ * edit-only (never shown/sent on create), same convention as
+ * `modules/variant-option-values/form.tsx` — `ProductCreateSchema` has no
+ * such field at all.
  */
 export function ProductForm({
 	product,
@@ -58,15 +65,10 @@ export function ProductForm({
 		resolver: zodResolver(productFormSchema),
 		defaultValues: {
 			name: product?.name ?? "",
-			code: product?.code ?? "",
-			altCode: product?.altCode ?? "",
 			description: product?.description ?? "",
-			price: product?.price ?? 0,
-			stock: product?.stock ?? 0,
-			stockMin: product?.stockMin ?? 0,
 			coverImage: product?.coverImage ?? "",
 			categoryId: product?.categoryId ?? "",
-			isActive: product?.isActive ?? true,
+			isActive: product?.isActive ?? false,
 		},
 	});
 
@@ -74,27 +76,31 @@ export function ProductForm({
 		setIsPending(true);
 
 		// Conditionally include each optional field (ADR 0030's
-		// `exactOptionalPropertyTypes` floor rejects `code: undefined` etc.
-		// against `ProductCreate`/`ProductUpdate`'s optional, non-explicit-
-		// undefined fields) — omitting a blanked-out field means "leave
-		// unset" on create and "don't change it" on update, never an explicit
-		// null-out (this form has no dedicated "clear this field" affordance).
-		const payload = {
-			name: values.name,
-			price: values.price,
-			isActive: values.isActive,
-			...(values.code ? { code: values.code } : {}),
-			...(values.altCode ? { altCode: values.altCode } : {}),
-			...(values.description ? { description: values.description } : {}),
-			...(values.stock !== undefined ? { stock: values.stock } : {}),
-			...(values.stockMin !== undefined ? { stockMin: values.stockMin } : {}),
-			...(values.coverImage ? { coverImage: values.coverImage } : {}),
-			...(values.categoryId ? { categoryId: values.categoryId } : {}),
-		};
-
+		// `exactOptionalPropertyTypes` floor rejects `description: undefined`
+		// etc. against `ProductCreate`/`ProductUpdate`'s optional,
+		// non-explicit-undefined fields) — omitting a blanked-out field means
+		// "leave unset" on create and "don't change it" on update, never an
+		// explicit null-out (this form has no dedicated "clear this field"
+		// affordance).
+		// `isActive` is never sent on create — `ProductCreateSchema` has no such
+		// field at all (design D3: every product is created as a draft,
+		// `is_active: false` is the schema default). Only `PATCH` (update) can
+		// flip it, and doing so is exactly what the publish invariant trigger
+		// guards.
 		const result = product
-			? await updateProductAction(product.id, payload)
-			: await createProductAction(payload);
+			? await updateProductAction(product.id, {
+					name: values.name,
+					isActive: values.isActive,
+					...(values.description ? { description: values.description } : {}),
+					...(values.coverImage ? { coverImage: values.coverImage } : {}),
+					...(values.categoryId ? { categoryId: values.categoryId } : {}),
+				})
+			: await createProductAction({
+					name: values.name,
+					...(values.description ? { description: values.description } : {}),
+					...(values.coverImage ? { coverImage: values.coverImage } : {}),
+					...(values.categoryId ? { categoryId: values.categoryId } : {}),
+				});
 
 		setIsPending(false);
 
@@ -132,42 +138,6 @@ export function ProductForm({
 					{errors.name ? (
 						<p className="text-destructive text-sm">{errors.name.message}</p>
 					) : null}
-				</div>
-				<div className="space-y-1">
-					<Label htmlFor="code">Code</Label>
-					<Input id="code" {...register("code")} />
-				</div>
-				<div className="space-y-1">
-					<Label htmlFor="altCode">Alt. code</Label>
-					<Input id="altCode" {...register("altCode")} />
-				</div>
-				<div className="space-y-1">
-					<Label htmlFor="price">Price</Label>
-					<Input
-						id="price"
-						type="number"
-						step="0.01"
-						{...register("price", { valueAsNumber: true })}
-					/>
-					{errors.price ? (
-						<p className="text-destructive text-sm">{errors.price.message}</p>
-					) : null}
-				</div>
-				<div className="space-y-1">
-					<Label htmlFor="stock">Stock</Label>
-					<Input
-						id="stock"
-						type="number"
-						{...register("stock", { valueAsNumber: true })}
-					/>
-				</div>
-				<div className="space-y-1">
-					<Label htmlFor="stockMin">Minimum stock</Label>
-					<Input
-						id="stockMin"
-						type="number"
-						{...register("stockMin", { valueAsNumber: true })}
-					/>
 				</div>
 				<div className="space-y-1">
 					<Label htmlFor="coverImage">Cover image URL</Label>
@@ -237,6 +207,17 @@ export function ProductForm({
 				>
 					Cancel
 				</Button>
+				{product ? (
+					<Button
+						type="button"
+						variant="secondary"
+						onClick={() =>
+							router.push(`/admin/products/${product.id}/variants`)
+						}
+					>
+						Manage variants ({product.variantCount})
+					</Button>
+				) : null}
 			</div>
 		</form>
 	);

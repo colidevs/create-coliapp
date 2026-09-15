@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import {
@@ -7,10 +8,19 @@ import {
 	ArticleItem,
 	ArticleTitle,
 } from "@/components/article";
+import { Button } from "@/components/ui/button";
 import { Price } from "@/lib/currency";
 import { formatDate } from "@/lib/utils";
 import { getProductByIdQuery } from "@/modules/products/actions";
 
+/**
+ * **Retargeted (`sdd/ecommerce-product-variants`, design D3/D4)**: `code`/
+ * `altCode`/`price`/`stock`/`stockMin` are gone from `ProductOutput` — those
+ * live on `product_variants` now. `defaultPrice`/`variantCount` are the
+ * derived, read-only replacements; a "Manage variants" link is the entry
+ * point into this product's own variants sub-resource
+ * (`admin/products/[id]/variants`).
+ */
 export default async function AdminProductDetailPage({
 	params,
 }: {
@@ -33,19 +43,19 @@ export default async function AdminProductDetailPage({
 			<ArticleContent className="grid gap-2 sm:grid-cols-2">
 				<ArticleItem title="ID" description={product.id} />
 				<ArticleItem title="Slug" description={product.slug} />
-				<ArticleItem title="Code" description={product.code ?? undefined} />
 				<ArticleItem
-					title="Alt. code"
-					description={product.altCode ?? undefined}
+					title="From price"
+					description={
+						product.defaultPrice !== null ? (
+							<Price price={product.defaultPrice} />
+						) : (
+							"No variants yet"
+						)
+					}
 				/>
 				<ArticleItem
-					title="Price"
-					description={<Price price={product.price} />}
-				/>
-				<ArticleItem title="Stock" description={String(product.stock)} />
-				<ArticleItem
-					title="Minimum stock"
-					description={String(product.stockMin)}
+					title="Variants"
+					description={String(product.variantCount)}
 				/>
 				<ArticleItem
 					title="Active"
@@ -56,6 +66,11 @@ export default async function AdminProductDetailPage({
 					description={product.description ?? undefined}
 				/>
 			</ArticleContent>
+			<Button asChild variant="secondary">
+				<Link href={`/admin/products/${product.id}/variants`}>
+					Manage variants
+				</Link>
+			</Button>
 		</Article>
 	);
 }

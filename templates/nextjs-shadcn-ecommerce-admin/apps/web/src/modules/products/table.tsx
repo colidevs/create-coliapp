@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Eye, PenIcon } from "lucide-react";
+import { Boxes, Check, Eye, PenIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { useAbility } from "@/components/can";
@@ -24,6 +24,14 @@ import type { Product } from "./types";
  * columns trimmed to this template's actual, flatter `Product` shape (no
  * `product_type`/`tags`/`is_published`/`discount` — design decision A4).
  *
+ * **Retargeted (`sdd/ecommerce-product-variants`, design D3/D4)**: `code`/
+ * `price`/`stock` columns are gone — those live on `product_variants` now.
+ * `Price`/`Stock` columns are replaced by the derived, read-only
+ * `defaultPrice`/`variantCount` fields `ProductOutput` now carries (D4: "no
+ * stored rollup price/stock column ... derived at read time from the
+ * `is_default` variant"). A new "Variants" row action links to this
+ * product's own variants sub-resource.
+ *
  * **Corrected (PR7b): `router.push()`, not `redirect()`** — see
  * `modules/categories/table.tsx`'s identical fix and
  * `components/data-table.tsx`'s `add()` for the full writeup.
@@ -38,6 +46,12 @@ export function ProductsTable() {
 			title: "View details",
 			icon: <Eye />,
 			onClick: ({ original: { id } }) => router.push(`/admin/products/${id}`),
+		},
+		{
+			title: "Variants",
+			icon: <Boxes />,
+			onClick: ({ original: { id } }) =>
+				router.push(`/admin/products/${id}/variants`),
 		},
 	];
 
@@ -63,14 +77,6 @@ export function ProductsTable() {
 			meta: { displayName: "Cover" },
 		},
 		{
-			id: "code",
-			header: ({ column }) => (
-				<DataTableColumnHeader column={column}>Code</DataTableColumnHeader>
-			),
-			accessorKey: "code",
-			meta: { displayName: "Code" },
-		},
-		{
 			id: "name",
 			header: ({ column }) => (
 				<DataTableColumnHeader column={column}>Name</DataTableColumnHeader>
@@ -85,21 +91,26 @@ export function ProductsTable() {
 			meta: { displayName: "Name" },
 		},
 		{
-			id: "price",
+			id: "defaultPrice",
 			header: ({ column }) => (
-				<DataTableColumnHeader column={column}>Price</DataTableColumnHeader>
+				<DataTableColumnHeader column={column}>
+					From price
+				</DataTableColumnHeader>
 			),
-			cell: ({ row }) => <Price price={row.getValue<number>("price")} />,
-			accessorKey: "price",
-			meta: { displayName: "Price" },
+			cell: ({ row }) => {
+				const price = row.getValue<number | null>("defaultPrice");
+				return price !== null ? <Price price={price} /> : "—";
+			},
+			accessorKey: "defaultPrice",
+			meta: { displayName: "From price" },
 		},
 		{
-			id: "stock",
+			id: "variantCount",
 			header: ({ column }) => (
-				<DataTableColumnHeader column={column}>Stock</DataTableColumnHeader>
+				<DataTableColumnHeader column={column}>Variants</DataTableColumnHeader>
 			),
-			accessorKey: "stock",
-			meta: { displayName: "Stock" },
+			accessorKey: "variantCount",
+			meta: { displayName: "Variants" },
 		},
 		{
 			id: "isActive",
@@ -138,7 +149,7 @@ export function ProductsTable() {
 					<DetailCardLink
 						href={`/admin/products/${row.original.id}`}
 						title={row.original.name}
-						{...(row.original.code ? { description: row.original.code } : {})}
+						description={`${row.original.variantCount} variant${row.original.variantCount === 1 ? "" : "s"}`}
 					/>
 				</div>
 			)}
