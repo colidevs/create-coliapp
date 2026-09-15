@@ -831,7 +831,7 @@ export const listOrdersResponseItemsItemMailOneRegExp =
 	/^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9-]*\.)+[A-Za-z]{2,}$/;
 export const listOrdersResponseItemsItemBuyerInfoOneEmailRegExp =
 	/^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9-]*\.)+[A-Za-z]{2,}$/;
-export const listOrdersResponseItemsItemBuyerProductsItemProductIdRegExp =
+export const listOrdersResponseItemsItemBuyerProductsItemVariantIdRegExp =
 	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
 export const listOrdersResponseItemsItemBuyerProductsItemQuantityMin =
 	-9007199254740991;
@@ -867,12 +867,13 @@ export const ListOrdersResponse = zod
 					dlocalId: zod.union([zod.string(), zod.null()]),
 					buyerProducts: zod.array(
 						zod.object({
-							productId: zod
+							variantId: zod
 								.uuid()
 								.regex(
-									listOrdersResponseItemsItemBuyerProductsItemProductIdRegExp,
+									listOrdersResponseItemsItemBuyerProductsItemVariantIdRegExp,
 								),
 							slug: zod.string(),
+							variantLabel: zod.union([zod.string(), zod.null()]),
 							quantity: zod
 								.int()
 								.min(listOrdersResponseItemsItemBuyerProductsItemQuantityMin)
@@ -917,7 +918,7 @@ export const getOrderByIdResponseMailOneRegExp =
 	/^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9-]*\.)+[A-Za-z]{2,}$/;
 export const getOrderByIdResponseBuyerInfoOneEmailRegExp =
 	/^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9-]*\.)+[A-Za-z]{2,}$/;
-export const getOrderByIdResponseBuyerProductsItemProductIdRegExp =
+export const getOrderByIdResponseBuyerProductsItemVariantIdRegExp =
 	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
 export const getOrderByIdResponseBuyerProductsItemQuantityMin =
 	-9007199254740991;
@@ -948,10 +949,11 @@ export const GetOrderByIdResponse = zod
 		dlocalId: zod.union([zod.string(), zod.null()]),
 		buyerProducts: zod.array(
 			zod.object({
-				productId: zod
+				variantId: zod
 					.uuid()
-					.regex(getOrderByIdResponseBuyerProductsItemProductIdRegExp),
+					.regex(getOrderByIdResponseBuyerProductsItemVariantIdRegExp),
 				slug: zod.string(),
+				variantLabel: zod.union([zod.string(), zod.null()]),
 				quantity: zod
 					.int()
 					.min(getOrderByIdResponseBuyerProductsItemQuantityMin)

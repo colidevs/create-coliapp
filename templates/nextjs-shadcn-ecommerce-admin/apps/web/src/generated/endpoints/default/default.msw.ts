@@ -387,8 +387,12 @@ export const getListOrdersResponseMock = (
 			{ length: faker.number.int({ min: 1, max: 10 }) },
 			(_, i) => i + 1,
 		).map(() => ({
-			productId: faker.string.uuid(),
+			variantId: faker.string.uuid(),
 			slug: faker.string.alpha({ length: { min: 10, max: 20 } }),
+			variantLabel: faker.helpers.arrayElement([
+				faker.string.alpha({ length: { min: 10, max: 20 } }),
+				null,
+			]),
 			quantity: faker.number.int({
 				min: -9007199254740991,
 				max: 9007199254740991,
@@ -437,8 +441,12 @@ export const getGetOrderByIdResponseMock = (
 		{ length: faker.number.int({ min: 1, max: 10 }) },
 		(_, i) => i + 1,
 	).map(() => ({
-		productId: faker.string.uuid(),
+		variantId: faker.string.uuid(),
 		slug: faker.string.alpha({ length: { min: 10, max: 20 } }),
+		variantLabel: faker.helpers.arrayElement([
+			faker.string.alpha({ length: { min: 10, max: 20 } }),
+			null,
+		]),
 		quantity: faker.number.int({
 			min: -9007199254740991,
 			max: 9007199254740991,

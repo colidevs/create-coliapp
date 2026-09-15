@@ -8,8 +8,9 @@
 
 export type OrderOutputBuyerProductsItem = {
 	/** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
-	productId: string;
+	variantId: string;
 	slug: string;
+	variantLabel: string | null;
 	/**
 	 * @minimum -9007199254740991
 	 * @maximum 9007199254740991
