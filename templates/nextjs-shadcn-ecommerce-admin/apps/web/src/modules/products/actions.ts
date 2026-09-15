@@ -46,6 +46,12 @@ import type {
  * infra/seed/config issue, a pure off-by-one at this boundary. Convert at
  * the edge here so neither the API's own convention nor the UI's own
  * display convention has to change.
+ *
+ * This is now the codified org-wide standard, not a one-off patch: ADR
+ * 0009's pagination row (`hefesto/docs/decisions/0009-api-communication-
+ * standard.md`, addendum 2026-09-15) fixes 0-based as canonical at every
+ * API/wire boundary, with a 1-based human-facing URL converted at the
+ * client edge exactly as done here — never invented independently per app.
  */
 export async function listPublicProductsQuery(
 	params?: ListPublicProductsParams,
