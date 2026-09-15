@@ -1,5 +1,13 @@
 "use client";
 
+import {
+	Field,
+	FieldError,
+	FieldGroup,
+	FieldLabel,
+	FieldLegend,
+	FieldSet,
+} from "@colidevs/ui/field";
 import { NumberStepperField } from "@colidevs/ui/form-fields";
 import { useForm } from "@tanstack/react-form";
 import Image from "next/image";
@@ -10,7 +18,6 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import type { VariantOptionType, VariantOptionValue } from "@/generated/model";
 import { getQueryClient } from "@/lib/query";
 import { fieldErrorMessage } from "@/lib/utils";
@@ -76,6 +83,21 @@ import {
  *   renders thumbnails, and drives a custom missing-type validation message.
  *   Swapping would regress real, shipped functionality (PR11/PR15) — left
  *   hand-rolled.
+ *
+ * **Structure pass (munod parity, hefesto `design-to-code`)**: hand-rolled
+ * fields now compose `@colidevs/ui`'s `Field`/`FieldLabel`/`FieldError`
+ * instead of a bare `space-y-1` div + `<Label>` + ad hoc `<p>`.
+ * `isDefault`/`isActive` use `Field orientation="horizontal"` directly (the
+ * same shape `CheckboxField` composes internally) — not the composed
+ * `CheckboxField` itself (still ruled out above), so `id={field.name}`
+ * stays unique per field with no collision. Grouping now uses
+ * `FieldGroup`/`FieldSet`/`FieldLegend` for real section headers
+ * ("Identification", "Stock", "Options") instead of one flat `space-y-4`
+ * column; each option type gets its own `FieldSet`+
+ * `FieldLegend variant="label"`, mirroring munod's own
+ * `VariantOptionGroupField` instead of a bare `<p>` per type. Button order
+ * fixed to outline-then-primary; `isDefault`/`isActive` stay right-aligned
+ * in their own cluster, separate from the button row.
  */
 export function VariantForm({
 	variant,
@@ -202,234 +224,273 @@ export function VariantForm({
 				event.stopPropagation();
 				void form.handleSubmit();
 			}}
-			className="max-w-2xl space-y-4"
+			className="max-w-2xl"
 		>
-			<div className="grid gap-4 sm:grid-cols-2">
-				<form.Field name="productId">
-					{(field) => (
-						<div className="space-y-1">
-							<Label htmlFor={field.name}>Product ID</Label>
-							<Input
-								id={field.name}
-								name={field.name}
-								value={field.state.value}
-								onBlur={field.handleBlur}
-								onChange={(event) => field.handleChange(event.target.value)}
-								disabled={Boolean(variant) || Boolean(defaultProductId)}
-							/>
-							{field.state.meta.errors.length > 0 ? (
-								<p className="text-destructive text-sm">
-									{fieldErrorMessage(field.state.meta.errors)}
-								</p>
-							) : null}
-						</div>
-					)}
-				</form.Field>
-				<form.Field name="code">
-					{(field) => (
-						<div className="space-y-1">
-							<Label htmlFor={field.name}>Code</Label>
-							<Input
-								id={field.name}
-								name={field.name}
-								value={field.state.value}
-								onBlur={field.handleBlur}
-								onChange={(event) => field.handleChange(event.target.value)}
-							/>
-						</div>
-					)}
-				</form.Field>
-				<form.Field name="altCode">
-					{(field) => (
-						<div className="space-y-1">
-							<Label htmlFor={field.name}>Alt. code</Label>
-							<Input
-								id={field.name}
-								name={field.name}
-								value={field.state.value}
-								onBlur={field.handleBlur}
-								onChange={(event) => field.handleChange(event.target.value)}
-							/>
-						</div>
-					)}
-				</form.Field>
-				<form.Field
-					name="price"
-					validators={{ onChange: variantFormSchema.shape.price }}
-				>
-					{(field) => (
-						<div className="space-y-1">
-							<Label htmlFor={field.name}>Price</Label>
-							<Input
-								id={field.name}
-								name={field.name}
-								type="number"
-								step="0.01"
-								value={field.state.value}
-								onBlur={field.handleBlur}
-								onChange={(event) =>
-									field.handleChange(event.target.valueAsNumber)
-								}
-							/>
-							{field.state.meta.errors.length > 0 ? (
-								<p className="text-destructive text-sm">
-									{fieldErrorMessage(field.state.meta.errors)}
-								</p>
-							) : null}
-						</div>
-					)}
-				</form.Field>
-				<form.Field name="stock">
-					{(field) => <NumberStepperField field={field} title="Stock" />}
-				</form.Field>
-				<form.Field name="stockMin">
-					{(field) => (
-						<NumberStepperField field={field} title="Minimum stock" />
-					)}
-				</form.Field>
-				<form.Field name="displayOrder">
-					{(field) => (
-						<NumberStepperField field={field} title="Display order" />
-					)}
-				</form.Field>
-			</div>
+			<FieldGroup>
+				<FieldSet>
+					<FieldLegend>Identification</FieldLegend>
+					<Field orientation="responsive" className="*:flex-1">
+						<form.Field name="productId">
+							{(field) => {
+								const isInvalid = field.state.meta.errors.length > 0;
+								return (
+									<Field data-invalid={isInvalid}>
+										<FieldLabel htmlFor={field.name}>Product ID</FieldLabel>
+										<Input
+											id={field.name}
+											name={field.name}
+											value={field.state.value}
+											onBlur={field.handleBlur}
+											onChange={(event) =>
+												field.handleChange(event.target.value)
+											}
+											disabled={Boolean(variant) || Boolean(defaultProductId)}
+											aria-invalid={isInvalid}
+										/>
+										{isInvalid ? (
+											<FieldError>
+												{fieldErrorMessage(field.state.meta.errors)}
+											</FieldError>
+										) : null}
+									</Field>
+								);
+							}}
+						</form.Field>
+						<form.Field name="code">
+							{(field) => (
+								<Field>
+									<FieldLabel htmlFor={field.name}>Code</FieldLabel>
+									<Input
+										id={field.name}
+										name={field.name}
+										value={field.state.value}
+										onBlur={field.handleBlur}
+										onChange={(event) => field.handleChange(event.target.value)}
+									/>
+								</Field>
+							)}
+						</form.Field>
+					</Field>
+					<Field orientation="responsive" className="*:flex-1">
+						<form.Field name="altCode">
+							{(field) => (
+								<Field>
+									<FieldLabel htmlFor={field.name}>Alt. code</FieldLabel>
+									<Input
+										id={field.name}
+										name={field.name}
+										value={field.state.value}
+										onBlur={field.handleBlur}
+										onChange={(event) => field.handleChange(event.target.value)}
+									/>
+								</Field>
+							)}
+						</form.Field>
+						<form.Field
+							name="price"
+							validators={{ onChange: variantFormSchema.shape.price }}
+						>
+							{(field) => {
+								const isInvalid = field.state.meta.errors.length > 0;
+								return (
+									<Field data-invalid={isInvalid}>
+										<FieldLabel htmlFor={field.name}>Price</FieldLabel>
+										<Input
+											id={field.name}
+											name={field.name}
+											type="number"
+											step="0.01"
+											value={field.state.value}
+											onBlur={field.handleBlur}
+											onChange={(event) =>
+												field.handleChange(event.target.valueAsNumber)
+											}
+											aria-invalid={isInvalid}
+										/>
+										{isInvalid ? (
+											<FieldError>
+												{fieldErrorMessage(field.state.meta.errors)}
+											</FieldError>
+										) : null}
+									</Field>
+								);
+							}}
+						</form.Field>
+					</Field>
+				</FieldSet>
 
-			<form.Field name="isDefault">
-				{(field) => (
-					<div className="flex items-center gap-2">
-						<Checkbox
-							id={field.name}
-							checked={field.state.value}
-							onCheckedChange={(checked) =>
-								field.handleChange(checked === true)
-							}
-						/>
-						<Label htmlFor={field.name}>Default variant</Label>
-					</div>
-				)}
-			</form.Field>
+				<FieldSet>
+					<FieldLegend>Stock</FieldLegend>
+					<Field orientation="responsive" className="*:flex-1">
+						<form.Field name="stock">
+							{(field) => <NumberStepperField field={field} title="Stock" />}
+						</form.Field>
+						<form.Field name="stockMin">
+							{(field) => (
+								<NumberStepperField field={field} title="Minimum stock" />
+							)}
+						</form.Field>
+					</Field>
+					<form.Field name="displayOrder">
+						{(field) => (
+							<NumberStepperField field={field} title="Display order" />
+						)}
+					</form.Field>
+				</FieldSet>
 
-			{variant ? (
-				<form.Field name="isActive">
-					{(field) => (
-						<div className="flex items-center gap-2">
-							<Checkbox
-								id={field.name}
-								checked={field.state.value}
-								onCheckedChange={(checked) =>
-									field.handleChange(checked === true)
-								}
-							/>
-							<Label htmlFor={field.name}>Active</Label>
-						</div>
-					)}
-				</form.Field>
-			) : null}
+				<div className="flex justify-end gap-6">
+					<form.Field name="isDefault">
+						{(field) => (
+							<Field orientation="horizontal" className="w-fit">
+								<Checkbox
+									id={field.name}
+									checked={field.state.value}
+									onCheckedChange={(checked) =>
+										field.handleChange(checked === true)
+									}
+								/>
+								<FieldLabel htmlFor={field.name} className="font-normal">
+									Default variant
+								</FieldLabel>
+							</Field>
+						)}
+					</form.Field>
 
-			<form.Field
-				name="optionValueIds"
-				validators={{
-					// Bug fix (`sdd/ecommerce-product-variants/apply-progress` PR11):
-					// immediate UX feedback BEFORE ever calling the server action — the
-					// real enforcement still happens server-side regardless of this
-					// check. Runs at submit time only, over this field's own current
-					// value (the selected option-value IDs), so it composes naturally
-					// with TanStack Form's own submit-blocking validator contract.
-					onSubmit: ({ value }) => {
-						const missingTypeIds = computeMissingRequiredOptionTypes(
-							requiredOptionTypeIds,
-							value,
-							optionValues,
-						);
-						if (missingTypeIds.length === 0) return undefined;
-						const names = missingTypeIds
-							.map(
-								(typeId) =>
-									optionTypes.find((t) => t.id === typeId)?.name ?? typeId,
-							)
-							.join(", ");
-						return `Select exactly one value for: ${names} — this product already uses ${missingTypeIds.length === 1 ? "that option type" : "these option types"}.`;
-					},
-				}}
-			>
-				{(field) =>
-					groupedOptions.length > 0 ? (
-						<div className="space-y-3">
-							<Label>Options</Label>
-							{groupedOptions.map(({ type, values }) => (
-								<div key={type.id} className="space-y-1">
-									<p className="text-muted-foreground text-sm">{type.name}</p>
-									<div className="flex flex-wrap gap-4">
-										{values.map((value) => {
-											const checked = field.state.value.includes(value.id);
-											const inputId = `option-value-${value.id}`;
-											return (
-												<div
-													key={value.id}
-													className="flex items-center gap-2 text-sm"
-												>
-													<Checkbox
-														id={inputId}
-														checked={checked}
-														onCheckedChange={(next) => {
-															field.handleChange(
-																next === true
-																	? [...field.state.value, value.id]
-																	: field.state.value.filter(
-																			(id) => id !== value.id,
-																		),
-															);
-														}}
-													/>
-													{value.imageUrl ? (
-														<span className="relative size-6 shrink-0 overflow-hidden rounded-full border">
-															<Image
-																src={value.imageUrl}
-																alt=""
-																fill
-																sizes="24px"
-																className="object-cover"
+					{variant ? (
+						<form.Field name="isActive">
+							{(field) => (
+								<Field orientation="horizontal" className="w-fit">
+									<Checkbox
+										id={field.name}
+										checked={field.state.value}
+										onCheckedChange={(checked) =>
+											field.handleChange(checked === true)
+										}
+									/>
+									<FieldLabel htmlFor={field.name} className="font-normal">
+										Active
+									</FieldLabel>
+								</Field>
+							)}
+						</form.Field>
+					) : null}
+				</div>
+
+				<FieldSet>
+					<FieldLegend>Options</FieldLegend>
+					<form.Field
+						name="optionValueIds"
+						validators={{
+							// Bug fix (`sdd/ecommerce-product-variants/apply-progress` PR11):
+							// immediate UX feedback BEFORE ever calling the server action —
+							// the real enforcement still happens server-side regardless of
+							// this check. Runs at submit time only, over this field's own
+							// current value (the selected option-value IDs), so it composes
+							// naturally with TanStack Form's own submit-blocking validator
+							// contract.
+							onSubmit: ({ value }) => {
+								const missingTypeIds = computeMissingRequiredOptionTypes(
+									requiredOptionTypeIds,
+									value,
+									optionValues,
+								);
+								if (missingTypeIds.length === 0) return undefined;
+								const names = missingTypeIds
+									.map(
+										(typeId) =>
+											optionTypes.find((t) => t.id === typeId)?.name ?? typeId,
+									)
+									.join(", ");
+								return `Select exactly one value for: ${names} — this product already uses ${missingTypeIds.length === 1 ? "that option type" : "these option types"}.`;
+							},
+						}}
+					>
+						{(field) => {
+							const isInvalid = field.state.meta.errors.length > 0;
+							return groupedOptions.length > 0 ? (
+								<>
+									{groupedOptions.map(({ type, values }) => (
+										<FieldSet key={type.id}>
+											<FieldLegend variant="label">{type.name}</FieldLegend>
+											<div className="flex flex-wrap gap-4">
+												{values.map((value) => {
+													const checked = field.state.value.includes(value.id);
+													const inputId = `option-value-${value.id}`;
+													return (
+														<Field
+															key={value.id}
+															orientation="horizontal"
+															className="w-fit"
+														>
+															<Checkbox
+																id={inputId}
+																checked={checked}
+																onCheckedChange={(next) => {
+																	field.handleChange(
+																		next === true
+																			? [...field.state.value, value.id]
+																			: field.state.value.filter(
+																					(id) => id !== value.id,
+																				),
+																	);
+																}}
 															/>
-														</span>
-													) : null}
-													<Label htmlFor={inputId}>{value.value}</Label>
-												</div>
-											);
-										})}
-									</div>
-								</div>
-							))}
-							{field.state.meta.errors.length > 0 ? (
-								<p className="text-destructive text-sm">
-									{fieldErrorMessage(field.state.meta.errors)}
+															{value.imageUrl ? (
+																<span className="relative size-6 shrink-0 overflow-hidden rounded-full border">
+																	<Image
+																		src={value.imageUrl}
+																		alt=""
+																		fill
+																		sizes="24px"
+																		className="object-cover"
+																	/>
+																</span>
+															) : null}
+															<FieldLabel
+																htmlFor={inputId}
+																className="font-normal"
+															>
+																{value.value}
+															</FieldLabel>
+														</Field>
+													);
+												})}
+											</div>
+										</FieldSet>
+									))}
+									{isInvalid ? (
+										<FieldError>
+											{fieldErrorMessage(field.state.meta.errors)}
+										</FieldError>
+									) : null}
+								</>
+							) : (
+								<p className="text-muted-foreground text-sm">
+									No option values are available yet — create an option type and
+									its values first (Option types).
 								</p>
-							) : null}
-						</div>
-					) : (
-						<p className="text-muted-foreground text-sm">
-							No option values are available yet — create an option type and its
-							values first (Option types).
-						</p>
-					)
-				}
-			</form.Field>
+							);
+						}}
+					</form.Field>
+				</FieldSet>
 
-			<div className="flex gap-2">
-				<form.Subscribe selector={(state) => state.isSubmitting}>
-					{(isSubmitting) => (
-						<Button type="submit" disabled={isPending || isSubmitting}>
-							{isPending ? "Saving…" : variant ? "Save changes" : "Create"}
-						</Button>
-					)}
-				</form.Subscribe>
-				<Button
-					type="button"
-					variant="outline"
-					onClick={() => router.push(redirectTo)}
-				>
-					Cancel
-				</Button>
-			</div>
+				<div className="flex gap-2">
+					<Button
+						type="button"
+						variant="outline"
+						onClick={() => router.push(redirectTo)}
+					>
+						Cancel
+					</Button>
+					<form.Subscribe selector={(state) => state.isSubmitting}>
+						{(isSubmitting) => (
+							<Button type="submit" disabled={isPending || isSubmitting}>
+								{isPending ? "Saving…" : variant ? "Save changes" : "Create"}
+							</Button>
+						)}
+					</form.Subscribe>
+				</div>
+			</FieldGroup>
 		</form>
 	);
 }

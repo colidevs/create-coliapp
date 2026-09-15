@@ -1,5 +1,6 @@
 "use client";
 
+import { Field, FieldError, FieldGroup, FieldLabel } from "@colidevs/ui/field";
 import { useForm } from "@tanstack/react-form";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -7,7 +8,6 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { getQueryClient } from "@/lib/query";
 import { fieldErrorMessage } from "@/lib/utils";
 import { updateStockAction } from "./actions";
@@ -25,6 +25,14 @@ import {
  * binding library, `@tanstack/react-form` (`colidevs/hefesto#104`,
  * correcting `console-golden-path.md` decision 5's prior React Hook Form
  * pick).
+ *
+ * **Structure pass (munod parity, hefesto `design-to-code`)**: grouping now
+ * uses `@colidevs/ui`'s `FieldGroup` instead of a bare `space-y-4` div; both
+ * fields compose `Field`/`FieldLabel`/`FieldError` instead of a `space-y-1`
+ * div + `<Label>` + ad hoc `<p>`. Button order fixed to outline-then-primary.
+ * `@colidevs/ui`'s `NumberStepperField` adoption is a separate,
+ * already-in-flight concern (`sdd/ecommerce-product-variants/apply-progress`
+ * PR18) — not swapped in as part of this structure-only pass.
  */
 export function StockForm({ stock }: { stock: Stock }) {
 	const router = useRouter();
@@ -75,74 +83,84 @@ export function StockForm({ stock }: { stock: Stock }) {
 				event.stopPropagation();
 				void form.handleSubmit();
 			}}
-			className="max-w-md space-y-4"
+			className="max-w-md"
 		>
-			<form.Field
-				name="stock"
-				validators={{ onChange: stockUpdateFormSchema.shape.stock }}
-			>
-				{(field) => (
-					<div className="space-y-1">
-						<Label htmlFor={field.name}>Stock</Label>
-						<Input
-							id={field.name}
-							name={field.name}
-							type="number"
-							value={field.state.value}
-							onBlur={field.handleBlur}
-							onChange={(event) =>
-								field.handleChange(event.target.valueAsNumber)
-							}
-						/>
-						{field.state.meta.errors.length > 0 ? (
-							<p className="text-destructive text-sm">
-								{fieldErrorMessage(field.state.meta.errors)}
-							</p>
-						) : null}
-					</div>
-				)}
-			</form.Field>
-			<form.Field
-				name="stockMin"
-				validators={{ onChange: stockUpdateFormSchema.shape.stockMin }}
-			>
-				{(field) => (
-					<div className="space-y-1">
-						<Label htmlFor={field.name}>Minimum stock</Label>
-						<Input
-							id={field.name}
-							name={field.name}
-							type="number"
-							value={field.state.value}
-							onBlur={field.handleBlur}
-							onChange={(event) =>
-								field.handleChange(event.target.valueAsNumber)
-							}
-						/>
-						{field.state.meta.errors.length > 0 ? (
-							<p className="text-destructive text-sm">
-								{fieldErrorMessage(field.state.meta.errors)}
-							</p>
-						) : null}
-					</div>
-				)}
-			</form.Field>
-			<div className="flex gap-2">
-				<form.Subscribe selector={(state) => state.isSubmitting}>
-					{(isSubmitting) => (
-						<Button type="submit" disabled={isPending || isSubmitting}>
-							{isPending ? "Saving…" : "Save changes"}
-						</Button>
-					)}
-				</form.Subscribe>
-				<Button
-					type="button"
-					variant="outline"
-					onClick={() => router.push("/admin/stock")}
+			<FieldGroup>
+				<form.Field
+					name="stock"
+					validators={{ onChange: stockUpdateFormSchema.shape.stock }}
 				>
-					Cancel
-				</Button>
-			</div>
+					{(field) => {
+						const isInvalid = field.state.meta.errors.length > 0;
+						return (
+							<Field data-invalid={isInvalid}>
+								<FieldLabel htmlFor={field.name}>Stock</FieldLabel>
+								<Input
+									id={field.name}
+									name={field.name}
+									type="number"
+									value={field.state.value}
+									onBlur={field.handleBlur}
+									onChange={(event) =>
+										field.handleChange(event.target.valueAsNumber)
+									}
+									aria-invalid={isInvalid}
+								/>
+								{isInvalid ? (
+									<FieldError>
+										{fieldErrorMessage(field.state.meta.errors)}
+									</FieldError>
+								) : null}
+							</Field>
+						);
+					}}
+				</form.Field>
+				<form.Field
+					name="stockMin"
+					validators={{ onChange: stockUpdateFormSchema.shape.stockMin }}
+				>
+					{(field) => {
+						const isInvalid = field.state.meta.errors.length > 0;
+						return (
+							<Field data-invalid={isInvalid}>
+								<FieldLabel htmlFor={field.name}>Minimum stock</FieldLabel>
+								<Input
+									id={field.name}
+									name={field.name}
+									type="number"
+									value={field.state.value}
+									onBlur={field.handleBlur}
+									onChange={(event) =>
+										field.handleChange(event.target.valueAsNumber)
+									}
+									aria-invalid={isInvalid}
+								/>
+								{isInvalid ? (
+									<FieldError>
+										{fieldErrorMessage(field.state.meta.errors)}
+									</FieldError>
+								) : null}
+							</Field>
+						);
+					}}
+				</form.Field>
+				<div className="flex gap-2">
+					<Button
+						type="button"
+						variant="outline"
+						onClick={() => router.push("/admin/stock")}
+					>
+						Cancel
+					</Button>
+					<form.Subscribe selector={(state) => state.isSubmitting}>
+						{(isSubmitting) => (
+							<Button type="submit" disabled={isPending || isSubmitting}>
+								{isPending ? "Saving…" : "Save changes"}
+							</Button>
+						)}
+					</form.Subscribe>
+				</div>
+			</FieldGroup>
 		</form>
 	);
 }
