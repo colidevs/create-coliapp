@@ -1,9 +1,8 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "@tanstack/react-form";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getQueryClient } from "@/lib/query";
+import { fieldErrorMessage } from "@/lib/utils";
 import { createCategoryAction, updateCategoryAction } from "./actions";
 import {
 	type Category,
@@ -19,13 +19,16 @@ import {
 } from "./types";
 
 /**
- * NOT a port of munod's `@tanstack/react-form`-based `form.tsx` — this
- * template's forms use React Hook Form + `zodResolver`
- * (`console-golden-path.md` decision 5), the same pattern the storefront
- * checkout form already established (task 6.3). `problemToActionState`
- * (via `@/lib/problem`'s adapter, `./actions.ts`) feeds RHF's own
- * `setError`, composing client-side validation with the server's
- * authoritative result exactly as that decision describes.
+ * NOT a port of munod's `@tanstack/react-form`-based `form.tsx` in its full
+ * shape — this module keeps its own minimal field set (`ProductCreate`/
+ * `ProductUpdate` here has no dimensions/tags/discount fields), but IS now
+ * built on the same real, colidevs-production binding library, TanStack
+ * Form (`colidevs/hefesto#104` — ADR 0001 Decision 5 was corrected: real
+ * production code, `munod` and `org-jaulasvacias`, never used React Hook
+ * Form). `toActionState` (via `@/lib/problem`'s adapter, `./actions.ts`)
+ * feeds a per-field `errorMap.onSubmit`, composing client-side validation
+ * with the server's authoritative result exactly as `console-golden-path.md`
+ * describes, unchanged by this migration.
  */
 export function CategoryForm({
 	category,
@@ -39,87 +42,105 @@ export function CategoryForm({
 	const router = useRouter();
 	const [isPending, setIsPending] = useState(false);
 
-	const {
-		register,
-		handleSubmit,
-		setError,
-		control,
-		formState: { errors },
-	} = useForm<CategoryFormValues>({
-		resolver: zodResolver(categoryFormSchema),
+	const form = useForm({
 		defaultValues: {
 			name: category?.name ?? "",
 			isActive: category?.isActive ?? true,
+		} satisfies CategoryFormValues,
+		onSubmit: async ({ value: values }) => {
+			setIsPending(true);
+
+			const result = category
+				? await updateCategoryAction(category.id, values)
+				: await createCategoryAction(values);
+
+			setIsPending(false);
+
+			if (!result.success) {
+				if (result.errors) {
+					for (const [field, messages] of Object.entries(result.errors)) {
+						form.setFieldMeta(field as keyof CategoryFormValues, (meta) => ({
+							...meta,
+							errorMap: {
+								...meta.errorMap,
+								onSubmit: messages[0] ?? "Invalid value",
+							},
+						}));
+					}
+				}
+				if (result.message) toast.error(result.message);
+				return;
+			}
+
+			toast.success(category ? "Category updated." : "Category created.");
+			// See `modules/products/form.tsx`'s identical comment — the browser
+			// `QueryClient` singleton's global `staleTime: 60_000` (`lib/query.ts`)
+			// otherwise serves this list's pre-write cached page for up to a
+			// minute after this `router.push()`.
+			getQueryClient().invalidateQueries({ queryKey: ["categories"] });
+			onSuccess?.();
+			router.push(redirectTo);
 		},
 	});
-
-	async function onSubmit(values: CategoryFormValues) {
-		setIsPending(true);
-
-		const result = category
-			? await updateCategoryAction(category.id, values)
-			: await createCategoryAction(values);
-
-		setIsPending(false);
-
-		if (!result.success) {
-			if (result.errors) {
-				for (const [field, messages] of Object.entries(result.errors)) {
-					setError(field as keyof CategoryFormValues, {
-						type: "server",
-						message: messages[0] ?? "Invalid value",
-					});
-				}
-			}
-			if (result.message) toast.error(result.message);
-			return;
-		}
-
-		toast.success(category ? "Category updated." : "Category created.");
-		// See `modules/products/form.tsx`'s identical comment — the browser
-		// `QueryClient` singleton's global `staleTime: 60_000` (`lib/query.ts`)
-		// otherwise serves this list's pre-write cached page for up to a
-		// minute after this `router.push()`.
-		getQueryClient().invalidateQueries({ queryKey: ["categories"] });
-		onSuccess?.();
-		router.push(redirectTo);
-	}
 
 	return (
 		<form
 			id="category-form"
-			onSubmit={handleSubmit(onSubmit)}
+			onSubmit={(event) => {
+				event.preventDefault();
+				event.stopPropagation();
+				void form.handleSubmit();
+			}}
 			className="max-w-md space-y-4"
 		>
-			<div className="space-y-1">
-				<Label htmlFor="name">Name</Label>
-				<Input id="name" {...register("name")} />
-				{errors.name ? (
-					<p className="text-destructive text-sm">{errors.name.message}</p>
-				) : null}
-			</div>
+			<form.Field
+				name="name"
+				validators={{ onChange: categoryFormSchema.shape.name }}
+			>
+				{(field) => (
+					<div className="space-y-1">
+						<Label htmlFor={field.name}>Name</Label>
+						<Input
+							id={field.name}
+							name={field.name}
+							value={field.state.value}
+							onBlur={field.handleBlur}
+							onChange={(event) => field.handleChange(event.target.value)}
+						/>
+						{field.state.meta.errors.length > 0 ? (
+							<p className="text-destructive text-sm">
+								{fieldErrorMessage(field.state.meta.errors)}
+							</p>
+						) : null}
+					</div>
+				)}
+			</form.Field>
 
 			{category ? (
-				<Controller
-					name="isActive"
-					control={control}
-					render={({ field }) => (
+				<form.Field name="isActive">
+					{(field) => (
 						<div className="flex items-center gap-2">
 							<Checkbox
-								id="isActive"
-								checked={field.value}
-								onCheckedChange={(checked) => field.onChange(checked === true)}
+								id={field.name}
+								checked={field.state.value}
+								onCheckedChange={(checked) =>
+									field.handleChange(checked === true)
+								}
 							/>
-							<Label htmlFor="isActive">Active</Label>
+							<Label htmlFor={field.name}>Active</Label>
 						</div>
 					)}
-				/>
+				</form.Field>
 			) : null}
 
 			<div className="flex gap-2">
-				<Button type="submit" disabled={isPending}>
-					{isPending ? "Saving…" : category ? "Save changes" : "Create"}
-				</Button>
+				<form.Subscribe selector={(state) => state.isSubmitting}>
+					{(isSubmitting) => (
+						<Button type="submit" disabled={isPending || isSubmitting}>
+							{isPending ? "Saving…" : category ? "Save changes" : "Create"}
+						</Button>
+					)}
+				</form.Subscribe>
 				<Button
 					type="button"
 					variant="outline"

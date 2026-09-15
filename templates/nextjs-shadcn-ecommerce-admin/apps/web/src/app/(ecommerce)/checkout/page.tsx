@@ -1,15 +1,15 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "@tanstack/react-form";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Price } from "@/lib/currency";
+import { fieldErrorMessage } from "@/lib/utils";
 import { useCartStore } from "@/modules/cart/store";
 import { submitCheckout } from "./actions";
 
@@ -21,9 +21,10 @@ import { submitCheckout } from "./actions";
  * (province list, cédula/RUC regex). This template's checkout is new,
  * wired against the real `POST /api/v1/dlocal/checkout` contract (PR3a's
  * `CheckoutRequest`/`CheckoutResponse`, `@/generated/model`). Client-side
- * validation is React Hook Form + `zodResolver` (`console-golden-path.md`
- * decision 5) layered on top of — never a substitute for — the Server
- * Action's own authoritative call.
+ * validation is `@tanstack/react-form` (`colidevs/hefesto#104`, correcting
+ * `console-golden-path.md` decision 5's prior React Hook Form pick) layered
+ * on top of — never a substitute for — the Server Action's own authoritative
+ * call.
  */
 const payerSchema = z.object({
 	name: z.string().min(1, "Required"),
@@ -40,43 +41,42 @@ export default function CheckoutPage() {
 	const [error, setError] = useState<string | null>(null);
 	const [isPending, setIsPending] = useState(false);
 
-	const {
-		register,
-		handleSubmit,
-		formState: { errors },
-	} = useForm<PayerFormValues>({
-		resolver: zodResolver(payerSchema),
-		defaultValues: { name: "", email: "", document: "", phone: "" },
+	const form = useForm({
+		defaultValues: {
+			name: "",
+			email: "",
+			document: "",
+			phone: "",
+		} satisfies PayerFormValues,
+		onSubmit: async ({ value: payer }) => {
+			setIsPending(true);
+			setError(null);
+
+			// `exactOptionalPropertyTypes` (ADR 0030) rejects an explicit `undefined`
+			// for `phone?: string` — conditionally spread instead of always
+			// assigning the key.
+			const { phone, ...requiredFields } = payer;
+			const result = await submitCheckout(
+				{ ...requiredFields, ...(phone ? { phone } : {}) },
+				items.map((item) => ({
+					variantId: item.variantId,
+					quantity: item.quantity,
+				})),
+			);
+
+			// A successful call redirects server-side (`actions.ts`'s `redirect()`)
+			// and never returns — this branch only runs on the error path.
+			if (result?.error) {
+				setError(result.error);
+				setIsPending(false);
+			}
+		},
 	});
 
 	const totalPrice = items.reduce(
 		(acc, item) => acc + item.price * item.quantity,
 		0,
 	);
-
-	async function onSubmit(payer: PayerFormValues) {
-		setIsPending(true);
-		setError(null);
-
-		// `exactOptionalPropertyTypes` (ADR 0030) rejects an explicit `undefined`
-		// for `phone?: string` — conditionally spread instead of always
-		// assigning the key.
-		const { phone, ...requiredFields } = payer;
-		const result = await submitCheckout(
-			{ ...requiredFields, ...(phone ? { phone } : {}) },
-			items.map((item) => ({
-				variantId: item.variantId,
-				quantity: item.quantity,
-			})),
-		);
-
-		// A successful call redirects server-side (`actions.ts`'s `redirect()`)
-		// and never returns — this branch only runs on the error path.
-		if (result?.error) {
-			setError(result.error);
-			setIsPending(false);
-		}
-	}
 
 	if (items.length === 0) {
 		return (
@@ -92,34 +92,95 @@ export default function CheckoutPage() {
 	return (
 		<div className="mx-auto max-w-md px-4 py-12">
 			<h1 className="mb-6 font-semibold text-2xl">Checkout</h1>
-			<form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-				<div className="space-y-1">
-					<Label htmlFor="name">Full name</Label>
-					<Input id="name" {...register("name")} />
-					{errors.name ? (
-						<p className="text-destructive text-sm">{errors.name.message}</p>
-					) : null}
-				</div>
-				<div className="space-y-1">
-					<Label htmlFor="email">Email</Label>
-					<Input id="email" type="email" {...register("email")} />
-					{errors.email ? (
-						<p className="text-destructive text-sm">{errors.email.message}</p>
-					) : null}
-				</div>
-				<div className="space-y-1">
-					<Label htmlFor="document">Document</Label>
-					<Input id="document" {...register("document")} />
-					{errors.document ? (
-						<p className="text-destructive text-sm">
-							{errors.document.message}
-						</p>
-					) : null}
-				</div>
-				<div className="space-y-1">
-					<Label htmlFor="phone">Phone (optional)</Label>
-					<Input id="phone" {...register("phone")} />
-				</div>
+			<form
+				onSubmit={(event) => {
+					event.preventDefault();
+					event.stopPropagation();
+					void form.handleSubmit();
+				}}
+				className="space-y-4"
+			>
+				<form.Field
+					name="name"
+					validators={{ onChange: payerSchema.shape.name }}
+				>
+					{(field) => (
+						<div className="space-y-1">
+							<Label htmlFor={field.name}>Full name</Label>
+							<Input
+								id={field.name}
+								name={field.name}
+								value={field.state.value}
+								onBlur={field.handleBlur}
+								onChange={(event) => field.handleChange(event.target.value)}
+							/>
+							{field.state.meta.errors.length > 0 ? (
+								<p className="text-destructive text-sm">
+									{fieldErrorMessage(field.state.meta.errors)}
+								</p>
+							) : null}
+						</div>
+					)}
+				</form.Field>
+				<form.Field
+					name="email"
+					validators={{ onChange: payerSchema.shape.email }}
+				>
+					{(field) => (
+						<div className="space-y-1">
+							<Label htmlFor={field.name}>Email</Label>
+							<Input
+								id={field.name}
+								name={field.name}
+								type="email"
+								value={field.state.value}
+								onBlur={field.handleBlur}
+								onChange={(event) => field.handleChange(event.target.value)}
+							/>
+							{field.state.meta.errors.length > 0 ? (
+								<p className="text-destructive text-sm">
+									{fieldErrorMessage(field.state.meta.errors)}
+								</p>
+							) : null}
+						</div>
+					)}
+				</form.Field>
+				<form.Field
+					name="document"
+					validators={{ onChange: payerSchema.shape.document }}
+				>
+					{(field) => (
+						<div className="space-y-1">
+							<Label htmlFor={field.name}>Document</Label>
+							<Input
+								id={field.name}
+								name={field.name}
+								value={field.state.value}
+								onBlur={field.handleBlur}
+								onChange={(event) => field.handleChange(event.target.value)}
+							/>
+							{field.state.meta.errors.length > 0 ? (
+								<p className="text-destructive text-sm">
+									{fieldErrorMessage(field.state.meta.errors)}
+								</p>
+							) : null}
+						</div>
+					)}
+				</form.Field>
+				<form.Field name="phone">
+					{(field) => (
+						<div className="space-y-1">
+							<Label htmlFor={field.name}>Phone (optional)</Label>
+							<Input
+								id={field.name}
+								name={field.name}
+								value={field.state.value}
+								onBlur={field.handleBlur}
+								onChange={(event) => field.handleChange(event.target.value)}
+							/>
+						</div>
+					)}
+				</form.Field>
 
 				<div className="flex items-center justify-between border-t pt-4 font-medium">
 					<span>Total</span>
@@ -128,9 +189,17 @@ export default function CheckoutPage() {
 
 				{error ? <p className="text-destructive text-sm">{error}</p> : null}
 
-				<Button type="submit" disabled={isPending} className="w-full">
-					{isPending ? "Redirecting to payment…" : "Pay with dLocal"}
-				</Button>
+				<form.Subscribe selector={(state) => state.isSubmitting}>
+					{(isSubmitting) => (
+						<Button
+							type="submit"
+							disabled={isPending || isSubmitting}
+							className="w-full"
+						>
+							{isPending ? "Redirecting to payment…" : "Pay with dLocal"}
+						</Button>
+					)}
+				</form.Subscribe>
 			</form>
 		</div>
 	);

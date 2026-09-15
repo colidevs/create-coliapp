@@ -11,10 +11,15 @@ import {
 	type DropdownMenuActionsProps,
 	type TableColumn,
 } from "@/components/data-table";
+import type { VariantOptionType, VariantOptionValue } from "@/generated/model";
 import { Price } from "@/lib/currency";
 import { deleteVariantAction, paginationQuery } from "./actions";
 import { useVariantsContext } from "./context";
-import type { ListVariantsParams, Variant } from "./types";
+import {
+	type ListVariantsParams,
+	resolveVariantOptionLabels,
+	type Variant,
+} from "./types";
 
 /**
  * Structural sibling of `modules/product-images/table.tsx` /
@@ -28,9 +33,13 @@ import type { ListVariantsParams, Variant } from "./types";
  */
 export function VariantsTable({
 	productId,
+	optionTypes,
+	optionValues,
 	filters,
 }: {
 	productId: string;
+	optionTypes: VariantOptionType[];
+	optionValues: VariantOptionValue[];
 	filters?: ListVariantsParams;
 }) {
 	const { queryKey } = useVariantsContext();
@@ -86,10 +95,18 @@ export function VariantsTable({
 			header: ({ column }) => (
 				<DataTableColumnHeader column={column}>Options</DataTableColumnHeader>
 			),
-			cell: ({ row }) =>
-				row.original.optionValueIds.length > 0
-					? `${row.original.optionValueIds.length} selected`
-					: "—",
+			// DX fix (this session's review + `colidevs/hefesto#104`): resolved
+			// human-readable "OptionType: Value" labels — same
+			// `resolveVariantOptionLabels` helper already used on the
+			// single-variant detail page — instead of a raw "N selected" count.
+			cell: ({ row }) => {
+				const labels = resolveVariantOptionLabels(
+					row.original,
+					optionTypes,
+					optionValues,
+				);
+				return labels.length > 0 ? labels.join(", ") : "—";
+			},
 			accessorKey: "optionValueIds",
 			meta: { displayName: "Options" },
 		},

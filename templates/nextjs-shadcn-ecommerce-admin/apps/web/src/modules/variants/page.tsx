@@ -1,5 +1,6 @@
 import { Boxes } from "lucide-react";
 
+import type { VariantOptionType, VariantOptionValue } from "@/generated/model";
 import { VariantsProviderClient } from "./context";
 import { VariantsTable } from "./table";
 
@@ -11,7 +12,15 @@ import { VariantsTable } from "./table";
  * meaning (price/stock/option selections) is always relative to its parent
  * product.
  */
-export function VariantsPage({ productId }: { productId: string }) {
+export function VariantsPage({
+	productId,
+	optionTypes,
+	optionValues,
+}: {
+	productId: string;
+	optionTypes: VariantOptionType[];
+	optionValues: VariantOptionValue[];
+}) {
 	return (
 		<VariantsProviderClient>
 			<section className="space-y-4">
@@ -25,7 +34,11 @@ export function VariantsPage({ productId }: { productId: string }) {
 						</p>
 					</div>
 				</header>
-				<VariantsTable productId={productId} />
+				<VariantsTable
+					productId={productId}
+					optionTypes={optionTypes}
+					optionValues={optionValues}
+				/>
 			</section>
 		</VariantsProviderClient>
 	);
