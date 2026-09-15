@@ -1,12 +1,12 @@
 "use client";
 
+import { CheckboxField, NumberStepperField } from "@colidevs/ui/form-fields";
 import { useForm } from "@tanstack/react-form";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -47,6 +47,21 @@ import {
  * `defaultOptionTypeId` when reached from the "Manage values" deep link
  * (`?optionTypeId=`), and stays disabled once editing — same
  * `disabled={Boolean(optionValue)}` behavior as before.
+ *
+ * **`@colidevs/ui` adoption**: `isActive` now uses `@colidevs/ui`'s shared
+ * `CheckboxField` (the real, published composed-form-fields layer munod/
+ * org-jaulasvacias independently converged on —
+ * `sdd/ecommerce-product-variants/apply-progress` PR18). Safe here because
+ * it renders at most ONCE per page — `@colidevs/ui@0.1.0`'s `CheckboxField`
+ * uses a hardcoded, non-field-derived DOM id internally (`id="checkbox_field"`
+ * — `framework/packages/ui/src/form-fields.tsx`, not `field.name`-scoped
+ * like `NumberStepperField`/`PriceInputField`), so a second instance on the
+ * same page would collide. `optionTypeId` stays a hand-rolled `<Select>`
+ * — `SelectField` has no `disabled` prop, and this field must stay disabled
+ * once editing. `value`/`imageUrl`/`description`/`displayOrder` stay
+ * hand-rolled `<Input>` — this page has multiple plain-text inputs, and
+ * `InputField` carries the identical hardcoded-id bug (`id="input_field_name"`
+ * for every instance, would collide across &gt;1 use).
  */
 export function VariantOptionValueForm({
 	optionValue,
@@ -152,7 +167,12 @@ export function VariantOptionValueForm({
 						<Label htmlFor={field.name}>Option type</Label>
 						{/* Conditionally spread `value` (ADR 0030 floor) — `field.state.value`
 						 is `string | undefined` (unselected), but `Select`'s own `value?`
-						 prop type has no explicit `| undefined`. */}
+						 prop type has no explicit `| undefined`.
+						 NOT swapped to `@colidevs/ui`'s `SelectField` — checked its real
+						 signature (`framework/packages/ui/src/form-fields.tsx`): it has no
+						 `disabled` prop at all, and this field must stay disabled once
+						 editing (`optionTypeId` is immutable after creation). Forcing the
+						 swap would silently drop that behavior. */}
 						<Select
 							{...(field.state.value ? { value: field.state.value } : {})}
 							onValueChange={field.handleChange}
@@ -239,38 +259,17 @@ export function VariantOptionValueForm({
 					</div>
 				)}
 			</form.Field>
+			{/* `@colidevs/ui`'s `NumberStepperField` derives its id from `field.name`
+			 (no hardcoded-id collision risk, unlike `CheckboxField`/`SelectField`
+			 above) — safe to adopt regardless of how many numeric fields a form
+			 has. */}
 			<form.Field name="displayOrder">
-				{(field) => (
-					<div className="space-y-1">
-						<Label htmlFor={field.name}>Display order</Label>
-						<Input
-							id={field.name}
-							name={field.name}
-							type="number"
-							value={field.state.value}
-							onBlur={field.handleBlur}
-							onChange={(event) =>
-								field.handleChange(event.target.valueAsNumber)
-							}
-						/>
-					</div>
-				)}
+				{(field) => <NumberStepperField field={field} title="Display order" />}
 			</form.Field>
 
 			{optionValue ? (
 				<form.Field name="isActive">
-					{(field) => (
-						<div className="flex items-center gap-2">
-							<Checkbox
-								id={field.name}
-								checked={field.state.value}
-								onCheckedChange={(checked) =>
-									field.handleChange(checked === true)
-								}
-							/>
-							<Label htmlFor={field.name}>Active</Label>
-						</div>
-					)}
+					{(field) => <CheckboxField field={field} title="Active" />}
 				</form.Field>
 			) : null}
 

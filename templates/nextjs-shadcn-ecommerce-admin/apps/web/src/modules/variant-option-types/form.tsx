@@ -1,12 +1,12 @@
 "use client";
 
+import { CheckboxField, NumberStepperField } from "@colidevs/ui/form-fields";
 import { useForm } from "@tanstack/react-form";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getQueryClient } from "@/lib/query";
@@ -28,6 +28,14 @@ import {
  * is never a form field: it is derived server-side from `name` on both
  * create and rename (design: "`slug` is derived from `name`"/"Renaming
  * re-derives `slug`").
+ *
+ * **`@colidevs/ui` adoption**: `displayOrder`/`isActive` now use the shared
+ * `NumberStepperField`/`CheckboxField` composed-form-fields layer
+ * (`sdd/ecommerce-product-variants/apply-progress` PR18) — `CheckboxField`
+ * is safe here because this page has exactly one checkbox instance (see
+ * `modules/variant-option-values/form.tsx`'s note on the hardcoded-id
+ * constraint); `NumberStepperField` derives its id from `field.name` and
+ * carries no such constraint.
  */
 export function VariantOptionTypeForm({
 	optionType,
@@ -138,37 +146,12 @@ export function VariantOptionTypeForm({
 				)}
 			</form.Field>
 			<form.Field name="displayOrder">
-				{(field) => (
-					<div className="space-y-1">
-						<Label htmlFor={field.name}>Display order</Label>
-						<Input
-							id={field.name}
-							name={field.name}
-							type="number"
-							value={field.state.value}
-							onBlur={field.handleBlur}
-							onChange={(event) =>
-								field.handleChange(event.target.valueAsNumber)
-							}
-						/>
-					</div>
-				)}
+				{(field) => <NumberStepperField field={field} title="Display order" />}
 			</form.Field>
 
 			{optionType ? (
 				<form.Field name="isActive">
-					{(field) => (
-						<div className="flex items-center gap-2">
-							<Checkbox
-								id={field.name}
-								checked={field.state.value}
-								onCheckedChange={(checked) =>
-									field.handleChange(checked === true)
-								}
-							/>
-							<Label htmlFor={field.name}>Active</Label>
-						</div>
-					)}
+					{(field) => <CheckboxField field={field} title="Active" />}
 				</form.Field>
 			) : null}
 

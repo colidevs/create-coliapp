@@ -1,5 +1,6 @@
 "use client";
 
+import { NumberStepperField } from "@colidevs/ui/form-fields";
 import { useForm } from "@tanstack/react-form";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -55,6 +56,26 @@ import {
  * thumbnail next to its checkbox label, mirroring the storefront's own
  * `<VariantSelector>` treatment and munod's real production pattern. An
  * option value with no `imageUrl` renders exactly as before.
+ *
+ * **`@colidevs/ui` adoption (evaluated, partially applied)**: `stock`/
+ * `stockMin`/`displayOrder` now use the shared `NumberStepperField` (id
+ * derived from `field.name`, no collision risk regardless of instance
+ * count). Deliberately NOT adopted here, with reasons:
+ * - `price` — `@colidevs/ui`'s `PriceInputField` assumes a cents-digit-entry
+ *   convention (typed digits divided by 100); this field uses direct decimal
+ *   entry (`step="0.01"`). Not an equivalent swap, would change real UX
+ *   behavior for existing users of this form.
+ * - `isDefault`/`isActive` — `CheckboxField` has a hardcoded, non-`field.name`
+ *   DOM id (`framework/packages/ui/src/form-fields.tsx`); this form can
+ *   render BOTH simultaneously when editing (`isDefault` always +
+ *   `isActive` once `variant` is set), which would collide on
+ *   `id="checkbox_field"`. Left hand-rolled.
+ * - The `optionValueIds` picker — `@colidevs/ui`'s `ToggleGroupField`/
+ *   `CheckboxField` render a flat option list with no per-type grouping and
+ *   no `imageUrl` thumbnail support; this picker groups by option type,
+ *   renders thumbnails, and drives a custom missing-type validation message.
+ *   Swapping would regress real, shipped functionality (PR11/PR15) — left
+ *   hand-rolled.
  */
 export function VariantForm({
 	variant,
@@ -259,54 +280,16 @@ export function VariantForm({
 					)}
 				</form.Field>
 				<form.Field name="stock">
-					{(field) => (
-						<div className="space-y-1">
-							<Label htmlFor={field.name}>Stock</Label>
-							<Input
-								id={field.name}
-								name={field.name}
-								type="number"
-								value={field.state.value}
-								onBlur={field.handleBlur}
-								onChange={(event) =>
-									field.handleChange(event.target.valueAsNumber)
-								}
-							/>
-						</div>
-					)}
+					{(field) => <NumberStepperField field={field} title="Stock" />}
 				</form.Field>
 				<form.Field name="stockMin">
 					{(field) => (
-						<div className="space-y-1">
-							<Label htmlFor={field.name}>Minimum stock</Label>
-							<Input
-								id={field.name}
-								name={field.name}
-								type="number"
-								value={field.state.value}
-								onBlur={field.handleBlur}
-								onChange={(event) =>
-									field.handleChange(event.target.valueAsNumber)
-								}
-							/>
-						</div>
+						<NumberStepperField field={field} title="Minimum stock" />
 					)}
 				</form.Field>
 				<form.Field name="displayOrder">
 					{(field) => (
-						<div className="space-y-1">
-							<Label htmlFor={field.name}>Display order</Label>
-							<Input
-								id={field.name}
-								name={field.name}
-								type="number"
-								value={field.state.value}
-								onBlur={field.handleBlur}
-								onChange={(event) =>
-									field.handleChange(event.target.valueAsNumber)
-								}
-							/>
-						</div>
+						<NumberStepperField field={field} title="Display order" />
 					)}
 				</form.Field>
 			</div>
