@@ -34,17 +34,44 @@ import type {
  * `queryFn` (e.g. TanStack Query's own window-refocus refetch) as an RPC
  * call, mirroring `nextjs-kumo-console/src/app/(console)/orders/queries.ts`'s
  * own established pattern exactly.
+ *
+ * Found live (RopaStore pilot): `page.tsx`/`products/page.tsx` both build
+ * `params.page` 1-based (matching the storefront's human-facing `?page=`
+ * URL convention and `products-list-client.tsx`'s `pagination.page > 1`/
+ * `page - 1`/`page + 1` display logic), while `apps/api`'s `web/products`
+ * repository paginates 0-based (`page ?? 0`, `offset = page * size` — same
+ * convention as `admin/products`). Sending the UI's `page=1` unconverted
+ * computed `offset = size`, skipping the only page of real data and
+ * returning an empty `items[]` with a nonzero `pagination.total` — no
+ * infra/seed/config issue, a pure off-by-one at this boundary. Convert at
+ * the edge here so neither the API's own convention nor the UI's own
+ * display convention has to change.
+ *
+ * This is now the codified org-wide standard, not a one-off patch: ADR
+ * 0009's pagination row (`hefesto/docs/decisions/0009-api-communication-
+ * standard.md`, addendum 2026-09-15) fixes 0-based as canonical at every
+ * API/wire boundary, with a 1-based human-facing URL converted at the
+ * client edge exactly as done here — never invented independently per app.
  */
 export async function listPublicProductsQuery(
 	params?: ListPublicProductsParams,
 ): Promise<ProductList> {
-	const result = await listPublicProducts(params);
+	const result = await listPublicProducts({
+		...params,
+		...(params?.page !== undefined ? { page: params.page - 1 } : {}),
+	});
 
 	if (result.status !== 200) {
 		throw new Error(result.data.detail ?? result.data.title);
 	}
 
-	return result.data;
+	return {
+		...result.data,
+		pagination: {
+			...result.data.pagination,
+			page: result.data.pagination.page + 1,
+		},
+	};
 }
 
 export async function getPublicProductBySlugQuery(slug: string) {
