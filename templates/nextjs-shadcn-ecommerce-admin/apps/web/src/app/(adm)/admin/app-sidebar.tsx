@@ -7,6 +7,7 @@ import {
 	Image as ImageIcon,
 	Package,
 	Shapes,
+	Tags,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -35,11 +36,20 @@ import { cn } from "@/lib/utils";
  * list covers that without importing the full Sidebar primitive. Same
  * adaptation posture as the storefront port's own `header.tsx`/`shell.tsx`
  * (task 6.1/6.5) — simplified to what this template's actual scope needs.
+ *
+ * PR8 adds one entry, "Option types" — not "Option values": design/tasks
+ * (`sdd/ecommerce-product-variants`) add exactly one nav entry for the
+ * option-vocabulary surface. Values are scoped by option type (mirroring
+ * `admin/product-images`'s own `?productId=` filter) and are reached via a
+ * "Manage values" row action on the option-types table
+ * (`modules/variant-option-types/table.tsx`), never their own top-level nav
+ * entry.
  */
 const NAV_ITEMS = [
 	{ title: "Products", url: "/admin/products", icon: Boxes },
 	{ title: "Categories", url: "/admin/categories", icon: Shapes },
 	{ title: "Product Images", url: "/admin/product-images", icon: ImageIcon },
+	{ title: "Option types", url: "/admin/variant-option-types", icon: Tags },
 	{ title: "Stock", url: "/admin/stock", icon: Package },
 	{ title: "Orders", url: "/admin/orders", icon: ClipboardList },
 ] as const;
