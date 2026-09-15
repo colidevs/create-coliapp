@@ -166,7 +166,7 @@ export function DescriptionCell({ str }: { str: string }) {
 					onClick={() => setExpanded((v) => !v)}
 					className="mt-1 text-xs text-muted-foreground hover:underline"
 				>
-					{expanded ? "Ver menos" : "Ver más"}
+					{expanded ? "See less" : "See more"}
 				</button>
 			)}
 		</div>
@@ -179,7 +179,7 @@ export function ImageCell({ url }: { url: string | undefined }) {
 			<ImageModal url={url} className="size-32" />
 		</div>
 	) : (
-		<Fragment>⚠️ Sin imagen</Fragment>
+		<Fragment>⚠️ No image</Fragment>
 	);
 }
 
@@ -198,7 +198,7 @@ export function DetailLinkCell({
 		<Link
 			href={href}
 			className="group flex hover:underline hover:underline-offset-4 items-start gap-1"
-			title="Ver detalles"
+			title="View details"
 		>
 			{label}
 			<ArrowUpRight className="size-3 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />
@@ -243,11 +243,11 @@ export function DataTableViewOptions<TData>({
 			<DropdownMenuTrigger asChild>
 				<Button variant="outline" size="sm" className="sm:ml-auto h-8 lg:flex">
 					<Settings2 />
-					<span className="hidden sm:inline ms-2">Columnas</span>
+					<span className="hidden sm:inline ms-2">Columns</span>
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="end" className="w-[150px]">
-				<DropdownMenuLabel>Ocultar columnas</DropdownMenuLabel>
+				<DropdownMenuLabel>Hide columns</DropdownMenuLabel>
 				<DropdownMenuSeparator />
 				{table
 					.getAllColumns()
@@ -308,7 +308,7 @@ export function DataTableColumnHeader<TData, TValue>({
 					<DropdownMenuSeparator />
 					<DropdownMenuItem onClick={() => column.toggleVisibility(false)}>
 						<EyeOff />
-						Ocultar
+						Hide
 					</DropdownMenuItem>
 				</DropdownMenuContent>
 			</DropdownMenu>
@@ -430,26 +430,26 @@ function DataTableComponent<TData, TValue, TFilters>({
 					(table.getIsSomePageRowsSelected() && "indeterminate")
 				}
 				onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-				aria-label="Seleccionar todo"
+				aria-label="Select all"
 			/>
 		),
 		cell: ({ row }) => (
 			<Checkbox
 				checked={row.getIsSelected()}
 				onCheckedChange={(value) => row.toggleSelected(!!value)}
-				aria-label="Seleccionar Fila"
+				aria-label="Select row"
 				className="ms-3"
 			/>
 		),
 		enableSorting: false,
 		enableHiding: false,
 		meta: {
-			displayName: "Seleccionado",
+			displayName: "Selected",
 		},
 	};
 
 	const deleteAction: TableAction<TData> = {
-		title: "Borrar",
+		title: "Delete",
 		icon: <Trash />,
 		onClick: ({ original }) => {
 			setRowToDelete(original);
@@ -467,7 +467,7 @@ function DataTableComponent<TData, TValue, TFilters>({
 		header: () => null,
 		cell: (cell) => <DropdownMenuActions cell={cell} actions={allActions} />,
 		meta: {
-			displayName: "Acciones",
+			displayName: "Actions",
 		},
 	};
 
@@ -552,12 +552,10 @@ function DataTableComponent<TData, TValue, TFilters>({
 		navigator.clipboard
 			.writeText(csvContent)
 			.then(() => {
-				toast.success(
-					`${selectedRows.length} elemento(s) copiado(s) correctamente al portapapeles`,
-				);
+				toast.success(`${selectedRows.length} row(s) copied to clipboard`);
 			})
 			.catch(() => {
-				toast.error("❌ Error al copiar al portapapeles. Inténtalo de nuevo.");
+				toast.error("❌ Error copying to clipboard. Please try again.");
 			});
 	}
 
@@ -596,13 +594,9 @@ function DataTableComponent<TData, TValue, TFilters>({
 									if (!rowToDelete) return;
 									onDelete
 										?.onSuccess?.(rowToDelete)
-										.then(() =>
-											toast.success(
-												"Se ha eliminado el registro correctamente.",
-											),
-										)
+										.then(() => toast.success("Record deleted successfully."))
 										.catch(() =>
-											toast.error("Hubo un error al eliminar el registro."),
+											toast.error("There was an error deleting the record."),
 										)
 										.finally(() => {
 											setRowToDelete(null);
@@ -610,9 +604,9 @@ function DataTableComponent<TData, TValue, TFilters>({
 										});
 								}}
 							>
-								Eliminar
+								Delete
 							</AlertDialogAction>
-							<AlertDialogCancel>Cancelar</AlertDialogCancel>
+							<AlertDialogCancel>Cancel</AlertDialogCancel>
 						</AlertDialogFooter>
 					</AlertDialogContent>
 				</AlertDialog>
@@ -620,7 +614,7 @@ function DataTableComponent<TData, TValue, TFilters>({
 					{addRegister ? (
 						<Button onClick={add} className="flex items-center gap-2">
 							<Plus className="h-4 w-4" />
-							Nuevo registro
+							New record
 						</Button>
 					) : null}
 				</div>
@@ -638,7 +632,7 @@ function DataTableComponent<TData, TValue, TFilters>({
 										query.isFetching ? "animate-spin" : "",
 									)}
 								/>
-								<span className="hidden sm:inline">Actualizar</span>
+								<span className="hidden sm:inline">Refresh</span>
 							</Button>
 						</TooltipTrigger>
 					</Tooltip>
@@ -651,9 +645,7 @@ function DataTableComponent<TData, TValue, TFilters>({
 						disabled={table.getFilteredSelectedRowModel().rows.length === 0}
 					>
 						<File className="h-4 w-4" />
-						<span className="hidden sm:inline ml-2">
-							Copiar filas seleccionadas
-						</span>
+						<span className="hidden sm:inline ml-2">Copy selected rows</span>
 					</Button>
 					<DataTableViewOptions table={table} />
 				</div>
@@ -698,11 +690,11 @@ function DataTableComponent<TData, TValue, TFilters>({
 															className="flex-1"
 															onClick={() =>
 																allActions
-																	.find((a) => a.title === "Editar")
+																	.find((a) => a.title === "Edit")
 																	?.onClick(row)
 															}
 														>
-															Editar
+															Edit
 														</Button>
 														<DropdownMenu modal={false}>
 															<DropdownMenuTrigger asChild>
@@ -711,12 +703,12 @@ function DataTableComponent<TData, TValue, TFilters>({
 																	size="sm"
 																	className="flex-1"
 																>
-																	Otras acciones
+																	Other actions
 																</Button>
 															</DropdownMenuTrigger>
 															<DropdownMenuContent align="end">
 																{allActions
-																	.filter((a) => a.title !== "Editar")
+																	.filter((a) => a.title !== "Edit")
 																	.map((action, i) => {
 																		const title =
 																			typeof action.title === "function"
@@ -764,7 +756,7 @@ function DataTableComponent<TData, TValue, TFilters>({
 									colSpan={columns.length}
 									className="h-24 text-center"
 								>
-									Cargando...
+									Loading...
 									<div className="text-center py-8 text-gray-500">
 										<Loader2 className="h-12 w-12 mx-auto mb-4 animate-spin" />
 									</div>
@@ -776,11 +768,11 @@ function DataTableComponent<TData, TValue, TFilters>({
 									colSpan={columns.length}
 									className="h-24 text-center"
 								>
-									No se encontraron resultados.
+									No results found.
 									<div className="text-center py-8 text-gray-500">
 										<Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
 										<Button variant="outline" onClick={add} className="mt-2">
-											Nuevo registro
+											New record
 										</Button>
 									</div>
 								</TableCell>
@@ -792,15 +784,13 @@ function DataTableComponent<TData, TValue, TFilters>({
 			<aside className="flex items-center justify-end space-x-2 py-4">
 				<div className="flex flex-col sm:flex-row gap-2 sm:gap-0 items-start sm:items-center justify-between px-2 w-full">
 					<div className="text-muted-foreground flex-1 text-sm me-4">
-						{table.getFilteredSelectedRowModel().rows.length} de{" "}
-						{table.getFilteredRowModel().rows.length} fila(s) seleccionadas.
-						<span className="ms-2">
-							Total de registros: {table.getRowCount()}.
-						</span>
+						{table.getFilteredSelectedRowModel().rows.length} of{" "}
+						{table.getFilteredRowModel().rows.length} row(s) selected.
+						<span className="ms-2">Total records: {table.getRowCount()}.</span>
 					</div>
 					<div className="flex flex-col sm:flex-row gap-2 sm:gap-0 items-start sm:items-center space-x-6 lg:space-x-8">
 						<div className="flex items-center space-x-2">
-							<p className="text-sm font-medium">Filas por página</p>
+							<p className="text-sm font-medium">Rows per page</p>
 							<Select
 								value={`${table.getState().pagination.pageSize}`}
 								onValueChange={(value) => {
@@ -822,7 +812,7 @@ function DataTableComponent<TData, TValue, TFilters>({
 							</Select>
 						</div>
 						<div className="flex w-32 items-start sm:items-center justify-start sm:justify-center text-sm font-medium">
-							Página {table.getState().pagination.pageIndex + 1} de{" "}
+							Page {table.getState().pagination.pageIndex + 1} of{" "}
 							{table.getPageCount()}
 						</div>
 						<div className="flex items-center space-x-2">
@@ -836,7 +826,7 @@ function DataTableComponent<TData, TValue, TFilters>({
 											onClick={() => table.setPageIndex(0)}
 											disabled={!table.getCanPreviousPage()}
 										>
-											<span className="sr-only">Primer página</span>
+											<span className="sr-only">First page</span>
 											<ChevronsLeft />
 										</Button>
 									</PaginationItem>
@@ -848,7 +838,7 @@ function DataTableComponent<TData, TValue, TFilters>({
 											onClick={() => table.previousPage()}
 											disabled={!table.getCanPreviousPage()}
 										>
-											<span className="sr-only">Página anterior</span>
+											<span className="sr-only">Previous page</span>
 											<ChevronLeft />
 										</Button>
 									</PaginationItem>
@@ -860,7 +850,7 @@ function DataTableComponent<TData, TValue, TFilters>({
 											onClick={() => table.nextPage()}
 											disabled={!table.getCanNextPage()}
 										>
-											<span className="sr-only">Siguiente página</span>
+											<span className="sr-only">Next page</span>
 											<ChevronRight />
 										</Button>
 									</PaginationItem>
@@ -874,7 +864,7 @@ function DataTableComponent<TData, TValue, TFilters>({
 											}
 											disabled={!table.getCanNextPage()}
 										>
-											<span className="sr-only">Última página</span>
+											<span className="sr-only">Last page</span>
 											<ChevronsRight />
 										</Button>
 									</PaginationItem>

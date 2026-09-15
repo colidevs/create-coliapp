@@ -39,7 +39,13 @@ export default async function ProductsPage({
 	};
 
 	const queryClient = getQueryClient();
-	void queryClient.prefetchQuery(publicProductsQueryOptions(params));
+	// Awaited — see `app/(ecommerce)/page.tsx`'s doc comment for the full
+	// root-cause explanation (confirmed live hydration-mismatch fix, not a
+	// speculative change): a non-awaited `prefetchQuery` here dehydrates a
+	// still-`pending` query with no data, which this page's `ProductsListClient`
+	// (plain `useQuery`, no `<Suspense>` boundary) cannot resolve without a
+	// real React hydration error.
+	await queryClient.prefetchQuery(publicProductsQueryOptions(params));
 
 	return (
 		<div className="mx-auto max-w-6xl px-4">

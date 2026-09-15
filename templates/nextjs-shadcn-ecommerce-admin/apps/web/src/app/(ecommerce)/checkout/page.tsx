@@ -1,6 +1,7 @@
 "use client";
 
 import { useForm } from "@tanstack/react-form";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { z } from "zod";
@@ -92,6 +93,46 @@ export default function CheckoutPage() {
 	return (
 		<div className="mx-auto max-w-md px-4 py-12">
 			<h1 className="mb-6 font-semibold text-2xl">Checkout</h1>
+
+			{/*
+			 * Order summary — added live-audit fix (P1 finding #9,
+			 * `sdd/ecommerce-product-variants` post-pilot Playwright UX audit):
+			 * checkout previously showed only the contact form + a bare total,
+			 * no line-item recap. Reads the same `useCartStore` state the page
+			 * already computes `totalPrice` from — no new data source.
+			 */}
+			<ul className="mb-6 space-y-3 border-b pb-6">
+				{items.map((item) => (
+					<li key={item.variantId} className="flex items-center gap-3">
+						<div className="relative size-14 shrink-0 overflow-hidden rounded-md border bg-muted">
+							{item.coverImage ? (
+								<Image
+									src={item.coverImage}
+									alt={item.name}
+									fill
+									sizes="56px"
+									className="object-cover"
+								/>
+							) : null}
+						</div>
+						<div className="flex flex-1 items-start justify-between gap-2">
+							<div className="flex flex-col">
+								<span className="font-medium text-sm">{item.name}</span>
+								{item.variantLabel ? (
+									<span className="text-muted-foreground text-xs">
+										{item.variantLabel}
+									</span>
+								) : null}
+								<span className="text-muted-foreground text-xs">
+									Qty: {item.quantity}
+								</span>
+							</div>
+							<Price price={item.price * item.quantity} />
+						</div>
+					</li>
+				))}
+			</ul>
+
 			<form
 				onSubmit={(event) => {
 					event.preventDefault();
