@@ -246,7 +246,10 @@ test("admin creates a variant with an option-value selection", async ({
 
 	await page.getByLabel("Code", { exact: true }).fill("SOF-002-WAL");
 	await page.getByLabel("Price").fill("949.00");
-	await page.getByLabel("Natural").check();
+	// "Natural" is a chip-style toggle button, not a checkbox, since PR20
+	// (`[20/22] templates: remove raw UUID field, chip-ify option picker`) —
+	// `.check()` no longer applies to it.
+	await page.getByRole("button", { name: "Natural" }).click();
 	await page.getByRole("button", { name: "Create" }).click();
 
 	await expect(page).toHaveURL(`/admin/products/${velvetSofaId}/variants`);
