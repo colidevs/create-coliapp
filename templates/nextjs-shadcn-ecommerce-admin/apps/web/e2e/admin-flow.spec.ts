@@ -148,6 +148,61 @@ test("admin views an order's status (read-only)", async ({ page }) => {
 });
 
 /**
+ * Phase 8 (PR8): admin creates an option type, then adds a value scoped to
+ * it, then confirms the value only appears when filtered by that option
+ * type — exercising `modules/variant-option-types`/`variant-option-values`'s
+ * own scoped-by-`optionTypeId` convention (mirroring `admin/product-images`'s
+ * `?productId=` precedent). `handlers/admin.ts` seeds both collections empty
+ * (Phase 9's own task 9.3 owns real fixture data), so this test's own writes
+ * are the sole source of both rows.
+ */
+test("admin creates an option type, then adds a scoped value to it", async ({
+	page,
+}) => {
+	await login(page);
+
+	await page.goto("/admin/variant-option-types");
+	await page.getByRole("button", { name: "Nuevo registro" }).click();
+	await expect(page).toHaveURL("/admin/variant-option-types/add");
+
+	await page.getByLabel("Name").fill("Finish");
+	await page.getByRole("button", { name: "Create" }).click();
+
+	await expect(page).toHaveURL("/admin/variant-option-types");
+	await expect(page.getByRole("link", { name: "Finish" })).toBeVisible();
+
+	await page.getByRole("link", { name: "Finish" }).click();
+	await expect(page.getByRole("heading", { name: "Finish" })).toBeVisible();
+	const optionTypeUrl = page.url();
+	const optionTypeId = optionTypeUrl.split("/").pop();
+	if (!optionTypeId) throw new Error("Could not resolve option type id");
+
+	// Deep-linked directly with the `optionTypeId` query param, NOT via the
+	// "Nuevo registro" button from the filtered list — `DataTable`'s own
+	// `add()` (`components/data-table.tsx`) navigates to `${pathname}/add`
+	// with no search params carried over, a pre-existing gap shared with
+	// `admin/product-images`'s identical `?productId=` scoping (found here,
+	// not introduced by this PR; not fixed, since it's a `DataTable`-level
+	// concern affecting every scoped-list module, out of this PR's scope).
+	await page.goto(
+		`/admin/variant-option-values/add?optionTypeId=${optionTypeId}`,
+	);
+
+	await page.getByLabel("Value").fill("Walnut");
+	await page.getByRole("button", { name: "Create" }).click();
+
+	await expect(page).toHaveURL(
+		`/admin/variant-option-values?optionTypeId=${optionTypeId}`,
+	);
+	await expect(page.getByRole("cell", { name: "Walnut" })).toBeVisible();
+
+	// Scoped-list guarantee: the value is invisible when the list is loaded
+	// without (or with a different) `optionTypeId` filter.
+	await page.goto("/admin/variant-option-values");
+	await expect(page.getByRole("cell", { name: "Walnut" })).not.toBeVisible();
+});
+
+/**
  * NOT E2E-tested here, and explicitly not a gap this suite silently skips
  * over: a CASL-forbidden write rejected server-side even with the UI
  * bypassed. This admin surface's role resolution
