@@ -14,10 +14,20 @@ import { PaginationSchema } from "@/v1/types";
  * `PricedOrderItem` interface as a Zod shape instead of importing it, to
  * keep this module's OpenAPI-facing contract self-contained rather than
  * cross-importing from the `dlocal-checkout` domain.
+ *
+ * **Retargeted (`sdd/ecommerce-product-variants`, tasks item 9.5, fixing a
+ * gap left open since PR6)**: `productId` → `variantId`, plus the new
+ * `variantLabel` field, matching `Dlocal/types.ts#PricedOrderItem` exactly
+ * (`variantId: string`, `variantLabel: string | null`) — what
+ * `applyPaymentTransition` actually persists into `orders.buyer_products`
+ * since PR6's checkout retarget. This schema was never updated alongside
+ * that retarget, so it stayed stale relative to what was actually being
+ * written.
  */
 export const OrderItemSchema = z.object({
-	productId: z.uuid().meta({ example: "9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c" }),
+	variantId: z.uuid().meta({ example: "9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c" }),
 	slug: z.string().meta({ example: "wireless-mouse" }),
+	variantLabel: z.string().nullable().meta({ example: "Red / M" }),
 	quantity: z.number().int().meta({ example: 2 }),
 	unitPrice: z.number().meta({ example: 29.99 }),
 	lineTotal: z.number().meta({ example: 59.98 }),

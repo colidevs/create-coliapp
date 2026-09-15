@@ -2,6 +2,11 @@ import { HttpResponse, http } from "msw";
 
 import { categoriesFixture } from "@/mocks/data/categories";
 import { type ProductRecord, productsFixture } from "@/mocks/data/products";
+import {
+	variantOptionTypesFixture,
+	variantOptionValuesFixture,
+} from "@/mocks/data/variant-option-types";
+import { variantsFixture } from "@/mocks/data/variants";
 
 /**
  * Phase 6's own MSW handler set for the storefront's public read endpoints
@@ -27,69 +32,52 @@ function problem(status: number, title: string, detail?: string) {
 }
 
 /**
- * `sdd/ecommerce-product-variants/design`, Phase 7 — a minimal, LOCAL
- * `variants[]` fixture for the storefront's own `PublicProduct` response
- * shape. Deliberately NOT a new shared `mocks/data/variants.ts` module: that
- * file is Phase 9's own task (9.3, full admin+storefront fixture/handler
- * overhaul across `admin.ts`/`storefront.ts` alike) — this stays scoped to
- * exactly what the storefront read endpoints and `e2e/checkout-flow.spec.ts`
- * need today, without pre-empting that later, broader fixture design.
- * `admin.ts`'s own `productsFixture`/`ProductRecord` (flat `price`/`stock`)
- * is untouched — this only PROJECTS it into the variants shape, locally,
- * for the two `web/products` read handlers below.
+ * **Retargeted (`sdd/ecommerce-product-variants`, task 9.3)**: PR7's own
+ * local, hardcoded `toPublicVariants()` projection is replaced by the real
+ * shared `variantsFixture`/`variantOptionTypesFixture`/
+ * `variantOptionValuesFixture` (`mocks/data/{variants,variant-option-types}.ts`)
+ * — the same fixtures `handlers/admin.ts`'s own variants CRUD handlers read
+ * and write. A variant created via the admin UI while MSW is running now
+ * shows up here too, since both handler sets share the same module-scope
+ * `variantsFixture` import... except `variantsFixture` here is the frozen
+ * SEED array (`admin.ts` reassigns its own separately-imported `variants`
+ * mutable binding, never this one) — same read-only-fixture posture as
+ * every other entry in this file (`categoriesFixture`/`productsFixture`).
  *
- * "Oak Dining Chair" gets two real variants (a `Finish` option with two
- * values, one of them out of stock) so the storefront's
- * `<VariantSelector>`/`resolveVariant` matching logic is genuinely exercised
- * end to end, not just rendered with an empty option list.
+ * "Oak Dining Chair" still gets two real variants (a `Finish` option, one
+ * in stock/default, one out of stock) so the storefront's
+ * `<VariantSelector>`/`resolveVariant` matching logic stays genuinely
+ * exercised end to end — now sourced from the shared fixture instead of an
+ * inline literal.
  */
 function toPublicVariants(product: ProductRecord) {
-	if (product.slug === "oak-dining-chair") {
-		return [
-			{
-				id: `${product.id}-natural`,
-				price: product.price,
-				stock: product.stock,
-				isDefault: true,
-				options: [
-					{
-						optionTypeSlug: "finish",
-						optionTypeName: "Finish",
-						valueSlug: "natural",
-						value: "Natural",
-						imageUrl: null,
-						description: null,
-					},
-				],
-			},
-			{
-				id: `${product.id}-walnut`,
-				price: product.price + 20,
-				stock: 0,
-				isDefault: false,
-				options: [
-					{
-						optionTypeSlug: "finish",
-						optionTypeName: "Finish",
-						valueSlug: "walnut",
-						value: "Walnut",
-						imageUrl: null,
-						description: null,
-					},
-				],
-			},
-		];
-	}
-
-	return [
-		{
-			id: `${product.id}-default`,
-			price: product.price,
-			stock: product.stock,
-			isDefault: true,
-			options: [],
-		},
-	];
+	return variantsFixture
+		.filter((variant) => variant.productId === product.id && variant.isActive)
+		.map((variant) => ({
+			id: variant.id,
+			price: variant.price,
+			stock: variant.stock,
+			isDefault: variant.isDefault,
+			options: variant.optionValueIds
+				.map((id) => variantOptionValuesFixture.find((v) => v.id === id))
+				.filter(
+					(value): value is (typeof variantOptionValuesFixture)[number] =>
+						value !== undefined,
+				)
+				.map((value) => {
+					const type = variantOptionTypesFixture.find(
+						(t) => t.id === value.optionTypeId,
+					);
+					return {
+						optionTypeSlug: type?.slug ?? "",
+						optionTypeName: type?.name ?? "",
+						valueSlug: value.slug,
+						value: value.value,
+						imageUrl: value.imageUrl,
+						description: value.description,
+					};
+				}),
+		}));
 }
 
 function toPublicProduct(product: ProductRecord) {

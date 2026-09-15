@@ -16,6 +16,12 @@ import { getOrderByIdQuery } from "@/modules/orders/actions";
  * this module (see `modules/orders/actions.ts`'s own header comment: no
  * update route exists on `apps/api` to back one). Status is displayed here
  * exactly as `apps/api` returns it; it is never editable from this page.
+ *
+ * **Retargeted (`sdd/ecommerce-product-variants`, tasks item 9.5)**: each
+ * `buyerProducts` line item is keyed by `variantId` now (was `productId`),
+ * and renders its resolved `variantLabel` (e.g. "Red / M") alongside the
+ * parent product's `slug` — `null` for a variant with zero option-value
+ * selections, matching `admin/stock`'s own `variantLabel` convention.
  */
 export default async function AdminOrderDetailPage({
 	params,
@@ -52,11 +58,13 @@ export default async function AdminOrderDetailPage({
 				<ul className="space-y-1">
 					{order.buyerProducts.map((item) => (
 						<li
-							key={item.productId}
+							key={item.variantId}
 							className="flex items-center justify-between text-sm"
 						>
 							<span>
-								{item.slug} × {item.quantity}
+								{item.slug}
+								{item.variantLabel ? ` (${item.variantLabel})` : ""} ×{" "}
+								{item.quantity}
 							</span>
 							<Price price={item.lineTotal} />
 						</li>

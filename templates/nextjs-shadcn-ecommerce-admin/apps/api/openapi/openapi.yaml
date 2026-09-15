@@ -1834,7 +1834,7 @@ components:
           items:
             type: object
             properties:
-              productId:
+              variantId:
                 type: string
                 format: uuid
                 pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
@@ -1842,6 +1842,11 @@ components:
               slug:
                 type: string
                 example: wireless-mouse
+              variantLabel:
+                anyOf:
+                  - type: string
+                  - type: "null"
+                example: Red / M
               quantity:
                 type: integer
                 minimum: -9007199254740991
@@ -1854,8 +1859,9 @@ components:
                 type: number
                 example: 59.98
             required:
-              - productId
+              - variantId
               - slug
+              - variantLabel
               - quantity
               - unitPrice
               - lineTotal
@@ -2825,7 +2831,7 @@ components:
           items:
             type: object
             properties:
-              productId:
+              variantId:
                 type: string
                 format: uuid
                 pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
@@ -2833,6 +2839,11 @@ components:
               slug:
                 type: string
                 example: wireless-mouse
+              variantLabel:
+                anyOf:
+                  - type: string
+                  - type: "null"
+                example: Red / M
               quantity:
                 type: integer
                 minimum: -9007199254740991
@@ -2845,8 +2856,9 @@ components:
                 type: number
                 example: 59.98
             required:
-              - productId
+              - variantId
               - slug
+              - variantLabel
               - quantity
               - unitPrice
               - lineTotal
