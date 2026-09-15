@@ -21,10 +21,25 @@ const HOME_PARAMS = { page: 1, size: 8 };
  * home page instead shows a simple hero plus the first page of the real
  * public catalog, reusing the same `getQueryClient()`/`prefetchQuery`+
  * `HydrationBoundary` pattern as `products/page.tsx`.
+ *
+ * `await`ed, not fire-and-forget (deviates from ADR 0021's documented
+ * default of a non-awaited `prefetchQuery`): that default assumes the
+ * consuming Client Component reads the still-pending dehydrated query via
+ * `useSuspenseQuery` inside a `<Suspense>` boundary, letting React's own
+ * streaming SSR patch in the resolved HTML once the promise settles.
+ * `ProductsListClient` uses plain `useQuery`/`isLoading` with no `<Suspense>`
+ * boundary — a real, confirmed live bug (`pnpm build && pnpm start`, MSW
+ * backend): the non-awaited prefetch dehydrated a still-`pending` query with
+ * no data, so the server rendered nothing but "Loading products…" (verified
+ * via a raw `curl` of the SSR HTML — zero product links present), and the
+ * browser then threw a genuine React hydration-mismatch error (minified
+ * error #418) instead of ever resolving cleanly. Awaiting here makes the
+ * dehydrated state carry the already-resolved data, so the server-rendered
+ * HTML and the client's first hydration pass agree from the start.
  */
-export default function HomePage() {
+export default async function HomePage() {
 	const queryClient = getQueryClient();
-	void queryClient.prefetchQuery(publicProductsQueryOptions(HOME_PARAMS));
+	await queryClient.prefetchQuery(publicProductsQueryOptions(HOME_PARAMS));
 
 	return (
 		<div className="mx-auto max-w-6xl px-4">

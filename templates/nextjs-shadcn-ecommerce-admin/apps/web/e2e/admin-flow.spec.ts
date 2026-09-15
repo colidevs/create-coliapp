@@ -112,7 +112,7 @@ test("admin creates a product, then views and edits it", async ({ page }) => {
 		page.getByRole("link", { name: "Oak Dining Chair" }),
 	).toBeVisible();
 
-	await page.getByRole("button", { name: "Nuevo registro" }).click();
+	await page.getByRole("button", { name: "New record" }).click();
 	await expect(page).toHaveURL("/admin/products/add");
 
 	await page.getByLabel("Name").fill("E2E Test Stool");
@@ -216,7 +216,7 @@ test("admin creates a variant with an option-value selection", async ({
 	// The seeded default variant, no options.
 	await expect(page.getByRole("cell", { name: "SOF-002" })).toBeVisible();
 
-	await page.getByRole("button", { name: "Nuevo registro" }).click();
+	await page.getByRole("button", { name: "New record" }).click();
 	await expect(page).toHaveURL(`/admin/products/${velvetSofaId}/variants/add`);
 
 	await page.getByLabel("Code", { exact: true }).fill("SOF-002-WAL");
@@ -266,7 +266,7 @@ test("admin creates an option type, then adds a scoped value to it", async ({
 	await login(page);
 
 	await page.goto("/admin/variant-option-types");
-	await page.getByRole("button", { name: "Nuevo registro" }).click();
+	await page.getByRole("button", { name: "New record" }).click();
 	await expect(page).toHaveURL("/admin/variant-option-types/add");
 
 	await page.getByLabel("Name").fill("Material");
@@ -282,7 +282,7 @@ test("admin creates an option type, then adds a scoped value to it", async ({
 	if (!optionTypeId) throw new Error("Could not resolve option type id");
 
 	// Deep-linked directly with the `optionTypeId` query param, NOT via the
-	// "Nuevo registro" button from the filtered list — `DataTable`'s own
+	// "New record" button from the filtered list — `DataTable`'s own
 	// `add()` (`components/data-table.tsx`) navigates to `${pathname}/add`
 	// with no search params carried over, a pre-existing gap shared with
 	// `admin/product-images`'s identical `?productId=` scoping (found here,
