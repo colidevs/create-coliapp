@@ -16,7 +16,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@colidevs/ui/switch";
 import { Input } from "@/components/ui/input";
 import type { VariantOptionType, VariantOptionValue } from "@/generated/model";
 import { getQueryClient } from "@/lib/query";
@@ -326,13 +326,11 @@ export function VariantForm({
 				<div className="flex justify-end gap-6">
 					<form.Field name="isDefault">
 						{(field) => (
-							<Field orientation="horizontal" className="w-fit">
-								<Checkbox
+							<Field orientation="horizontal" className="w-fit items-center">
+								<Switch
 									id={field.name}
 									checked={field.state.value}
-									onCheckedChange={(checked) =>
-										field.handleChange(checked === true)
-									}
+									onCheckedChange={(checked) => field.handleChange(checked)}
 								/>
 								<FieldLabel htmlFor={field.name} className="font-normal">
 									Default variant
@@ -344,13 +342,11 @@ export function VariantForm({
 					{variant ? (
 						<form.Field name="isActive">
 							{(field) => (
-								<Field orientation="horizontal" className="w-fit">
-									<Checkbox
+								<Field orientation="horizontal" className="w-fit items-center">
+									<Switch
 										id={field.name}
 										checked={field.state.value}
-										onCheckedChange={(checked) =>
-											field.handleChange(checked === true)
-										}
+										onCheckedChange={(checked) => field.handleChange(checked)}
 									/>
 									<FieldLabel htmlFor={field.name} className="font-normal">
 										Active

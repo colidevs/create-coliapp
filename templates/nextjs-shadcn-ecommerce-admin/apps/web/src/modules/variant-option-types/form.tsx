@@ -1,7 +1,7 @@
 "use client";
 
 import { Field, FieldError, FieldGroup, FieldLabel } from "@colidevs/ui/field";
-import { CheckboxField, NumberStepperField } from "@colidevs/ui/form-fields";
+import { SwitchField, NumberStepperField } from "@colidevs/ui/form-fields";
 import { useForm } from "@tanstack/react-form";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -164,7 +164,7 @@ export function VariantOptionTypeForm({
 
 				{optionType ? (
 					<form.Field name="isActive">
-						{(field) => <CheckboxField field={field} title="Active" />}
+						{(field) => <SwitchField field={field} title="Active" />}
 					</form.Field>
 				) : null}
 
