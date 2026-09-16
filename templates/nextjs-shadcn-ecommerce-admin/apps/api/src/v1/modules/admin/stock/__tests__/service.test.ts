@@ -18,9 +18,21 @@ const FAKE_STOCK_ITEM: StockItem = {
 	coverImage: null,
 };
 
+const FAKE_PAGE = {
+	items: [FAKE_STOCK_ITEM],
+	pagination: {
+		page: 0,
+		size: 10,
+		count: 1,
+		total: 1,
+		next: 0,
+		previous: 0,
+	},
+};
+
 function createFakeRepo(overrides: Partial<Repository> = {}): Repository {
 	return {
-		get: vi.fn(async () => [FAKE_STOCK_ITEM]),
+		get: vi.fn(async () => FAKE_PAGE),
 		getById: vi.fn(async () => FAKE_STOCK_ITEM),
 		update: vi.fn(async () => FAKE_STOCK_ITEM),
 		...overrides,
@@ -38,7 +50,7 @@ describe("admin/stock service — happy path", () => {
 		const repo = createFakeRepo();
 		const svc = createStockService(repo);
 
-		await expect(svc.get(admin, {})).resolves.toEqual([FAKE_STOCK_ITEM]);
+		await expect(svc.get(admin, {})).resolves.toEqual(FAKE_PAGE);
 	});
 
 	it("updates a stock item", async () => {

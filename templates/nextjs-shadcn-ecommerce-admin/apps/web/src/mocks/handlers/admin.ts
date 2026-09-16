@@ -631,9 +631,11 @@ export const adminHandlers = [
 		const url = new URL(request.url);
 		const page = Number(url.searchParams.get("page") ?? "0") || 0;
 		const size = Number(url.searchParams.get("size") ?? "10") || 10;
-		const start = page * size;
-		const items = variants.slice(start, start + size).map(toStockItem);
-		return HttpResponse.json(items, { status: 200 });
+		const { items, pagination } = paginate(variants, page, size);
+		return HttpResponse.json(
+			{ items: items.map(toStockItem), pagination },
+			{ status: 200 },
+		);
 	}),
 
 	http.get("*/api/v1/admin/stock/:id", ({ params }) => {

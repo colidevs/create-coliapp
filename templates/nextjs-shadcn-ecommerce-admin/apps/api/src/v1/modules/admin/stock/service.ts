@@ -1,5 +1,6 @@
 import { assertCan, type CatalogAbility } from "@/lib/ability";
 import { NotFoundHttpError } from "@/v1/res/errors";
+import type { Pagination } from "@/v1/types";
 import type { Repository } from "./repository";
 import type { GetStockParams, StockItem, StockUpdate } from "./types";
 
@@ -7,7 +8,7 @@ export interface Service {
 	get: (
 		ability: CatalogAbility,
 		params: GetStockParams,
-	) => Promise<StockItem[]>;
+	) => Promise<{ items: StockItem[]; pagination: Pagination }>;
 	getById: (ability: CatalogAbility, id: string) => Promise<StockItem>;
 	update: (
 		ability: CatalogAbility,

@@ -16,30 +16,19 @@ export type StockActionResult =
 	| ({ success: false } & ActionFormState);
 
 /**
- * `admin/stock` returns a flat `StockItem[]` (no `pagination` wrapper —
- * confirmed against `admin/stock/repository.ts`'s own `get()`: server-side
- * `page`/`size` offset, but the response carries no `total` count at all,
- * unlike `admin/products`/`admin/orders`). `DataTable`'s own contract
- * (`manualPagination: true`) still expects a `{ rows, totalRows }` page —
- * with no real total to report, this uses the standard "full page ⇒ assume
- * at least one more" heuristic rather than fabricating an exact count.
- * **Named limitation**: the last page's displayed "total" is only exact once
- * a short page is returned; every fuller page shows one extra phantom row
- * of "total" until then. Same class of documented pagination-fidelity
- * limitation as `modules/categories/actions.ts`'s own client-side slice.
+ * `admin/stock` now returns a real `{ items, pagination }` page (same shape
+ * as `admin/products`) — see `admin/stock/repository.ts`'s `get()` for the
+ * `count()` query this is sourced from. No heuristic needed.
  */
 export const paginationQuery: PaginationQueryFn<
 	Stock,
 	ListStockParams
 > = async ({ pageIndex, pageSize }) => {
-	const rows = await listStockQuery({ page: pageIndex, size: pageSize });
-	const hasMore = rows.length === pageSize;
-	return {
-		rows,
-		totalRows: hasMore
-			? (pageIndex + 1) * pageSize + 1
-			: pageIndex * pageSize + rows.length,
-	};
+	const result = await listStock({ page: pageIndex, size: pageSize });
+	if (result.status !== 200) {
+		throw new Error(result.data.detail ?? result.data.title);
+	}
+	return { rows: result.data.items, totalRows: result.data.pagination.total };
 };
 
 export async function listStockQuery(
@@ -49,7 +38,7 @@ export async function listStockQuery(
 	if (result.status !== 200) {
 		throw new Error(result.data.detail ?? result.data.title);
 	}
-	return result.data;
+	return result.data.items;
 }
 
 export async function getStockByIdQuery(id: string): Promise<Stock | null> {
