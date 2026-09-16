@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PaginationSchema } from "@/v1/types";
 
 /**
  * @description `stock-management` domain, retargeted by
@@ -34,6 +35,17 @@ export const StockItemSchema = z
 			"A variant's stock projection, with its parent product's name/slug and its resolved option-value label.",
 	});
 export type StockItem = z.infer<typeof StockItemSchema>;
+
+export const StockListSchema = z
+	.object({
+		items: z.array(StockItemSchema),
+		pagination: PaginationSchema,
+	})
+	.meta({
+		id: "StockList",
+		description: "A page of stock items.",
+	});
+export type StockList = z.infer<typeof StockListSchema>;
 
 export const StockUpdateSchema = z
 	.object({

@@ -1,5 +1,6 @@
-import { asc, eq, inArray } from "drizzle-orm";
+import { asc, count, eq, inArray } from "drizzle-orm";
 import { schema, type Tx, withPlatformSession } from "@/lib/db";
+import type { Pagination } from "@/v1/types";
 import type { GetStockParams, StockItem, StockUpdate } from "./types";
 
 const {
@@ -94,7 +95,9 @@ async function attachLabels(tx: Tx, rows: StockRow[]): Promise<StockItem[]> {
 }
 
 export interface Repository {
-	get: (params: GetStockParams) => Promise<StockItem[]>;
+	get: (
+		params: GetStockParams,
+	) => Promise<{ items: StockItem[]; pagination: Pagination }>;
 	getById: (id: string) => Promise<StockItem | null>;
 	update: (id: string, input: StockUpdate) => Promise<StockItem | null>;
 }
@@ -114,7 +117,24 @@ function stockRepo(): Repository {
 				.limit(size)
 				.offset(offset);
 
-			return attachLabels(tx, rows);
+			const [{ value: total }] = await tx
+				.select({ value: count() })
+				.from(productVariants)
+				.innerJoin(products, eq(productVariants.productId, products.id));
+
+			const totalPages = Math.ceil(total / size);
+			const pagination: Pagination = {
+				page,
+				size,
+				count: rows.length,
+				total,
+				next: totalPages > 0 ? Math.max(totalPages - (page + 1), 0) : 0,
+				previous: page > 0 ? page - 1 : 0,
+			};
+
+			const items = await attachLabels(tx, rows);
+
+			return { items, pagination };
 		});
 	}
 

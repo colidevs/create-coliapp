@@ -22,7 +22,8 @@ import type {
 	ProductOutput,
 	PublicProductList,
 	PublicProductOutput,
-	StockItem,
+	StockItemOutput,
+	StockList,
 	Variant,
 	VariantOptionType,
 	VariantOptionValue,
@@ -282,8 +283,10 @@ export const getUpdateProductImageResponseMock = (
 	...overrideResponse,
 });
 
-export const getListStockResponseMock = (): StockItem[] =>
-	Array.from(
+export const getListStockResponseMock = (
+	overrideResponse: Partial<Extract<StockList, object>> = {},
+): StockList => ({
+	items: Array.from(
 		{ length: faker.number.int({ min: 1, max: 10 }) },
 		(_, i) => i + 1,
 	).map(() => ({
@@ -309,11 +312,21 @@ export const getListStockResponseMock = (): StockItem[] =>
 			null,
 		]),
 		coverImage: faker.helpers.arrayElement([faker.internet.url(), null]),
-	}));
+	})),
+	pagination: {
+		count: faker.number.float({ fractionDigits: 2 }),
+		next: faker.number.float({ fractionDigits: 2 }),
+		page: faker.number.float({ fractionDigits: 2 }),
+		previous: faker.number.float({ fractionDigits: 2 }),
+		size: faker.number.float({ fractionDigits: 2 }),
+		total: faker.number.float({ fractionDigits: 2 }),
+	},
+	...overrideResponse,
+});
 
 export const getGetStockByIdResponseMock = (
-	overrideResponse: Partial<Extract<StockItem, object>> = {},
-): StockItem => ({
+	overrideResponse: Partial<Extract<StockItemOutput, object>> = {},
+): StockItemOutput => ({
 	id: faker.string.uuid(),
 	productId: faker.string.uuid(),
 	name: faker.string.alpha({ length: { min: 10, max: 20 } }),
@@ -337,8 +350,8 @@ export const getGetStockByIdResponseMock = (
 });
 
 export const getUpdateStockByIdResponseMock = (
-	overrideResponse: Partial<Extract<StockItem, object>> = {},
-): StockItem => ({
+	overrideResponse: Partial<Extract<StockItemOutput, object>> = {},
+): StockItemOutput => ({
 	id: faker.string.uuid(),
 	productId: faker.string.uuid(),
 	name: faker.string.alpha({ length: { min: 10, max: 20 } }),
@@ -1301,10 +1314,10 @@ export const getDeleteProductImageMockHandler = (
 
 export const getListStockMockHandler = (
 	overrideResponse?:
-		| StockItem[]
+		| StockList
 		| ((
 				info: Parameters<Parameters<typeof http.get>[1]>[0],
-		  ) => Promise<StockItem[]> | StockItem[]),
+		  ) => Promise<StockList> | StockList),
 	options?: RequestHandlerOptions,
 ) => {
 	return http.get(
@@ -1325,10 +1338,10 @@ export const getListStockMockHandler = (
 
 export const getGetStockByIdMockHandler = (
 	overrideResponse?:
-		| StockItem
+		| StockItemOutput
 		| ((
 				info: Parameters<Parameters<typeof http.get>[1]>[0],
-		  ) => Promise<StockItem> | StockItem),
+		  ) => Promise<StockItemOutput> | StockItemOutput),
 	options?: RequestHandlerOptions,
 ) => {
 	return http.get(
@@ -1349,10 +1362,10 @@ export const getGetStockByIdMockHandler = (
 
 export const getUpdateStockByIdMockHandler = (
 	overrideResponse?:
-		| StockItem
+		| StockItemOutput
 		| ((
 				info: Parameters<Parameters<typeof http.patch>[1]>[0],
-		  ) => Promise<StockItem> | StockItem),
+		  ) => Promise<StockItemOutput> | StockItemOutput),
 	options?: RequestHandlerOptions,
 ) => {
 	return http.patch(

@@ -687,39 +687,54 @@ export const ListStockQueryParams = zod.object({
 	size: zod.int().optional(),
 });
 
-export const listStockResponseIdRegExp =
+export const listStockResponseItemsItemIdRegExp =
 	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
-export const listStockResponseProductIdRegExp =
+export const listStockResponseItemsItemProductIdRegExp =
 	/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
-export const listStockResponseStockMin = -9007199254740991;
-export const listStockResponseStockMax = 9007199254740991;
+export const listStockResponseItemsItemStockMin = -9007199254740991;
+export const listStockResponseItemsItemStockMax = 9007199254740991;
 
-export const listStockResponseStockMinMin = -9007199254740991;
-export const listStockResponseStockMinMax = 9007199254740991;
+export const listStockResponseItemsItemStockMinMin = -9007199254740991;
+export const listStockResponseItemsItemStockMinMax = 9007199254740991;
 
-export const ListStockResponseItem = zod
+export const ListStockResponse = zod
 	.object({
-		id: zod.uuid().regex(listStockResponseIdRegExp),
-		productId: zod.uuid().regex(listStockResponseProductIdRegExp),
-		name: zod.string(),
-		slug: zod.string(),
-		variantLabel: zod.union([zod.string(), zod.null()]),
-		stock: zod
-			.int()
-			.min(listStockResponseStockMin)
-			.max(listStockResponseStockMax),
-		stockMin: zod
-			.int()
-			.min(listStockResponseStockMinMin)
-			.max(listStockResponseStockMinMax),
-		code: zod.union([zod.string(), zod.null()]),
-		altCode: zod.union([zod.string(), zod.null()]),
-		coverImage: zod.union([zod.url(), zod.null()]),
+		items: zod.array(
+			zod
+				.object({
+					id: zod.uuid().regex(listStockResponseItemsItemIdRegExp),
+					productId: zod
+						.uuid()
+						.regex(listStockResponseItemsItemProductIdRegExp),
+					name: zod.string(),
+					slug: zod.string(),
+					variantLabel: zod.union([zod.string(), zod.null()]),
+					stock: zod
+						.int()
+						.min(listStockResponseItemsItemStockMin)
+						.max(listStockResponseItemsItemStockMax),
+					stockMin: zod
+						.int()
+						.min(listStockResponseItemsItemStockMinMin)
+						.max(listStockResponseItemsItemStockMinMax),
+					code: zod.union([zod.string(), zod.null()]),
+					altCode: zod.union([zod.string(), zod.null()]),
+					coverImage: zod.union([zod.url(), zod.null()]),
+				})
+				.describe(
+					"A variant's stock projection, with its parent product's name/slug and its resolved option-value label.",
+				),
+		),
+		pagination: zod.object({
+			count: zod.number(),
+			next: zod.number(),
+			page: zod.number(),
+			previous: zod.number(),
+			size: zod.number(),
+			total: zod.number(),
+		}),
 	})
-	.describe(
-		"A variant's stock projection, with its parent product's name/slug and its resolved option-value label.",
-	);
-export const ListStockResponse = zod.array(ListStockResponseItem);
+	.describe("A page of stock items.");
 
 /**
  * @summary Get a stock item by id

@@ -25,9 +25,9 @@ function controller(svc: Service): Controller {
 		const size = req.query.size ? Number(req.query.size) : undefined;
 		const page = req.query.page ? Number(req.query.page) : undefined;
 
-		const items = await svc.get(ability, { size, page });
+		const result = await svc.get(ability, { size, page });
 
-		return res.status(200).json(items);
+		return res.status(200).json(result);
 	};
 
 	const getStockById: Controller["getStockById"] = async (req, res) => {

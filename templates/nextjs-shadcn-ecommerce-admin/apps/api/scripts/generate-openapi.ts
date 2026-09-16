@@ -54,6 +54,7 @@ import {
 } from "@/v1/modules/admin/products/types";
 import {
 	StockItemSchema,
+	StockListSchema,
 	StockUpdateSchema,
 } from "@/v1/modules/admin/stock/types";
 import {
@@ -126,6 +127,7 @@ function buildDocument() {
 				ProductList: ProductListSchema,
 				ProductImage: ProductImageSchema,
 				StockItem: StockItemSchema,
+				StockList: StockListSchema,
 				StockUpdate: StockUpdateSchema,
 				Order: OrderSchema,
 				OrderList: OrderListSchema,
@@ -889,9 +891,9 @@ function buildDocument() {
 					security: [{ sessionCookie: [], apiKeyAuth: [] }],
 					responses: {
 						"200": {
-							description: "Stock items",
+							description: "A page of stock items",
 							content: {
-								"application/json": { schema: z.array(StockItemSchema) },
+								"application/json": { schema: StockListSchema },
 							},
 						},
 						default: {

@@ -748,13 +748,11 @@ paths:
             type: integer
       responses:
         "200":
-          description: Stock items
+          description: A page of stock items
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/StockItem"
+                $ref: "#/components/schemas/StockList"
         default:
           description: Unexpected error
           content:
@@ -781,7 +779,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/StockItem"
+                $ref: "#/components/schemas/StockItemOutput"
         "404":
           description: Stock item not found
           content:
@@ -819,7 +817,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/StockItem"
+                $ref: "#/components/schemas/StockItemOutput"
         "403":
           description: Not allowed to update stock
           content:
@@ -1773,6 +1771,69 @@ components:
           example: true
           type: boolean
       description: Updates a product. Renaming re-derives `slug` from the new `name`.
+    StockItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          example: 9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c
+        productId:
+          type: string
+          format: uuid
+          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          example: 1b2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e
+        name:
+          type: string
+          example: Wireless Mouse
+        slug:
+          type: string
+          example: wireless-mouse
+        variantLabel:
+          anyOf:
+            - type: string
+            - type: "null"
+          example: Red / M
+        stock:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+          example: 42
+        stockMin:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+          example: 5
+        code:
+          anyOf:
+            - type: string
+            - type: "null"
+          example: WM-100-RED-M
+        altCode:
+          anyOf:
+            - type: string
+            - type: "null"
+          example: ALT-WM-100-RED-M
+        coverImage:
+          anyOf:
+            - type: string
+              format: uri
+            - type: "null"
+          example: https://images.example.com/wireless-mouse.jpg
+      required:
+        - id
+        - productId
+        - name
+        - slug
+        - variantLabel
+        - stock
+        - stockMin
+        - code
+        - altCode
+        - coverImage
+      description: A variant's stock projection, with its parent product's name/slug
+        and its resolved option-value label.
     StockUpdate:
       type: object
       properties:
@@ -2398,70 +2459,41 @@ components:
         - createdAt
       additionalProperties: false
       description: A gallery image belonging to a product or one of its variants.
-    StockItem:
+    StockList:
       type: object
       properties:
-        id:
-          type: string
-          format: uuid
-          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
-          example: 9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c
-        productId:
-          type: string
-          format: uuid
-          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
-          example: 1b2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e
-        name:
-          type: string
-          example: Wireless Mouse
-        slug:
-          type: string
-          example: wireless-mouse
-        variantLabel:
-          anyOf:
-            - type: string
-            - type: "null"
-          example: Red / M
-        stock:
-          type: integer
-          minimum: -9007199254740991
-          maximum: 9007199254740991
-          example: 42
-        stockMin:
-          type: integer
-          minimum: -9007199254740991
-          maximum: 9007199254740991
-          example: 5
-        code:
-          anyOf:
-            - type: string
-            - type: "null"
-          example: WM-100-RED-M
-        altCode:
-          anyOf:
-            - type: string
-            - type: "null"
-          example: ALT-WM-100-RED-M
-        coverImage:
-          anyOf:
-            - type: string
-              format: uri
-            - type: "null"
-          example: https://images.example.com/wireless-mouse.jpg
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/StockItemOutput"
+        pagination:
+          type: object
+          properties:
+            count:
+              type: number
+            next:
+              type: number
+            page:
+              type: number
+            previous:
+              type: number
+            size:
+              type: number
+            total:
+              type: number
+          required:
+            - count
+            - next
+            - page
+            - previous
+            - size
+            - total
+          additionalProperties: false
       required:
-        - id
-        - productId
-        - name
-        - slug
-        - variantLabel
-        - stock
-        - stockMin
-        - code
-        - altCode
-        - coverImage
+        - items
+        - pagination
       additionalProperties: false
-      description: A variant's stock projection, with its parent product's name/slug
-        and its resolved option-value label.
+      description: A page of stock items.
     OrderList:
       type: object
       properties:
@@ -2790,6 +2822,70 @@ components:
       additionalProperties: false
       description: A catalog product, with its derived default-variant price and
         variant count.
+    StockItemOutput:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          example: 9c4f3e1a-3b7e-4b1a-9c7a-4d3b6e2f8a1c
+        productId:
+          type: string
+          format: uuid
+          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          example: 1b2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e
+        name:
+          type: string
+          example: Wireless Mouse
+        slug:
+          type: string
+          example: wireless-mouse
+        variantLabel:
+          anyOf:
+            - type: string
+            - type: "null"
+          example: Red / M
+        stock:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+          example: 42
+        stockMin:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+          example: 5
+        code:
+          anyOf:
+            - type: string
+            - type: "null"
+          example: WM-100-RED-M
+        altCode:
+          anyOf:
+            - type: string
+            - type: "null"
+          example: ALT-WM-100-RED-M
+        coverImage:
+          anyOf:
+            - type: string
+              format: uri
+            - type: "null"
+          example: https://images.example.com/wireless-mouse.jpg
+      required:
+        - id
+        - productId
+        - name
+        - slug
+        - variantLabel
+        - stock
+        - stockMin
+        - code
+        - altCode
+        - coverImage
+      additionalProperties: false
+      description: A variant's stock projection, with its parent product's name/slug
+        and its resolved option-value label.
     OrderOutput:
       type: object
       properties:

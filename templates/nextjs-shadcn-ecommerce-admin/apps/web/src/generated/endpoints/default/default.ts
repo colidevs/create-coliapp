@@ -35,7 +35,8 @@ import type {
 	ProductUpdate,
 	PublicProductList,
 	PublicProductOutput,
-	StockItem,
+	StockItemOutput,
+	StockList,
 	StockUpdate,
 	UpdateProductImageBody,
 	Variant,
@@ -1254,7 +1255,7 @@ export const deleteProductImage = async (
 };
 
 export type listStockResponse200 = {
-	data: StockItem[];
+	data: StockList;
 	status: 200;
 };
 
@@ -1304,7 +1305,7 @@ export const listStock = async (
 };
 
 export type getStockByIdResponse200 = {
-	data: StockItem;
+	data: StockItemOutput;
 	status: 200;
 };
 
@@ -1350,7 +1351,7 @@ export const getStockById = async (
 };
 
 export type updateStockByIdResponse200 = {
-	data: StockItem;
+	data: StockItemOutput;
 	status: 200;
 };
 
