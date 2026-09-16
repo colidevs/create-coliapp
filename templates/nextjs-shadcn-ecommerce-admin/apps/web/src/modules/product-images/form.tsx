@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getQueryClient } from "@/lib/query";
 import { fieldErrorMessage } from "@/lib/utils";
+import { ProductCombobox } from "@/modules/products/product-combobox";
 import { createProductImageAction, updateProductImageAction } from "./actions";
 import {
 	type ProductImage,
@@ -35,6 +36,18 @@ import {
  * `position` is a separate, already-in-flight concern
  * (`sdd/ecommerce-product-variants/apply-progress` PR18) — not swapped in
  * as part of this structure-only pass.
+ *
+ * **`productId` UX fix**: previously a raw-UUID text input — the admin had
+ * to type or paste a product's ID by hand. Replaced with
+ * `@/modules/products/product-combobox`'s `ProductCombobox`, a searchable
+ * name-based picker built from shadcn's own Popover+Command combobox
+ * recipe (no MinIO/upload work involved — `url` is untouched). The field's
+ * `Field`/`FieldLabel`/`FieldError` wrapper and its
+ * `productImageFormSchema.shape.productId` validation are unchanged; only
+ * the input control itself changed. The existing `disabled={Boolean(image)}`
+ * behavior for edit mode is preserved — the combobox renders
+ * non-interactive and shows the resolved product name instead of silently
+ * ignoring the flag.
  */
 export function ProductImageForm({
 	image,
@@ -124,13 +137,12 @@ export function ProductImageForm({
 						const isInvalid = field.state.meta.errors.length > 0;
 						return (
 							<Field data-invalid={isInvalid}>
-								<FieldLabel htmlFor={field.name}>Product ID</FieldLabel>
-								<Input
+								<FieldLabel htmlFor={field.name}>Product</FieldLabel>
+								<ProductCombobox
 									id={field.name}
-									name={field.name}
 									value={field.state.value}
+									onChange={field.handleChange}
 									onBlur={field.handleBlur}
-									onChange={(event) => field.handleChange(event.target.value)}
 									disabled={Boolean(image)}
 									aria-invalid={isInvalid}
 								/>
