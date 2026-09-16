@@ -15,7 +15,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@colidevs/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { Category } from "@/generated/model";
@@ -307,13 +307,11 @@ export function ProductForm({
 					<div className="flex gap-6">
 						<form.Field name="isActive">
 							{(field) => (
-								<Field orientation="horizontal" className="w-fit">
-									<Checkbox
+								<Field orientation="horizontal" className="w-fit items-center">
+									<Switch
 										id={field.name}
 										checked={field.state.value}
-										onCheckedChange={(checked) =>
-											field.handleChange(checked === true)
-										}
+										onCheckedChange={(checked) => field.handleChange(checked)}
 									/>
 									<FieldLabel htmlFor={field.name} className="font-normal">
 										Active
@@ -323,13 +321,11 @@ export function ProductForm({
 						</form.Field>
 						<form.Field name="isPublished">
 							{(field) => (
-								<Field orientation="horizontal" className="w-fit">
-									<Checkbox
+								<Field orientation="horizontal" className="w-fit items-center">
+									<Switch
 										id={field.name}
 										checked={field.state.value}
-										onCheckedChange={(checked) =>
-											field.handleChange(checked === true)
-										}
+										onCheckedChange={(checked) => field.handleChange(checked)}
 									/>
 									<FieldLabel htmlFor={field.name} className="font-normal">
 										Published

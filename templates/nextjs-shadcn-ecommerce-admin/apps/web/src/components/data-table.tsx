@@ -775,9 +775,11 @@ function DataTableComponent<TData, TValue, TFilters>({
 									No results found.
 									<div className="text-center py-8 text-gray-500">
 										<Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
-										<Button variant="outline" onClick={add} className="mt-2">
-											New record
-										</Button>
+										{addRegister ? (
+											<Button variant="outline" onClick={add} className="mt-2">
+												New record
+											</Button>
+										) : null}
 									</div>
 								</TableCell>
 							</TableRow>

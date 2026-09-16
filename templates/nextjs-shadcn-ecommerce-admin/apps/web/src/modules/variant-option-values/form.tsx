@@ -8,7 +8,7 @@ import {
 	FieldLegend,
 	FieldSet,
 } from "@colidevs/ui/field";
-import { CheckboxField, NumberStepperField } from "@colidevs/ui/form-fields";
+import { SwitchField, NumberStepperField } from "@colidevs/ui/form-fields";
 import { useForm } from "@tanstack/react-form";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -327,7 +327,7 @@ export function VariantOptionValueForm({
 
 					{optionValue ? (
 						<form.Field name="isActive">
-							{(field) => <CheckboxField field={field} title="Active" />}
+							{(field) => <SwitchField field={field} title="Active" />}
 						</form.Field>
 					) : null}
 				</FieldSet>

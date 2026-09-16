@@ -69,11 +69,37 @@ substitution does **not** touch:
 **Before asking about colors, typography, or tone of voice**: ask the user whether they have
 real visual references for this client — screenshots, competitor sites, a brand manual, mood
 boards, or specific inspiration links (e.g. a client sending over a competitor's storefront or a
-brand's own site as a look-and-feel target). If they do, hand off to Claude Code's `/design`
-skill with those references attached — it is built specifically for translating visual
-references into implementable design decisions, and reimplementing that logic here would just
-be a worse copy of it. Only fall back to asking the user to describe colors/fonts/tone directly
-in prose when no visual references exist at all.
+brand's own site as a look-and-feel target). If they do, this is a design-to-code task, and the
+real risk is a *shallow* match — one that copies the reference's colors/fonts while leaving the
+page's actual structure untouched. Two ways this concretely went wrong on a real client pilot
+before landing on the process below: (1) treating "apply the visual direction" as a palette+
+typography swap only, never touching layout/component structure at all; (2) rebuilding structure
+from an AI-paraphrased description of the reference instead of the reference itself — a
+paraphrase is already one lossy step removed from the real site and loses exactly the structural
+detail that matters.
+
+The process that actually worked, in order:
+
+1. **Structure first, theme second — two separate passes, never one.** Map layout, section
+   order, and component composition from the reference *before* touching any color or font.
+   Confirm that structural pass is right before starting the theme pass.
+2. **Ground the structural read in the real reference, never a summary of it.** Take real
+   screenshots of the reference site(s) (Playwright, or ask the user for screenshots) and/or
+   inspect their real DOM. Do not work from a prose description of the reference — treat any
+   such summary as unusable for structural decisions, no matter how detailed.
+3. **When more than one reference is given, confirm which is the primary structural target
+   before starting.** Do not blend two sites' structures into an invented composite — ask which
+   reference's structure wins if they conflict.
+4. **Audit shared-component-library adoption for completeness, not just first use.** If this
+   store's admin uses `@colidevs/ui` components, check every touched form/page uses them
+   consistently — not only the first one you happened to update (see the Step 6 gotcha below for
+   a concrete case this exact template hit).
+5. **Verify with a fresh pass that didn't build it.** Compare the result against the real
+   reference screenshots from a context that didn't do the implementation (a fresh agent, or the
+   user) — whoever built it is the worst judge of whether it actually matches.
+
+Only fall back to asking the user to describe colors/fonts/tone directly in prose when no visual
+references exist at all.
 
 ## Step 2 — Business category and initial variant option types
 
@@ -104,8 +130,10 @@ the admin UI or the admin API, never a schema change:
 Then, per product, an admin creates one or more variants under
 `/admin/products/<id>/variants/add`, each variant picking one value per option type it applies
 to, plus its own `price`/`stock`/`code`. A product itself carries no price/stock at all — it
-starts as a draft (`isActive: false`) and can only be published once it has at least one active
-variant (enforced by a database trigger, not just UI validation).
+starts as a draft (`isPublished: false`) and can only be published once it has at least one
+active variant (enforced by a database trigger, not just UI validation). `isPublished` is the
+draft/published flag; `isActive` is a separate, product-level soft-delete flag — don't conflate
+the two, they used to be the same boolean and that was a real bug.
 
 ## Step 3 — Payment provider (dLocal)
 
@@ -223,6 +251,16 @@ This is a hard sequence — each step depends on the one before it. Full detail 
   it without understanding why it's there (`.claude/rules/frontend-performance-tooling.md` in
   hefesto, if available).
 - **Social links**: see Step 1 — only `links.instagram` exists on `SiteConfig` today.
+- **`@colidevs/ui` components need an explicit Tailwind `@source` glob, or they render broken.**
+  `@colidevs/ui` (used for form fields, `Switch`, etc.) ships pre-built component output under
+  `node_modules` — Tailwind v4's automatic content detection never scans `node_modules`, so any
+  utility class used only inside that package's compiled files silently never gets generated.
+  Confirmed live: `Switch`'s `w-8` track width was missing, and the switch rendered as a bare
+  circle instead of a pill with a track. Fix: `apps/web/src/styles/globals.css` must carry
+  `@source "../../node_modules/@colidevs/ui/dist/**/*.{js,jsx,ts,tsx}";` right after
+  `@import "tailwindcss";` — confirm it's still there if any `@colidevs/ui` component looks
+  visually broken (unstyled, wrong size, missing background) despite working correctly
+  functionally.
 
 ## Step 7 — Standard content pages (Terms, Privacy, FAQ, About)
 
@@ -256,7 +294,7 @@ Confirm all of the following before handing this off:
 4. At least one variant option type + its values are visible under `/admin/variant-option-types`
    and `/admin/variant-option-values`.
 5. At least one product with at least one **active** variant exists and is published
-   (`isActive: true` on the product) — try publishing a product with zero active variants and
+   (`isPublished: true` on the product) — try publishing a product with zero active variants and
    confirm it's rejected (the DB trigger from migration `0005` should reject it with a 422).
 6. The storefront shows that product, a variant selector renders, and picking a combination
    updates the displayed price/stock.

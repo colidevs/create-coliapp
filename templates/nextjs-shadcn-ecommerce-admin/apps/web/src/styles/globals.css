@@ -2,6 +2,15 @@
 @import "tw-animate-css";
 @import "./custom.css";
 
+/*
+ * @colidevs/ui ships pre-built component output under node_modules — Tailwind's
+ * automatic content detection never scans node_modules, so utility classes used
+ * only inside that package (e.g. Switch's `w-8` track width) are silently never
+ * generated. Same gap Kumo already solves via its own @source glob
+ * (.claude/rules/console-ui-kumo.md); no equivalent existed yet for @colidevs/ui.
+ */
+@source "../../node_modules/@colidevs/ui/dist/**/*.{js,jsx,ts,tsx}";
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
