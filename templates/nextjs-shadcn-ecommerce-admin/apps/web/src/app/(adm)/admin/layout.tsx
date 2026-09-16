@@ -5,6 +5,11 @@ import { AppAbilityProvider } from "@/components/can";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { ReturnLink } from "@/components/return-link";
 import { ThemeProvider } from "@/components/theme-provider";
+import {
+	SidebarInset,
+	SidebarProvider,
+	SidebarTrigger,
+} from "@/components/ui/sidebar";
 import { defineAbilityFor } from "@/lib/ability";
 import { getServerSession } from "@/lib/get-server-session";
 import { AppSidebar } from "./app-sidebar";
@@ -60,15 +65,20 @@ export default async function AdminRootLayout({
 					disableTransitionOnChange
 				>
 					<QueryProvider>
-						<div className="flex min-h-svh w-full">
+						<SidebarProvider>
 							<AppSidebar />
-							<div className="flex flex-1 flex-col overflow-auto">
-								<ReturnLink />
-								<main className="flex-1 overflow-auto px-8 py-6">
-									{children}
-								</main>
-							</div>
-						</div>
+							<SidebarInset className="overflow-auto">
+								<div className="flex flex-1 flex-col">
+									<header className="flex items-center gap-3 border-b px-6 py-4">
+										<SidebarTrigger />
+									</header>
+									<ReturnLink />
+									<main className="flex-1 overflow-auto px-8 py-6">
+										{children}
+									</main>
+								</div>
+							</SidebarInset>
+						</SidebarProvider>
 					</QueryProvider>
 				</ThemeProvider>
 			</AppAbilityProvider>
