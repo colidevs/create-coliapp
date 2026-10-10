@@ -1,9 +1,20 @@
+import type { Metadata } from "next";
 import type { PropsWithChildren } from "react";
 
 import { AppLogo } from "@/components/app-logo";
 import { QueryProvider } from "@/components/providers/query-provider.client";
 import { TenantSwitcher } from "@/components/tenant-switcher.client";
 import { verifySession } from "@/lib/dal";
+
+/**
+ * `robots: { index: false }` is the console track's mandatory negative SEO
+ * obligation (ADR 0032 §7, `.claude/rules/frontend-seo.md`) — a console is
+ * never meant to be ranked or cited. Paired with `app/robots.ts`'s
+ * site-wide disallow; both are required, neither substitutes the other.
+ */
+export const metadata: Metadata = {
+	robots: { index: false },
+};
 
 /**
  * Layout scoped to the `(console)` route group (URL-invisible) — keeps the
